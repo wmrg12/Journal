@@ -50,7 +50,9 @@ Join our community of developers creating universal apps.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
 
 3. Librerias extra
+   ```bash
    npm install --save-dev @types/react @types/react-native
    npx expo install expo-auth-session expo-google-auth-session
    npm install -g expo-cli
    npx expo install expo-auth-session
+   ```
