@@ -5,7 +5,6 @@ import * as WebBrowser from "expo-web-browser";
 import { useOAuth, useAuth } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
 
-// Hook para calentar el navegador en Android
 export const useWarmUpBrowser = () => {
   React.useEffect(() => {
     void WebBrowser.warmUpAsync();
@@ -15,7 +14,7 @@ export const useWarmUpBrowser = () => {
   }, []);
 };
 
-// Completa sesión de auth si vuelve de la web
+
 WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
@@ -32,7 +31,7 @@ export default function LoginScreen() {
     setError(null);
 
     try {
-      // Limpiar sesión residual en desarrollo
+    
       if (isSignedIn) {
         console.log("Limpiando sesión residual...");
         await signOut();
@@ -43,10 +42,9 @@ export default function LoginScreen() {
       });
 
       if (createdSessionId) {
-        // Activar sesión
+      
         await setActive!({ session: createdSessionId });
 
-        // Redirigir a Home usando deep link
         const homeUrl = Linking.createURL("/login/home", { scheme: "myapp" });
         Linking.openURL(homeUrl);
       } else {
