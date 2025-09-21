@@ -60,7 +60,7 @@ export default function HeaderDiarios() {
         </Pressable>
       </View>
 
-      {/* Icono búsqueda */}
+      {/* Icono busqueda */}
       <TouchableOpacity style={styles.searchButton}>
         <Ionicons name="search" size={22} color={colors.danger} />
       </TouchableOpacity>
