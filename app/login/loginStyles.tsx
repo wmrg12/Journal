@@ -63,7 +63,7 @@ export default StyleSheet.create({
   },
   subtitle: {
     fontSize: 13,
-    color: colors.Grey,
+    color: colors.gray,
     textAlign: "left",
     marginTop: 10, 
     marginBottom: 25,

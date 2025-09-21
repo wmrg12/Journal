@@ -42,12 +42,12 @@ export default function LoginScreen() {
       }
 
       const { createdSessionId, setActive } = await startOAuthFlow({
-        redirectUrl: Linking.createURL("/home", { scheme: "myapp" }),
+        redirectUrl: Linking.createURL("/tabs/home", { scheme: "myapp" }),
       });
 
       if (createdSessionId) {
         await setActive!({ session: createdSessionId });
-        const homeUrl = Linking.createURL("/home", { scheme: "myapp" });
+        const homeUrl = Linking.createURL("tabs/home", { scheme: "myapp" });
         Linking.openURL(homeUrl);
       } else {
         console.warn("No se creó sesión directa");
