@@ -7,7 +7,7 @@ import colors from "../../constants/colors";
 export default function Home() {
   return (
     <View style={styles.container}>
-      {/* Header con tabs */}
+
       <HeaderDiarios />
 
       {/* Contenido central */}
@@ -16,7 +16,7 @@ export default function Home() {
         <Text style={styles.message}>CREA UN DIARIO..!</Text>
       </View>
 
-      {/* Botón flotante */}
+      {/* Boton */}
       <TouchableOpacity style={styles.fab}>
         <Ionicons name="add" size={28} color={colors.white} />
       </TouchableOpacity>
