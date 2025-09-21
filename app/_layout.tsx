@@ -1,6 +1,6 @@
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
-import { Text } from "react-native"; // fallback mientras cargan las fuentes
+import { Text } from "react-native"; 
 import { ClerkProvider } from '@clerk/clerk-expo'
 import * as SecureStore from "expo-secure-store";
 
@@ -48,7 +48,6 @@ export default function RootLayout() {
   return (
   <ClerkProvider publishableKey={publishableKey!} tokenCache={tokenCache}>
     <Stack>
-      <Stack.Screen name="index" options={{ title: "Inicio" }} />
       <Stack.Screen name="login/index" options={{ title: "Iniciar Sesión" }} />
     </Stack>
   </ClerkProvider>

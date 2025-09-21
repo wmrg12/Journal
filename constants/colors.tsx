@@ -1,5 +1,9 @@
 export default {
-  rosaMedioOscuro: "#d16fa0",
-  rosaClaro: "#e09ac0",
-  rosaOscuro: "#a9447a",
+  primary: "#BF5D4C",   // boton
+  background: "#FFF7EA", // Fondo
+  danger: "#B70F0A",     // icono
+  accent: "#B70F0A",     // texto
+  white: "#FFFFFF",      // texto claro
+  black: "#000000", 
+  Grey: "#555"  // texto oscuro
 };

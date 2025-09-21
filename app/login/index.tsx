@@ -1,9 +1,12 @@
-import { Text, View, Pressable, ActivityIndicator } from "react-native";
+import { View, Text, Image, TouchableOpacity, ActivityIndicator, Dimensions, } from "react-native";
 import React from "react";
 import styles from "./loginStyles";
 import * as WebBrowser from "expo-web-browser";
 import { useOAuth, useAuth } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
+import login1 from "../../assets/imagenes/login1.png";
+import login2 from "../../assets/imagenes/login2.png";
+import login3 from "../../assets/imagenes/login3.png";
 
 export const useWarmUpBrowser = () => {
   React.useEffect(() => {
@@ -14,11 +17,13 @@ export const useWarmUpBrowser = () => {
   }, []);
 };
 
-
 WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   useWarmUpBrowser();
+
+  
+  const { width } = Dimensions.get("window");
 
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
   const { isSignedIn, signOut } = useAuth();
@@ -31,24 +36,21 @@ export default function LoginScreen() {
     setError(null);
 
     try {
-    
       if (isSignedIn) {
         console.log("Limpiando sesión residual...");
         await signOut();
       }
 
       const { createdSessionId, setActive } = await startOAuthFlow({
-        redirectUrl: Linking.createURL("/login/home", { scheme: "myapp" } ),
+        redirectUrl: Linking.createURL("/home", { scheme: "myapp" }),
       });
 
       if (createdSessionId) {
-      
         await setActive!({ session: createdSessionId });
-
-        const homeUrl = Linking.createURL("/login/home", { scheme: "myapp" });
+        const homeUrl = Linking.createURL("/home", { scheme: "myapp" });
         Linking.openURL(homeUrl);
       } else {
-        console.warn("No se creó sesión directa, usar signIn/signUp");
+        console.warn("No se creó sesión directa");
         setError("No se pudo iniciar sesión directamente.");
       }
     } catch (err: any) {
@@ -59,16 +61,33 @@ export default function LoginScreen() {
     }
   }, [startOAuthFlow, isSignedIn, signOut]);
 
+  //Estructura de la pantalla de login
   return (
     <View style={styles.container}>
-      {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
-      ) : (
-        <Pressable style={styles.button} onPress={onPress}>
-          <Text style={styles.buttonText}>Iniciar Sesión</Text>
-        </Pressable>
-      )}
-      
+     
+      <View style={styles.imageColumn}>
+        <Image source={login1} style={[styles.image, { width }]} />
+         <Image source={login2} style={styles.imageVertical} resizeMode="contain" />
+          <Image source={login3} style={[styles.imageVertical2, { width }]} resizeMode="contain" />
+      </View>
+
+
+      <View style={styles.card}>
+        <Text style={styles.title}>Bienvenido a </Text>
+        <Text style={styles.title}>Journal</Text>
+        <Text style={styles.subtitle}>
+          Tu espacio para capturar ideas, planear tu día y disfrutar creando tus diarios.
+          ¡Inicia sesión y empieza a escribir!
+        </Text>
+
+        <TouchableOpacity style={styles.button} onPress={onPress} disabled={loading}>
+          {loading ? (
+           <ActivityIndicator color="#fff" />
+            ) : (
+             <Text style={styles.buttonText}>Iniciar</Text>
+            )}
+         </TouchableOpacity>
+      </View>
     </View>
   );
 }
