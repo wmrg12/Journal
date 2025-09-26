@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, Image } from "react-native";
+import { useLocalSearchParams } from "expo-router";
 import colors from "../../constants/colors";
 import S from "./createStyles"
 
@@ -8,7 +9,11 @@ type Props = { navigation: any; route: { params?: { journalId?: string } } };
 
 export default function CreatePageScreen({ navigation, route }: Props) {
    // journalId debe venir desde "Crear Diario"
-    const journalId = route.params?.journalId ?? "debug-journal";
+    const { journalId } = useLocalSearchParams<{ journalId?: string }>();
+    const jId = typeof journalId === "string" && journalId.length > 0
+    ? journalId
+    : "debug-journal";
+
     const [bgColor, setBgColor] = useState(colors.pageColors[0]);
 
     function handleCreatePage() {
