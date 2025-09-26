@@ -1,7 +1,7 @@
 // features/diary/CrearDiario.tsx
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StatusBar, SafeAreaView } from "react-native";
-import { diaryStyles as styles } from "@/app/createDiary/stylesDiary";
+import { diaryStyles as styles } from "@/app/pages/stylesDiary";
 import { useRouter } from "expo-router"; 
 import { color, colorOptions } from "@/constants/colors";
 import ColorPalette from "@/components/ColorPalette";
