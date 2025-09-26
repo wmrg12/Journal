@@ -1,4 +1,4 @@
-import { useFonts } from "expo-font";
+
 import { Stack } from "expo-router";
 import { Text } from "react-native"; 
 import { ClerkProvider } from '@clerk/clerk-expo'
@@ -33,17 +33,6 @@ const tokenCache = {
 
 export default function RootLayout() {
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
-
-  const [fontsLoaded] = useFonts({
-    "outfit-regular": require("../assets/fonts/Outfit-Regular.ttf"),
-    "outfit-bold": require("../assets/fonts/Outfit-Bold.ttf"),
-    "outfit-medium": require("../assets/fonts/Outfit-Medium.ttf"),
-    "outfit-black": require("../assets/fonts/Outfit-Black.ttf"),
-  });
-
-  if (!fontsLoaded) {
-    return <Text>Cargando fuentes...</Text>;
-  }
 
   return (
   <ClerkProvider publishableKey={publishableKey!} tokenCache={tokenCache}>
