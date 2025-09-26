@@ -22,7 +22,7 @@ export default function CreatePageScreen({ navigation, route }: Props) {
             <Text style={S.label}>Vista Previa</Text>
             <View style={[S.preview, { backgroundColor: bgColor }]}>
                 <Image
-                    source={require("../../assets/images/notebook-open.png")}
+                    source={require("../../assets/imagenes/notebook-open.png")}
                     resizeMode="contain"
                     style={{
                         width: "100%",
