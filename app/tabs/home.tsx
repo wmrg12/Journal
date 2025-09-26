@@ -23,7 +23,7 @@ export default function Home() {
       style={styles.fab}
       onPress={() =>
         router.push({
-          pathname: "../pages/createDiary",
+          pathname: "/createDiary",
           params: { journalId },
         })
       }

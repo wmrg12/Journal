@@ -2,15 +2,18 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StatusBar, SafeAreaView } from "react-native";
 import { diaryStyles as styles } from "@/app/createDiary/stylesDiary";
+import { useRouter } from "expo-router"; 
 import { color, colorOptions } from "@/constants/colors";
 import ColorPalette from "@/components/ColorPalette";
 
 export default function CrearDiario() {
   const [selectedColor, setSelectedColor] = useState<string>(colorOptions[0]);
   const [diaryName, setDiaryName] = useState<string>("");
-
+  const router = useRouter();  
   const handleSave = () => {
     console.log("Guardando diario:", { name: diaryName, color: selectedColor });
+
+     router.replace({ pathname: "/createPage/index", params: { name: diaryName, color: selectedColor } });
   };
 
   return (
@@ -58,8 +61,8 @@ export default function CrearDiario() {
 
         {/* Save */}
         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Guardar</Text>
-        </TouchableOpacity>
+        <Text style={styles.saveButtonText}>Guardar</Text>
+      </TouchableOpacity>
       </View>
 
       {/*<View style={styles.bottomIndicator} />*/}

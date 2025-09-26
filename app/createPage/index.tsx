@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, Text, Pressable, Image } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import {color} from "@/constants/colors";
-import S from "../createPage/createStyles"
+import S from "./createStyles"
 
 type Props = { navigation: any; route: { params?: { journalId?: string } } };
 
