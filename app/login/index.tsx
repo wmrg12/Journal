@@ -4,9 +4,9 @@ import styles from "./loginStyles";
 import * as WebBrowser from "expo-web-browser";
 import { useOAuth, useAuth } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
-import login1 from "../../assets/imagenes/login1.png";
-import login2 from "../../assets/imagenes/login2.png";
-import login3 from "../../assets/imagenes/login3.png";
+import login1 from "../../assets/images/login1.png";
+import login2 from "../../assets/images/login2.png";
+import login3 from "../../assets/images/login3.png";
 
 export const useWarmUpBrowser = () => {
   React.useEffect(() => {
