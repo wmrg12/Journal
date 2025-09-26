@@ -6,6 +6,9 @@ export default {
   white: "#FFFFFF",      // texto claro
   black: "#000000",
   Grey: "#555", // texto oscuro
+  gray: "#555",       // texto gris
+  brown: "#8B5E3C",  //icono
+  rgba: "rgba(233, 106, 83, 0.33)",  //filtro
 
   pageColors: [
     "#FFFFFF",
@@ -19,4 +22,5 @@ export default {
     "#ff5148cb",
     "#FFE34D",
   ],
+
 };
