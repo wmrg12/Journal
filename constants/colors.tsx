@@ -11,10 +11,12 @@ export default {
     "#FFFFFF",
     "#98E07C",
     "#C7F36B",
+    "#61A8FF",
     "#8AE0FF",
     "#C692FF",
+    "#DA7B9CFF",
     "#FFA08A",
-    "#FF7B6E",
+    "#ff5148cb",
     "#FFE34D",
   ],
 };
