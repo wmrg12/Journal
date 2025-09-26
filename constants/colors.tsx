@@ -1,9 +1,10 @@
-export default {
+export const color = {
   primary: "#BF5D4C",   // boton
   background: "#FFF7EA", // Fondo
   danger: "#B70F0A",     // icono
   accent: "#B70F0A",     // texto
   white: "#FFFFFF",      // texto claro
+<<<<<<< HEAD
   black: "#000000",
   Grey: "#555", // texto oscuro
   gray: "#555",       // texto gris
@@ -23,4 +24,15 @@ export default {
     "#FFE34D",
   ],
 
+=======
+  black: "#000000", 
+  grey: "#555"  // texto oscuro
+>>>>>>> origin/create-diary
 };
+
+
+
+export const colorOptions = [
+  "#F3B8C7", "#F06E9C", "#CBE8BA", "#E692F8", "#F2C9FB",
+  "#D4E3FC", "#91E4FB", "#F4EB49", "#FFC957", "#AFD2D5",
+] as const;
