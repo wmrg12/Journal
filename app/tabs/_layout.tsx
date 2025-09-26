@@ -1,12 +1,7 @@
-import React from "react";
 import { Tabs } from "expo-router";
-
-export default function TabLayout() {
-    return (
-        <Tabs>
-            <Tabs.Screen name="home"/>
-            <Tabs.Screen name="settings"/>
-            <Tabs.Screen name="task"/>
-        </Tabs>
-    )
+import PillTabBar from "@/components/PillTabBar"; 
+export default function TabsLayout() {
+  return (
+    <Tabs tabBar={(props) => <PillTabBar {...props} />}> </Tabs>
+  );
 }
