@@ -13,6 +13,7 @@ export default StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    marginTop: -90,
   },
 
   message: {
@@ -24,8 +25,8 @@ export default StyleSheet.create({
 
   fab: {
     position: "absolute",
-    bottom: 20,
-    right: 20,
+    bottom: 98,
+    right: 18,
     backgroundColor: colors.primary,
     borderRadius: 30,
     width: 56,
@@ -36,7 +37,6 @@ export default StyleSheet.create({
   },
 
   // --- Barra de Filtros / Tabs / Home ---
-  
   searchButton: {
     padding: 6,
     marginLeft: 12,
@@ -97,4 +97,54 @@ export default StyleSheet.create({
     zIndex: 0, 
   },
 
+  // --- filtros de tab ---
+    containerTab:{
+        position: "absolute",   
+        bottom: 20,             
+        left: 30,
+        right: 30,
+      
+      backgroundColor: colors.white, 
+      borderRadius: 10,       
+      paddingVertical: 2,
+      paddingHorizontal: 0,
+      
+    },
+    indicatorTab:{
+      position: "absolute",
+      top: 0,             
+      left: 0,   
+      width: 18,          
+      height: 48,        
+      backgroundColor: colors.rgba,
+      borderRadius: 10,   
+      zIndex: 0,
+    },
+    rowTab: {
+      flexDirection: "row",
+      flex: 1,          
+      justifyContent: "space-around",
+    },
+    tabButton:{
+      paddingVertical: 10,
+      alignItems: "center", 
+      justifyContent: "center",
+      zIndex: 1,
+    },
+    tabLabel:{
+      marginLeft: 6,
+    },
+    homeRowTab:{
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative", 
+    },
+    iconOnTop: {
+      zIndex: 10, 
+    },
 });
+
+
+
+
