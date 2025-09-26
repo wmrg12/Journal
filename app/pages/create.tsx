@@ -6,6 +6,10 @@ import S from "./createStyles"
 
 type Props = { navigation: any; route: { params?: { journalId?: string } } };
 
+const toRows = <T,>(arr: T[], size: number) =>
+    Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
+        arr.slice(i * size, i * size + size)
+    );
 
 export default function CreatePageScreen({ navigation, route }: Props) {
    // journalId debe venir desde "Crear Diario"
@@ -17,8 +21,10 @@ export default function CreatePageScreen({ navigation, route }: Props) {
     const [bgColor, setBgColor] = useState(colors.pageColors[0]);
 
     function handleCreatePage() {
-        console.log("Crear página — color:", bgColor, "journal:", journalId);
+        console.log("Crear página — color:", bgColor, "journal:", jId);
     }
+
+    const rows = toRows(colors.pageColors, 5);
 
     return (
         <View style={S.container}>
@@ -35,28 +41,38 @@ export default function CreatePageScreen({ navigation, route }: Props) {
                         opacity: bgColor === colors.white ? 1 : 0.95,
                     }}
                 />
-            </View>
+        </View>
 
             <Text style={S.label}>Color</Text>
-            <View style={S.colors}>
-                {colors.pageColors.map((c) => (
-                    <Pressable
-                        key={c}
-                        onPress={() => setBgColor(c)}
-                        style={[
-                            S.dot,
-                            { backgroundColor: c, borderWidth: c === colors.white ? 1 : 0 },
-                            bgColor === c && S.selected,
-                        ]}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Color ${c === colors.white ? "blanco (sin color)" : c}`}
-                        accessibilityState={{ selected: bgColor === c }}
-                    />
-                ))}
-            </View>
+
+            {rows.map((row, idx) => (
+                <View key={idx} style={S.row}>
+                    {row.map((c) => {
+                        const isWhite = c === colors.white;
+                            const isSelected = bgColor === c;
+
+        return (
+            <Pressable
+                key={c}
+                onPress={() => setBgColor(c)}
+                    style={[
+                        S.dot,
+                        isWhite ? S.dotWhite : { backgroundColor: c },
+                        isSelected && S.selected,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Color ${isWhite ? "blanco (sin color)" : c}`}
+                    accessibilityState={{ selected: isSelected }}
+                >
+                    {isWhite && <View style={S.noColorSlash} />}
+                </Pressable>
+            );
+        })}
+    </View>
+))}
 
             <Pressable style={S.cta} onPress={handleCreatePage}>
-        <Text style={S.ctaText}>Crear Nueva Página</Text>
+                <Text style={S.ctaText}>Crear Nueva Página</Text>
             </Pressable>
     </View>
     );

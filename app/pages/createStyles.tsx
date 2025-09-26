@@ -34,16 +34,33 @@ export default StyleSheet.create({
         flexWrap: "wrap",
         gap: 12,
         marginVertical: 10,
-        },
+    },
     dot: {
         width: 34,
         height: 34,
-        borderRadius: 17,
-        borderColor: "#2223",
+        borderRadius: 22,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+        dotWhite: {
+        backgroundColor: "#FFFFFF",
+        borderWidth: 2,
+        borderColor: "#000",
+    },
+    noColorSlash: {
+        position: "absolute",
+        width: 28,
+        height: 2,
+        backgroundColor: "#000",
+        transform: [{ rotate: "-45deg" }],
+        borderRadius: 1,
     },
     selected: {
         transform: [{ scale: 1.08 }],
         shadowOpacity: 0.35,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 3,
     },
     cta: {
         marginTop: "auto",
@@ -56,4 +73,10 @@ export default StyleSheet.create({
         color: colors.white,
         fontWeight: "700",
     },
+    row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 10,
+    paddingHorizontal: 6, // pequeño respiro a los lados
+    }
 });
