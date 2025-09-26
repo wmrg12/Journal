@@ -4,7 +4,7 @@ import { Animated, View, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import styles from "./globalStyles";
-import colors from "@/constants/colors";
+import {color} from "@/constants/colors";
 
 export default function PillTabBar({
   state,
@@ -75,7 +75,7 @@ export default function PillTabBar({
             }
           };
 
-          const tint = focused ? colors.background : colors.danger;
+          const tint = focused ? color.background : color.danger;
 
       return (
 
@@ -95,7 +95,7 @@ export default function PillTabBar({
                   : 'settings'
               }
               size={25}
-              color={focused ? colors.danger : colors.danger} 
+              color={focused ? color.danger : color.danger} 
               style={styles.iconOnTop} 
             />
           </TouchableOpacity>

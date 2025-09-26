@@ -1,22 +1,22 @@
 import { StyleSheet } from "react-native";
-import colors from "../../constants/colors";
+import {color} from "../../constants/colors";
 
 export default StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: colors.background,
+        backgroundColor: color.background,
         padding: 20,
         gap: 14,
     },
     title: {
         fontSize: 20,
         fontWeight: "700",
-        color: colors.primary,
+        color: color.primary,
     },
     label: {
         fontSize: 14,
         fontWeight: "600",
-        color: colors.primary,
+        color: color.primary,
         marginTop: 8,
     },
     preview: {
@@ -64,13 +64,13 @@ export default StyleSheet.create({
     },
     cta: {
         marginTop: "auto",
-        backgroundColor: colors.primary,
+        backgroundColor: color.primary,
         paddingVertical: 12,
         borderRadius: 24,
         alignItems: "center",
     },
     ctaText: {
-        color: colors.white,
+        color: color.white,
         fontWeight: "700",
     },
     row: {

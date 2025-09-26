@@ -1,12 +1,12 @@
 import { StyleSheet } from "react-native";
-import colors from "../constants/colors";
+import {color} from "../constants/colors";
 
 export default StyleSheet.create({
 
   // --- Estilos Globales ---
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: color.background,
   },
 
   content: {
@@ -20,14 +20,14 @@ export default StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     fontWeight: "600",
-    color: colors.black,
+    color: color.black,
   },
 
   fab: {
     position: "absolute",
     bottom: 98,
     right: 18,
-    backgroundColor: colors.primary,
+    backgroundColor: color.primary,
     borderRadius: 30,
     width: 56,
     height: 56,
@@ -52,14 +52,14 @@ export default StyleSheet.create({
 
   tabsContainer: {
     flexDirection: "row",
-    backgroundColor: colors.white,    
+    backgroundColor: color.white,    
     borderRadius: 12,
     overflow: "hidden",
     position: "relative",
     paddingVertical: 0,
     width: 240,                        
     borderWidth: 1,
-    borderColor: colors.white,         
+    borderColor: color.white,         
   },
 
   tab: {
@@ -73,7 +73,7 @@ export default StyleSheet.create({
 
   tabText: {
     fontSize: 16,
-    color: colors.danger,
+    color: color.danger,
     fontWeight: "bold", 
     backgroundColor: "transparent",                
   },
@@ -88,7 +88,7 @@ export default StyleSheet.create({
     bottom: -2,
     left: 2,
     width: 136,                        
-    backgroundColor: colors.rgba,
+    backgroundColor: color.rgba,
     borderRadius: 12,
     shadowOpacity: 0.06,
     shadowRadius: 6,
@@ -104,7 +104,7 @@ export default StyleSheet.create({
         left: 30,
         right: 30,
       
-      backgroundColor: colors.white, 
+      backgroundColor: color.white, 
       borderRadius: 10,       
       paddingVertical: 2,
       paddingHorizontal: 0,
@@ -116,7 +116,7 @@ export default StyleSheet.create({
       left: 0,   
       width: 18,          
       height: 48,        
-      backgroundColor: colors.rgba,
+      backgroundColor: color.rgba,
       borderRadius: 10,   
       zIndex: 0,
     },

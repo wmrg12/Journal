@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StatusBar, SafeAreaView } from "react-native";
 import { diaryStyles as styles } from "@/app/createDiary/stylesDiary";
 import { color, colorOptions } from "@/constants/colors";
-import ColorPalette from "@/app/components/ColorPalette";
+import ColorPalette from "@/components/ColorPalette";
 
 export default function CrearDiario() {
   const [selectedColor, setSelectedColor] = useState<string>(colorOptions[0]);
@@ -40,7 +40,7 @@ export default function CrearDiario() {
           <TextInput
             style={styles.nameInput}
             placeholder="Name"
-            placeholderTextColor={color.grey}
+            placeholderTextColor={color.gray}
             value={diaryName}
             onChangeText={setDiaryName}
           />

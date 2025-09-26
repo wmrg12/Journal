@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, Image } from "react-native";
 import { useLocalSearchParams } from "expo-router";
-import colors from "../../constants/colors";
+import {color} from "@/constants/colors";
 import S from "./createStyles"
 
 type Props = { navigation: any; route: { params?: { journalId?: string } } };
@@ -18,13 +18,13 @@ export default function CreatePageScreen({ navigation, route }: Props) {
     ? journalId
     : "debug-journal";
 
-    const [bgColor, setBgColor] = useState(colors.pageColors[0]);
+    const [bgColor, setBgColor] = useState(color.pageColors[0]);
 
     function handleCreatePage() {
         console.log("Crear página — color:", bgColor, "journal:", jId);
     }
 
-    const rows = toRows(colors.pageColors, 5);
+    const rows = toRows(color.pageColors, 5);
 
     return (
         <View style={S.container}>
@@ -38,7 +38,7 @@ export default function CreatePageScreen({ navigation, route }: Props) {
                     style={{
                         width: "100%",
                         height: "100%",
-                        opacity: bgColor === colors.white ? 1 : 0.95,
+                        opacity: bgColor === color.white ? 1 : 0.95,
                     }}
                 />
         </View>
@@ -48,7 +48,7 @@ export default function CreatePageScreen({ navigation, route }: Props) {
             {rows.map((row, idx) => (
                 <View key={idx} style={S.row}>
                     {row.map((c) => {
-                        const isWhite = c === colors.white;
+                        const isWhite = c === color.white;
                             const isSelected = bgColor === c;
 
         return (

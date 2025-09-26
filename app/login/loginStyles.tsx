@@ -1,5 +1,5 @@
 import { StyleSheet, Dimensions } from "react-native";
-import colors from "../../constants/colors";
+import {color} from "../../constants/colors";
 
 const { height } = Dimensions.get("window");
 
@@ -9,7 +9,7 @@ export default StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.background,
+    backgroundColor: color.background,
   },
   imageColumn: {
     flex: 2, 
@@ -46,7 +46,7 @@ export default StyleSheet.create({
     padding: 70,
     paddingVertical: 40,   
     paddingHorizontal: 45,
-    shadowColor: colors.black,
+    shadowColor: color.black,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -56,20 +56,20 @@ export default StyleSheet.create({
   title: {
     fontSize: 40,
     fontWeight: "bold",
-    color: colors.primary,
+    color: color.primary,
     textAlign: "left",
     marginBottom: -5,
     alignSelf: "flex-start",
   },
   subtitle: {
     fontSize: 13,
-    color: colors.gray,
+    color: color.gray,
     textAlign: "left",
     marginTop: 10, 
     marginBottom: 25,
   },
   button: {
-    backgroundColor: colors.primary,
+    backgroundColor: color.primary,
     paddingVertical: 15,
     borderRadius: 8,
     alignItems: "center",

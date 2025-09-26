@@ -4,9 +4,7 @@ export const color = {
   danger: "#B70F0A",     // icono
   accent: "#B70F0A",     // texto
   white: "#FFFFFF",      // texto claro
-<<<<<<< HEAD
   black: "#000000",
-  Grey: "#555", // texto oscuro
   gray: "#555",       // texto gris
   brown: "#8B5E3C",  //icono
   rgba: "rgba(233, 106, 83, 0.33)",  //filtro
@@ -24,14 +22,7 @@ export const color = {
     "#FFE34D",
   ],
 
-=======
-  black: "#000000", 
-  grey: "#555"  // texto oscuro
->>>>>>> origin/create-diary
 };
-
-
-
 export const colorOptions = [
   "#F3B8C7", "#F06E9C", "#CBE8BA", "#E692F8", "#F2C9FB",
   "#D4E3FC", "#91E4FB", "#F4EB49", "#FFC957", "#AFD2D5",

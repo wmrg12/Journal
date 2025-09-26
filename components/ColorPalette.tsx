@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   selectedColor: {
-    borderColor: color.grey,
+    borderColor: color.gray,
     borderWidth: 3,
     transform: [{ scale: 1.06 }],
   },
