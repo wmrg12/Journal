@@ -1,9 +1,9 @@
-import { View, Text, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import HeaderDiarios from "../../components/HeaderDiarios";
-import styles from "../../components/globalStyles"; // Importamos los estilos globales
-import colors from "../../constants/colors";
 import { router } from "expo-router";
+import { Text, TouchableOpacity, View } from "react-native";
+import styles from "../../components/globalStyles"; // Importamos los estilos globales
+import HeaderDiarios from "../../components/headerDiary";
+import colors from "../../constants/colors";
 
 export default function Home() {
   const journalId = "debug-journal";

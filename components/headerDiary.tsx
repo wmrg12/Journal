@@ -1,8 +1,8 @@
-import React, { useState, useRef } from "react";
-import { View, Text, TouchableOpacity, Animated, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import styles from "../components/globalStyles";
+import { useRef, useState } from "react";
+import { Animated, Pressable, Text, TouchableOpacity, View } from "react-native";
 import colors from "../constants/colors";
+import styles from "./globalStyles";
 
 export default function HeaderDiarios() {
   const [active, setActive] = useState(0);
