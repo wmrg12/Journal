@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
-import type { LayoutChangeEvent } from "react-native";
-import { Animated, View, TouchableOpacity } from "react-native";
+import { uiColors } from "@/constants/colors";
 import { Ionicons } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import styles from "./globalStyles";
-import {color} from "@/constants/colors";
+import { useEffect, useRef, useState } from "react";
+import type { LayoutChangeEvent } from "react-native";
+import { Animated, TouchableOpacity, View } from "react-native";
+import styles from "../app/styles/globalStyles";
 
 export default function PillTabBar({
   state,
@@ -75,7 +75,7 @@ export default function PillTabBar({
             }
           };
 
-          const tint = focused ? color.background : color.danger;
+          const tint = focused ? uiColors.background : uiColors.danger;
 
       return (
 
@@ -95,7 +95,7 @@ export default function PillTabBar({
                   : 'settings'
               }
               size={25}
-              color={focused ? color.danger : color.danger} 
+              color={focused ? uiColors.danger : uiColors.danger} 
               style={styles.iconOnTop} 
             />
           </TouchableOpacity>

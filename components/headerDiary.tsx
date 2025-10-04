@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRef, useState } from "react";
 import { Animated, Pressable, Text, TouchableOpacity, View } from "react-native";
-import {color} from "../constants/colors";
-import styles from "./globalStyles";
+import styles from "../app/styles/globalStyles";
+import { uiColors } from "../constants/colors";
 
 export default function HeaderDiarios() {
   const [active, setActive] = useState(0);
@@ -62,7 +62,7 @@ export default function HeaderDiarios() {
 
       {/* Icono busqueda */}
       <TouchableOpacity style={styles.searchButton}>
-        <Ionicons name="search" size={22} color={color.danger} />
+        <Ionicons name="search" size={22} color={uiColors.danger} />
       </TouchableOpacity>
     </View>
   );

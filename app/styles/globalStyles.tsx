@@ -1,12 +1,12 @@
 import { StyleSheet } from "react-native";
-import {color} from "../constants/colors";
+import { uiColors } from "../../constants/colors";
 
 export default StyleSheet.create({
 
   // --- Estilos Globales ---
   container: {
     flex: 1,
-    backgroundColor: color.background,
+    backgroundColor: uiColors.background,
   },
 
   content: {
@@ -20,14 +20,14 @@ export default StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     fontWeight: "600",
-    color: color.black,
+    color: uiColors.black,
   },
 
   fab: {
     position: "absolute",
     bottom: 98,
     right: 18,
-    backgroundColor: color.primary,
+    backgroundColor: uiColors.primary,
     borderRadius: 30,
     width: 56,
     height: 56,
@@ -52,14 +52,14 @@ export default StyleSheet.create({
 
   tabsContainer: {
     flexDirection: "row",
-    backgroundColor: color.white,    
+    backgroundColor: uiColors.white,    
     borderRadius: 12,
     overflow: "hidden",
     position: "relative",
     paddingVertical: 0,
     width: 240,                        
     borderWidth: 1,
-    borderColor: color.white,         
+    borderColor: uiColors.white,         
   },
 
   tab: {
@@ -73,7 +73,7 @@ export default StyleSheet.create({
 
   tabText: {
     fontSize: 16,
-    color: color.danger,
+    color: uiColors.danger,
     fontWeight: "bold", 
     backgroundColor: "transparent",                
   },
@@ -88,7 +88,7 @@ export default StyleSheet.create({
     bottom: -2,
     left: 2,
     width: 136,                        
-    backgroundColor: color.rgba,
+    backgroundColor: uiColors.rgba,
     borderRadius: 12,
     shadowOpacity: 0.06,
     shadowRadius: 6,
@@ -104,7 +104,7 @@ export default StyleSheet.create({
         left: 30,
         right: 30,
       
-      backgroundColor: color.white, 
+      backgroundColor: uiColors.white, 
       borderRadius: 10,       
       paddingVertical: 2,
       paddingHorizontal: 0,
@@ -116,7 +116,7 @@ export default StyleSheet.create({
       left: 0,   
       width: 18,          
       height: 48,        
-      backgroundColor: color.rgba,
+      backgroundColor: uiColors.rgba,
       borderRadius: 10,   
       zIndex: 0,
     },

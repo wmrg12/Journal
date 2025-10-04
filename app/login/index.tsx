@@ -1,6 +1,6 @@
 import { View, Text, Image, TouchableOpacity, ActivityIndicator, Dimensions, } from "react-native";
 import React from "react";
-import styles from "./loginStyles";
+import styles from "../styles/loginStyles";
 import * as WebBrowser from "expo-web-browser";
 import { useOAuth, useAuth } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
@@ -63,11 +63,10 @@ export default function LoginScreen() {
 
   //Estructura de la pantalla de login
   return (
-    <View style={styles.container}>
-     
+    <View style={styles.container}>  
       <View style={styles.imageColumn}>
         <Image source={login1} style={[styles.image, { width }]} />
-         <Image source={login2} style={styles.imageVertical} resizeMode="contain" />
+          <Image source={login2} style={styles.imageVertical} resizeMode="contain" />
           <Image source={login3} style={[styles.imageVertical2, { width }]} resizeMode="contain" />
       </View>
 
@@ -82,11 +81,11 @@ export default function LoginScreen() {
 
         <TouchableOpacity style={styles.button} onPress={onPress} disabled={loading}>
           {loading ? (
-           <ActivityIndicator color="#fff" />
+            <ActivityIndicator color="#fff" />
             ) : (
-             <Text style={styles.buttonText}>Iniciar</Text>
+              <Text style={styles.buttonText}>Iniciar</Text>
             )}
-         </TouchableOpacity>
+            </TouchableOpacity>
       </View>
     </View>
   );

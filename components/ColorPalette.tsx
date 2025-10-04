@@ -1,7 +1,7 @@
 // components/ColorPalette.tsx
 import React from "react";
 import { View, TouchableOpacity, StyleSheet } from "react-native";
-import { color, color as colors } from "@/constants/colors";
+import { uiColors } from "@/constants/colors";
 
 type Props = {
   options: readonly string[];
@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   selectedColor: {
-    borderColor: color.gray,
+    borderColor: uiColors.gray,
     borderWidth: 3,
     transform: [{ scale: 1.06 }],
   },

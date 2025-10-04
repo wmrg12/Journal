@@ -1,24 +1,23 @@
-// features/diary/CrearDiario.tsx
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StatusBar, SafeAreaView } from "react-native";
-import { diaryStyles as styles } from "@/app/pages/stylesDiary";
+import { diaryStyles as styles } from "@/app/styles/createCoverStyles";
 import { useRouter } from "expo-router"; 
-import { color, colorOptions } from "@/constants/colors";
-import ColorPalette from "@/components/ColorPalette";
+import { uiColors, coverPalette } from "@/constants/colors";
+import ColorPalette from "@/components/colorPalette";
 
 export default function CrearDiario() {
-  const [selectedColor, setSelectedColor] = useState<string>(colorOptions[0]);
+  const [selectedColor, setSelectedColor] = useState<string>(coverPalette[0]);
   const [diaryName, setDiaryName] = useState<string>("");
   const router = useRouter();  
   const handleSave = () => {
     console.log("Guardando diario:", { name: diaryName, color: selectedColor });
 
-     router.replace({ pathname: "/createPage/index", params: { name: diaryName, color: selectedColor } });
+      router.replace({ pathname: "/createPage", params: { name: diaryName, color: selectedColor } });
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor={color.background} barStyle="dark-content" />
+      <StatusBar backgroundColor={uiColors.background} barStyle="dark-content" />
 
       {/* Header */}
       <View style={styles.header}>
@@ -26,7 +25,6 @@ export default function CrearDiario() {
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Crear Diario</Text>
-        <View style={{ width: 28, height: 28 }} />
       </View>
 
       {/* Content */}
@@ -43,7 +41,7 @@ export default function CrearDiario() {
           <TextInput
             style={styles.nameInput}
             placeholder="Name"
-            placeholderTextColor={color.gray}
+            placeholderTextColor={uiColors.gray}
             value={diaryName}
             onChangeText={setDiaryName}
           />
@@ -53,7 +51,7 @@ export default function CrearDiario() {
         <View style={styles.colorSection}>
           <Text style={styles.colorLabel}>Color:</Text>
           <ColorPalette
-            options={colorOptions}
+            options={coverPalette}
             value={selectedColor}
             onChange={setSelectedColor}
           />

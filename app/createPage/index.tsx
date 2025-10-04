@@ -1,79 +1,80 @@
-import React, { useState } from "react";
-import { View, Text, Pressable, Image } from "react-native";
+import { pagePalette, uiColors } from "@/constants/colors";
 import { useLocalSearchParams } from "expo-router";
-import {color} from "@/constants/colors";
-import S from "./createStyles"
+import { useEffect, useState } from "react";
+import { Image, Text, View, TouchableOpacity } from "react-native";
+import S from "../styles/createPageStyles";
+import ColorPalette from "@/components/colorPalette"; 
 
 type Props = { navigation: any; route: { params?: { journalId?: string } } };
-
-const toRows = <T,>(arr: T[], size: number) =>
-    Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
-        arr.slice(i * size, i * size + size)
-    );
+type Params = { journalId?: string; color?: string; name?: string };
 
 export default function CreatePageScreen({ navigation, route }: Props) {
-   // journalId debe venir desde "Crear Diario"
-    const { journalId } = useLocalSearchParams<{ journalId?: string }>();
-    const jId = typeof journalId === "string" && journalId.length > 0
-    ? journalId
-    : "debug-journal";
 
-    const [bgColor, setBgColor] = useState(color.pageColors[0]);
+ const { journalId, color } = useLocalSearchParams<Params>();
+ const jId =
+    typeof journalId === "string" && journalId.length > 0
+        ? journalId
+        : "debug-journal";
 
-    function handleCreatePage() {
-        console.log("Crear página — color:", bgColor, "journal:", jId);
+    const [bgColor, setBgColor] = useState<(typeof pagePalette)[number]>(pagePalette[0]);
+
+  useEffect(() => {
+    if (typeof color === "string") {
+      const hex = color.toLowerCase();
+      const found = (pagePalette as readonly string[]).find(
+        (c) => c.toLowerCase() === hex
+      );
+      if (found) setBgColor(found as (typeof pagePalette)[number]);
     }
+  }, [color]);
 
-    const rows = toRows(color.pageColors, 5);
+  function handleCreatePage() {
+    console.log("Crear página — color:", bgColor, "journal:", jId);
+  }
 
-    return (
-        <View style={S.container}>
-            <Text style={S.title}>Crear Página</Text>
+  return (
+    <View style={S.container} testID="create-page-screen">
 
-            <Text style={S.label}>Vista Previa</Text>
-            <View style={[S.preview, { backgroundColor: bgColor }]}>
-                <Image
-                    source={require("../../assets/images/notebook-open.png")}
-                    resizeMode="contain"
-                    style={{
-                        width: "100%",
-                        height: "100%",
-                        opacity: bgColor === color.white ? 1 : 0.95,
-                    }}
-                />
-        </View>
+      {/* Header */}
+      <Text style={S.title} accessibilityRole="header" testID="header-title">
+        Crear Página
+      </Text>
 
-            <Text style={S.label}>Color</Text>
+      {/* Preview */}
+      <Text style={S.label} testID="preview-label">
+        Vista Previa
+      </Text>
+      <View
+        style={[S.preview, { backgroundColor: bgColor }]}
+        testID="preview"
+        accessibilityLabel="Vista previa de la página"
+      >
+        <Image
+          source={require("../../assets/images/notebook-open.png")}
+          resizeMode="contain"
+          style={{
+            width: "100%",
+            height: "100%",
+            opacity:
+              bgColor.toLowerCase() === uiColors.white.toLowerCase() ? 1 : 0.95,
+          }}
+        />
+      </View>
 
-            {rows.map((row, idx) => (
-                <View key={idx} style={S.row}>
-                    {row.map((c) => {
-                        const isWhite = c === color.white;
-                            const isSelected = bgColor === c;
+      {/* Color Picker*/}
+      <View style={S.colorSection}>
+        <Text style={S.colorLabel}>Color:</Text>
+        <ColorPalette
+          options={pagePalette}
+          value={bgColor}
+          onChange={setBgColor} 
+        />
+      </View>
 
-        return (
-            <Pressable
-                key={c}
-                onPress={() => setBgColor(c)}
-                    style={[
-                        S.dot,
-                        isWhite ? S.dotWhite : { backgroundColor: c },
-                        isSelected && S.selected,
-                    ]}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Color ${isWhite ? "blanco (sin color)" : c}`}
-                    accessibilityState={{ selected: isSelected }}
-                >
-                    {isWhite && <View style={S.noColorSlash} />}
-                </Pressable>
-            );
-        })}
+      {/* Create */}
+      <TouchableOpacity style={S.createButton} onPress={handleCreatePage}>
+        <Text style={S.createButtonText}>Crear nueva pagina</Text>
+      </TouchableOpacity>
     </View>
-))}
-
-            <Pressable style={S.cta} onPress={handleCreatePage}>
-                <Text style={S.ctaText}>Crear Nueva Página</Text>
-            </Pressable>
-    </View>
-    );
+  );
 }

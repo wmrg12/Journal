@@ -1,9 +1,9 @@
+import { uiColors } from "@/constants/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Text, TouchableOpacity, View } from "react-native";
-import styles from "../../components/globalStyles"; // Importamos los estilos globales
 import HeaderDiarios from "../../components/headerDiary";
-import {color} from "@/constants/colors";
+import styles from "../styles/globalStyles";
 
 export default function Home() {
   const journalId = "debug-journal";
@@ -14,7 +14,7 @@ export default function Home() {
 
       {/* Contenido central */}
       <View style={styles.content}>
-        <Ionicons name="book-outline" size={80} color={color.brown} />
+        <Ionicons name="book-outline" size={80} color={uiColors.brown} />
         <Text style={styles.message}>CREA UN DIARIO..!</Text>
       </View>
 
@@ -28,7 +28,7 @@ export default function Home() {
         })
       }
     >
-      <Ionicons name="add" size={28} color={color.white} />
+      <Ionicons name="add" size={28} color={uiColors.white} />
     </TouchableOpacity>
     </View>
   );
