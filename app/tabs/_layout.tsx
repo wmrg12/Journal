@@ -1,3 +1,4 @@
+//components/tabs/_layout.tsx
 import { Tabs } from "expo-router";
 import PillTabBar from "@/components/pillTabBar"; 
 export default function TabsLayout() {
