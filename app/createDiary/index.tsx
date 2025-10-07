@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StatusBar, SafeAreaView } from
 import { diaryStyles as styles } from "@/app/styles/createCoverStyles";
 import { useRouter } from "expo-router"; 
 import { uiColors, coverPalette } from "@/constants/colors";
-import ColorPalette from "@/components/colorPalette";
+import ColorPalette from "@/components/ColorPalette";
 
 export default function CrearDiario() {
   const [selectedColor, setSelectedColor] = useState<string>(coverPalette[0]);
