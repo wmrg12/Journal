@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 import { pagePalette } from "@/constants/colors";
 import S from "../../styles/pageViewStyles";
 
@@ -9,6 +10,7 @@ type Params = { journalId?: string; color?: string; pageNumber?: string };
 export default function PageView() {
   const { color, pageNumber } = useLocalSearchParams<Params>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const bg = useMemo(() => {
     if (!color || typeof color !== "string") return pagePalette[0];
@@ -19,16 +21,28 @@ export default function PageView() {
   }, [color]);
 
   return (
-    <View style={[S.container, { backgroundColor: bg }]}>
+    <SafeAreaView
+      style={[S.container, { backgroundColor: bg }]}
+      edges={["top", "left", "right"]}
+    >
       {/* header */}
-      <View style={S.header}>
+      <View
+        style={[
+          S.header,
+          {
+            paddingTop: 4,
+            height: 44 + insets.top, // asegura espacio bajo la barra
+          },
+        ]}
+      >
         <TouchableOpacity
           onPress={() => router.back()}
-          style={S.backButton}
+          style={[S.backButton, { top: insets.top + 4 }]} // flecha bajo el notch
           accessibilityLabel="Volver"
         >
           <Text style={S.backIcon as any}>←</Text>
         </TouchableOpacity>
+
         <Text style={S.title}>{`pag ${pageNumber ?? "1"}`}</Text>
       </View>
 
@@ -39,6 +53,6 @@ export default function PageView() {
       <TouchableOpacity style={S.fab} accessibilityLabel="Abrir menú">
         <Text style={S.fabIcon as any}>≡</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
