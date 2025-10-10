@@ -1,44 +1,52 @@
 import { pagePalette, uiColors } from "@/constants/colors";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Image, Text, View, TouchableOpacity } from "react-native";
+import { Image, Text, View, TouchableOpacity, Alert } from "react-native";
 import S from "../styles/createPageStyles";
 import ColorPalette from "@/components/ColorPalette";
+import { createPage } from "@/src/db/dao";
 
 type Params = { journalId?: string; color?: string; name?: string };
 
 export default function CreatePageScreen() {
   const router = useRouter();
   const { journalId, color } = useLocalSearchParams<Params>();
-
-  const jId =
-    typeof journalId === "string" && journalId.length > 0
-      ? journalId
-      : "debug-journal";
-
-  const [bgColor, setBgColor] = useState<(typeof pagePalette)[number]>(
-    pagePalette[0]
-  );
+  const [bgColor, setBgColor] = useState<(typeof pagePalette)[number]>(pagePalette[0]);
 
   useEffect(() => {
     if (typeof color === "string") {
-      const hex = color.toLowerCase();
       const found = (pagePalette as readonly string[]).find(
-        (c) => c.toLowerCase() === hex
+        (c) => c.toLowerCase() === color.toLowerCase()
       );
       if (found) setBgColor(found as (typeof pagePalette)[number]);
     }
   }, [color]);
 
-  function handleCreatePage() {
-    router.push({
-      pathname: "/page",
-      params: {
-        journalId: jId,
-        color: bgColor,
-        pageNumber: "1",
-      },
-    });
+  if (!journalId || typeof journalId !== "string") {
+    // defensa
+    return (
+      <View style={[S.container, { justifyContent: "center", alignItems: "center" }]}>
+        <Text>Falta journalId. Vuelve a “Crear Diario”.</Text>
+      </View>
+    );
+  }
+
+  async function handleCreatePage() {
+    try {
+      const { pageNumber, total } = await createPage(journalId as string, bgColor);
+      router.push({
+        pathname: "/page",
+        params: {
+          journalId,
+          color: bgColor,
+          pageNumber: String(pageNumber),
+          totalPages: String(total),
+        },
+      });
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "No se pudo crear la página.");
+    }
   }
 
   return (

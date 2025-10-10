@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { pagePalette } from "@/constants/colors";
 import S from "../../styles/pageViewStyles";
+import { createPage, deletePage, getTotalPages } from "@/src/db/dao";
 
 type Params = {
   journalId?: string;
@@ -17,22 +18,19 @@ export default function PageView() {
     useLocalSearchParams<Params>();
   const router = useRouter();
 
-  function handleDeletePage() {
-    if (total <= 1) {
+  const handleDeletePage = () => {
+    if (totalParam <= 1 || !journalId) {
       Alert.alert("No se puede eliminar", "Debe existir al menos una página.");
       return;
     }
-    Alert.alert(
-      "Eliminar página",
-      "¿Estás seguro de que deseas eliminar esta página? Esta acción no se puede deshacer.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Eliminar",
-          style: "destructive",
-          onPress: () => {
-            const newTotal = total - 1;
-            const target = Math.max(pageNum - 1, 1);
+    Alert.alert("Eliminar página", `¿Eliminar la página ${pageNum}?`, [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Eliminar",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const { pageNumber: target, total: newTotal } = await deletePage(String(journalId), pageNum);
             router.replace({
               pathname: "/page",
               params: {
@@ -42,36 +40,63 @@ export default function PageView() {
                 totalPages: String(newTotal),
               },
             });
-          },
+          } catch (e) {
+            console.error(e);
+            Alert.alert("Error", "No se pudo eliminar la página.");
+          }
         },
-      ]
-    );
-  }
-
-  function handleAddPage() {
-    const target = pageNum + 1;
-    const newTotal = total + 1;
-    router.push({
-      pathname: "/page",
-      params: {
-        journalId,
-        color: String(color ?? bg),
-        pageNumber: String(target),
-        totalPages: String(newTotal),
       },
-    });
-  }
+    ]);
+  };
+
+  const handleAddPage = async () => {
+    if (!journalId) return;
+    try {
+      const { pageNumber, total } = await createPage(String(journalId), String(color ?? bg));
+      router.replace({
+        pathname: "/page",
+        params: {
+          journalId,
+          color: String(color ?? bg),
+          pageNumber: String(pageNumber),
+          totalPages: String(total),
+        },
+      });
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "No se pudo crear la página.");
+    }
+  };
 
   const bg = useMemo(() => {
     if (!color || typeof color !== "string") return pagePalette[0];
-    const found = (pagePalette as readonly string[]).find(
-      (c) => c.toLowerCase() === color.toLowerCase()
-    );
+    const found = (pagePalette as readonly string[]).find((c) => c.toLowerCase() === color.toLowerCase());
     return (found ?? pagePalette[0]) as (typeof pagePalette)[number];
   }, [color]);
 
   const pageNum = Math.max(Number(pageNumber ?? 1) || 1, 1);
   const total = Math.max(Number(totalPages ?? 1) || 1, 1);
+  const totalParam = Math.max(total, 1);
+
+  useEffect(() => {
+    if (!journalId) return;
+    (async () => {
+      const dbTotal = await getTotalPages(String(journalId));
+      const safeTotal = Math.max(dbTotal, 1);
+      if (safeTotal !== totalParam || pageNum > safeTotal) {
+        router.replace({
+          pathname: "/page",
+          params: {
+            journalId,
+            color: String(color ?? bg),
+            pageNumber: String(Math.min(pageNum, safeTotal)),
+            totalPages: String(safeTotal),
+          },
+        });
+      }
+    })().catch(console.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journalId]);
 
   return (
     <SafeAreaView
