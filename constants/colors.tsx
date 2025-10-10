@@ -11,8 +11,8 @@ export const uiColors = {
 } as const;
 
 export const pagePalette = [
-  "#FFFFFF", "#98E07C", "#C7F36B", "#61A8FF", "#8AE0FF",
-  "#C692FF", "#DA7B9C", "#FFA08A", "#FF5148CB", "#FFE34D",
+  "#FFFFFF", "#BFE8C6", "#D9F2B4", "#BBD5FF", "#CFEFFF",
+  "#E6D6FF", "#F7C6D9", "#FAD4C3", "#FFC9C1", "#FFE9A8",
 ] as const satisfies readonly string[];
 
 export const coverPalette = [
