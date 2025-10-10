@@ -12,7 +12,7 @@ export default function PageView() {
   const router = useRouter();
 
   const bg = useMemo(() => {
-    if (!color || typeof color !== "string") return pagePalette[0];
+    if (!color || typeof color !== 'string') return pagePalette[0];
     const found = (pagePalette as readonly string[]).find(
       (c) => c.toLowerCase() === color.toLowerCase()
     );
@@ -21,31 +21,27 @@ export default function PageView() {
 
   const pageNum = Number(pageNumber ?? 1) || 1;
 
-  return (
-    <SafeAreaView
-      style={[S.container, { backgroundColor: bg }]}
-      edges={["top", "left", "right"]}
-    >
-      {/* header */}
-      <View
-        style={[
-          S.header,
-        ]}
-      >
+return (
+  <SafeAreaView
+    style={[S.container, { backgroundColor: bg }]}
+    edges={["top", "left", "right"]}
+  >
+    {/* header */}
+    <View style={S.header}>
+      {/* IZQUIERDA: ← → */}
+      <View style={S.leftGroup}>
         <TouchableOpacity
           onPress={() => router.back()}
-          style={S.backButton}
           accessibilityLabel="Volver"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Text style={S.backIcon as any}>←</Text>
         </TouchableOpacity>
 
-        <Text style={S.title}>{`pag ${pageNum}`}</Text>
-
-      <TouchableOpacity
+        <TouchableOpacity
           onPress={() =>
             router.push({
-              pathname: '/page',
+              pathname: "/page",
               params: {
                 journalId,
                 color: String(color ?? bg),
@@ -53,20 +49,35 @@ export default function PageView() {
               },
             })
           }
-          style={S.rightButton}
           accessibilityLabel="Siguiente página"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{ marginLeft: 12 }}
         >
           <Text style={S.nextIcon as any}>→</Text>
         </TouchableOpacity>
       </View>
 
-      {/* lienzo */}
-      <View style={S.canvas} />
+      <View style={S.titleWrap} pointerEvents="none">
+        <Text style={S.title}>{`pag ${pageNum}`}</Text>
+      </View>
 
-      {/* menu */}
-      <TouchableOpacity style={S.fab} accessibilityLabel="Abrir menú">
-        <Text style={S.fabIcon as any}>≡</Text>
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={S.checkButton}
+        accessibilityLabel="Hecho"
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Text style={S.checkIcon as any}>✓</Text>
       </TouchableOpacity>
-    </SafeAreaView>
+    </View>
+
+    {/* lienzo */}
+    <View style={S.canvas} />
+
+    {/* menú */}
+    <TouchableOpacity style={S.fab} accessibilityLabel="Abrir menú">
+      <Text style={S.fabIcon as any}>≡</Text>
+    </TouchableOpacity>
+  </SafeAreaView>
   );
 }

@@ -34,6 +34,31 @@ export default StyleSheet.create({
     fontSize: 18,
     color: uiColors.danger,
   },
+  leftGroup: {
+  position: 'absolute',
+  left: 16,
+  top: 0,
+  bottom: 0,
+  flexDirection: 'row',
+  alignItems: 'center',
+  },
+  checkButton: {
+  position: 'absolute',
+  right: 16,
+  top: 0,
+  bottom: 0,
+  justifyContent: 'center',
+  paddingHorizontal: 8,
+},
+  checkIcon: {
+    fontSize: 18,
+    color: uiColors.danger,
+  },
+  titleWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   title: {
     fontSize: 18,
     fontWeight: '600',
