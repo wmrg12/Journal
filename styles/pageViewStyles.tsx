@@ -67,19 +67,34 @@ export default StyleSheet.create({
   canvas: {
     flex: 1,
   },
-  fab: {
-    position: 'absolute',
-    left: 16,
+  toolbar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
     bottom: 24,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
   },
-  fabIcon: {
+  toolCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 6,
+  },
+  toolPlain: {
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    marginHorizontal: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toolIcon: {
     fontSize: 20,
-    color: '#333',
+    color: uiColors.black,
   },
 });
