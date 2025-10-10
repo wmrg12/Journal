@@ -1,22 +1,24 @@
 import { pagePalette, uiColors } from "@/constants/colors";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, Text, View, TouchableOpacity } from "react-native";
 import S from "../styles/createPageStyles";
-import ColorPalette from "@/components/ColorPalette"; 
+import ColorPalette from "@/components/ColorPalette";
 
-type Props = { navigation: any; route: { params?: { journalId?: string } } };
 type Params = { journalId?: string; color?: string; name?: string };
 
-export default function CreatePageScreen({ navigation, route }: Props) {
+export default function CreatePageScreen() {
+  const router = useRouter();
+  const { journalId, color } = useLocalSearchParams<Params>();
 
- const { journalId, color } = useLocalSearchParams<Params>();
- const jId =
+  const jId =
     typeof journalId === "string" && journalId.length > 0
-        ? journalId
-        : "debug-journal";
+      ? journalId
+      : "debug-journal";
 
-    const [bgColor, setBgColor] = useState<(typeof pagePalette)[number]>(pagePalette[0]);
+  const [bgColor, setBgColor] = useState<(typeof pagePalette)[number]>(
+    pagePalette[0]
+  );
 
   useEffect(() => {
     if (typeof color === "string") {
@@ -29,12 +31,18 @@ export default function CreatePageScreen({ navigation, route }: Props) {
   }, [color]);
 
   function handleCreatePage() {
-    console.log("Crear página — color:", bgColor, "journal:", jId);
+    router.push({
+      pathname: "/page",
+      params: {
+        journalId: jId,
+        color: bgColor,
+        pageNumber: "1",
+      },
+    });
   }
 
   return (
     <View style={S.container} testID="create-page-screen">
-
       {/* Header */}
       <Text style={S.title} accessibilityRole="header" testID="header-title">
         Crear Página
@@ -61,7 +69,7 @@ export default function CreatePageScreen({ navigation, route }: Props) {
         />
       </View>
 
-      {/* Color Picker*/}
+      {/* Color Picker */}
       <View style={S.colorSection}>
         <Text style={S.colorLabel}>Color:</Text>
         <ColorPalette
@@ -78,7 +86,7 @@ export default function CreatePageScreen({ navigation, route }: Props) {
 
       {/* Create */}
       <TouchableOpacity style={S.createButton} onPress={handleCreatePage}>
-        <Text style={S.createButtonText}>Crear nueva pagina</Text>
+        <Text style={S.createButtonText}>Crear</Text>
       </TouchableOpacity>
     </View>
   );
