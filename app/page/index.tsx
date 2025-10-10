@@ -1,16 +1,15 @@
 import { useMemo } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { pagePalette } from "@/constants/colors";
 import S from "../../styles/pageViewStyles";
 
 type Params = { journalId?: string; color?: string; pageNumber?: string };
 
 export default function PageView() {
-  const { color, pageNumber } = useLocalSearchParams<Params>();
+  const { journalId, color, pageNumber } = useLocalSearchParams<Params>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   const bg = useMemo(() => {
     if (!color || typeof color !== "string") return pagePalette[0];
@@ -19,6 +18,8 @@ export default function PageView() {
     );
     return (found ?? pagePalette[0]) as (typeof pagePalette)[number];
   }, [color]);
+
+  const pageNum = Number(pageNumber ?? 1) || 1;
 
   return (
     <SafeAreaView
@@ -29,21 +30,34 @@ export default function PageView() {
       <View
         style={[
           S.header,
-          {
-            paddingTop: 4,
-            height: 44 + insets.top, // asegura espacio bajo la barra
-          },
         ]}
       >
         <TouchableOpacity
           onPress={() => router.back()}
-          style={[S.backButton, { top: insets.top + 4 }]} // flecha bajo el notch
+          style={S.backButton}
           accessibilityLabel="Volver"
         >
           <Text style={S.backIcon as any}>←</Text>
         </TouchableOpacity>
 
-        <Text style={S.title}>{`pag ${pageNumber ?? "1"}`}</Text>
+        <Text style={S.title}>{`pag ${pageNum}`}</Text>
+
+      <TouchableOpacity
+          onPress={() =>
+            router.push({
+              pathname: '/page',
+              params: {
+                journalId,
+                color: String(color ?? bg),
+                pageNumber: String(pageNum + 1),
+              },
+            })
+          }
+          style={S.rightButton}
+          accessibilityLabel="Siguiente página"
+        >
+          <Text style={S.nextIcon as any}>→</Text>
+        </TouchableOpacity>
       </View>
 
       {/* lienzo */}
