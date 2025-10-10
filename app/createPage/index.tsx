@@ -67,7 +67,12 @@ export default function CreatePageScreen({ navigation, route }: Props) {
         <ColorPalette
           options={pagePalette}
           value={bgColor}
-          onChange={setBgColor} 
+          onChange={(color) => {
+            const found = (pagePalette as readonly string[]).find(
+              (c) => c.toLowerCase() === color.toLowerCase()
+            );
+            if (found) setBgColor(found as (typeof pagePalette)[number]);
+          }}
         />
       </View>
 
