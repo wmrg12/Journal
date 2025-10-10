@@ -1,5 +1,5 @@
+import { useEffect } from 'react';
 import { Stack } from "expo-router";
-import { Text } from "react-native";
 import { ClerkProvider } from '@clerk/clerk-expo'
 import * as SecureStore from "expo-secure-store";
 import { initDb } from "../src/db/init";
@@ -34,12 +34,16 @@ const tokenCache = {
 export default function RootLayout() {
   const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
+  useEffect(() => {
+    initDb().catch(console.error);
+  }, []);
 
   return (
   <ClerkProvider publishableKey={publishableKey!} tokenCache={tokenCache}>
     <Stack>
       <Stack.Screen name="login/index" options={{ title: "Iniciar Sesion" }} />
-      <Stack.Screen name="pages/create" options={{ title: "Crear pagina" }} />
+      <Stack.Screen name="createPage/index" options={{ title: "Crear pagina" }} />
+      <Stack.Screen name="page/index" options={{ headerShown: false }} />
     </Stack>
   </ClerkProvider>
   );
