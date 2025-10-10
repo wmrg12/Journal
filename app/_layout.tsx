@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Stack } from "expo-router";
 import { ClerkProvider } from '@clerk/clerk-expo'
 import * as SecureStore from "expo-secure-store";
-import { initDb } from "../src/db/init";
+import { initDb } from "../src/db/dao";
 
 const tokenCache = {
   async getToken(key: string) {
