@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { pagePalette } from "@/constants/colors";
 import S from "../../styles/pageViewStyles";
+import { upsertJournal, upsertPage } from "@/src/db/repo";
 
 type Params = {
   journalId?: string;
@@ -46,6 +47,27 @@ export default function PageView() {
         },
       ]
     );
+  }
+
+   async function handleSave() {
+    try {
+      const id = String(journalId ?? "debug-journal");
+      const name = `Diario ${id}`; // si ya tienes el nombre real, úsalo
+      const bgColor = String(color ?? bg);
+      const pageId = `${id}-${pageNum}`;
+
+      await upsertJournal({ id, name, color: bgColor });
+      await upsertPage({
+        id: pageId,
+        journal_id: id,
+        page_number: pageNum,
+        bg_color: bgColor,
+      });
+      router.replace("/tabs/home");
+    } catch (e: any) {
+      console.warn(e);
+      Alert.alert("No se pudo guardar", "Intenta nuevamente.");
+    }
   }
 
   function handleAddPage() {
@@ -100,22 +122,22 @@ export default function PageView() {
             </TouchableOpacity>
           )}
           {pageNum < total && (
-          <TouchableOpacity
-            onPress={() =>
-              router.push({
-                pathname: "/page",
-                params: {
-                  journalId,
-                  color: String(color ?? bg),
-                  pageNumber: String(pageNum + 1),
-                  totalPages: String(total),
-                },
-              })
-            }
-            style={{ marginLeft: 12 }}
-          >
-            <Text style={S.nextIcon as any}>→</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: "/page",
+                  params: {
+                    journalId,
+                    color: String(color ?? bg),
+                    pageNumber: String(pageNum + 1),
+                    totalPages: String(total),
+                  },
+                })
+              }
+              style={{ marginLeft: 12 }}
+            >
+              <Text style={S.nextIcon as any}>→</Text>
+            </TouchableOpacity>
           )}
         </View>
 
@@ -124,7 +146,7 @@ export default function PageView() {
         </View>
 
         <TouchableOpacity
-          onPress={() => {}}
+          onPress={handleSave}
           style={S.checkButton}
           accessibilityLabel="Hecho"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -158,7 +180,7 @@ export default function PageView() {
           <Text style={S.toolIcon as any}>✎</Text>
         </TouchableOpacity>
 
-        {/*5) undo) */}
+        {/* 5) undo */}
         <TouchableOpacity style={S.toolCircle} onPress={() => {}}>
           <Text style={S.toolIcon as any}>↩</Text>
         </TouchableOpacity>
