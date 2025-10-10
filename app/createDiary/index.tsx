@@ -12,7 +12,7 @@ export default function CrearDiario() {
   const handleSave = () => {
     console.log("Guardando diario:", { name: diaryName, color: selectedColor });
 
-      router.replace({ pathname: "/createPage", params: { name: diaryName, color: selectedColor } });
+      router.push({ pathname: "/createPage", params: { name: diaryName, color: selectedColor } });
   };
 
   return (
