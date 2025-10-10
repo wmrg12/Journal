@@ -5,13 +5,23 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { pagePalette } from "@/constants/colors";
 import S from "../../styles/pageViewStyles";
 
-type Params = { journalId?: string; color?: string; pageNumber?: string };
+type Params = {
+  journalId?: string;
+  color?: string;
+  pageNumber?: string;
+  totalPages?: string;
+};
 
 export default function PageView() {
-  const { journalId, color, pageNumber } = useLocalSearchParams<Params>();
+  const { journalId, color, pageNumber, totalPages } =
+    useLocalSearchParams<Params>();
   const router = useRouter();
 
   function handleDeletePage() {
+    if (total <= 1) {
+      Alert.alert("No se puede eliminar", "Debe existir al menos una página.");
+      return;
+    }
     Alert.alert(
       "Eliminar página",
       "¿Estás seguro de que deseas eliminar esta página? Esta acción no se puede deshacer.",
@@ -21,6 +31,7 @@ export default function PageView() {
           text: "Eliminar",
           style: "destructive",
           onPress: () => {
+            const newTotal = total - 1;
             const target = Math.max(pageNum - 1, 1);
             router.replace({
               pathname: "/page",
@@ -28,6 +39,7 @@ export default function PageView() {
                 journalId,
                 color: String(color ?? bg),
                 pageNumber: String(target),
+                totalPages: String(newTotal),
               },
             });
           },
@@ -38,12 +50,14 @@ export default function PageView() {
 
   function handleAddPage() {
     const target = pageNum + 1;
+    const newTotal = total + 1;
     router.push({
       pathname: "/page",
       params: {
         journalId,
         color: String(color ?? bg),
         pageNumber: String(target),
+        totalPages: String(newTotal),
       },
     });
   }
@@ -56,7 +70,8 @@ export default function PageView() {
     return (found ?? pagePalette[0]) as (typeof pagePalette)[number];
   }, [color]);
 
-  const pageNum = Number(pageNumber ?? 1) || 1;
+  const pageNum = Math.max(Number(pageNumber ?? 1) || 1, 1);
+  const total = Math.max(Number(totalPages ?? 1) || 1, 1);
 
   return (
     <SafeAreaView
@@ -67,14 +82,24 @@ export default function PageView() {
       <View style={S.header}>
         {/* IZQUIERDA: ← → */}
         <View style={S.leftGroup}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            accessibilityLabel="Volver"
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={S.backIcon as any}>←</Text>
-          </TouchableOpacity>
-
+          {pageNum > 1 && (
+            <TouchableOpacity
+              onPress={() =>
+                router.replace({
+                  pathname: "/page",
+                  params: {
+                    journalId,
+                    color: String(color ?? bg),
+                    pageNumber: String(pageNum - 1),
+                    totalPages: String(total),
+                  },
+                })
+              }
+            >
+              <Text style={S.backIcon as any}>←</Text>
+            </TouchableOpacity>
+          )}
+          {pageNum < total && (
           <TouchableOpacity
             onPress={() =>
               router.push({
@@ -83,15 +108,15 @@ export default function PageView() {
                   journalId,
                   color: String(color ?? bg),
                   pageNumber: String(pageNum + 1),
+                  totalPages: String(total),
                 },
               })
             }
-            accessibilityLabel="Siguiente página"
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             style={{ marginLeft: 12 }}
           >
             <Text style={S.nextIcon as any}>→</Text>
           </TouchableOpacity>
+          )}
         </View>
 
         <View style={S.titleWrap} pointerEvents="none">
@@ -99,7 +124,7 @@ export default function PageView() {
         </View>
 
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => {}}
           style={S.checkButton}
           accessibilityLabel="Hecho"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -115,7 +140,7 @@ export default function PageView() {
       <View style={S.toolbar}>
         {/* 1) subir img,audio, etc */}
         <TouchableOpacity style={S.toolCircle} onPress={() => {}}>
-          <Text style={S.toolIcon as any}>↑</Text>
+          <Text style={S.toolIcon as any}>...</Text>
         </TouchableOpacity>
 
         {/* 2) eliminar pag actual */}
