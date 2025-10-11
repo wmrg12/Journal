@@ -1,5 +1,5 @@
-import { StyleSheet } from 'react-native';
-import { uiColors } from '@/constants/colors';
+import { StyleSheet } from "react-native";
+import { uiColors } from "@/constants/colors";
 
 export default StyleSheet.create({
   container: {
@@ -7,24 +7,24 @@ export default StyleSheet.create({
   },
   header: {
     height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 16,
-    position: 'relative',
+    position: "relative",
   },
   backButton: {
-    position: 'absolute',
+    position: "absolute",
     left: 20,
     paddingHorizontal: 8,
-    height: '100%',
-    justifyContent: 'center',
+    height: "100%",
+    justifyContent: "center",
   },
   rightButton: {
-    position: 'absolute',
+    position: "absolute",
     right: 20,
     paddingHorizontal: 8,
-    height: '100%',
-    justifyContent: 'center',
+    height: "100%",
+    justifyContent: "center",
   },
   backIcon: {
     fontSize: 18,
@@ -35,21 +35,21 @@ export default StyleSheet.create({
     color: uiColors.danger,
   },
   leftGroup: {
-  position: 'absolute',
-  left: 16,
-  top: 0,
-  bottom: 0,
-  flexDirection: 'row',
-  alignItems: 'center',
+    position: "absolute",
+    left: 16,
+    top: 0,
+    bottom: 0,
+    flexDirection: "row",
+    alignItems: "center",
   },
   checkButton: {
-  position: 'absolute',
-  right: 16,
-  top: 0,
-  bottom: 0,
-  justifyContent: 'center',
-  paddingHorizontal: 8,
-},
+    position: "absolute",
+    right: 16,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
   checkIcon: {
     fontSize: 18,
     color: uiColors.danger,
@@ -61,8 +61,8 @@ export default StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
   },
   canvas: {
     flex: 1,

@@ -2,7 +2,7 @@ import { pagePalette, uiColors } from "@/constants/colors";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, Text, View, TouchableOpacity, Alert } from "react-native";
-import S from "@/styles/createPageStyles";
+import S from "../styles/createPageStyles";
 import ColorPalette from "@/components/ColorPalette";
 import { createPage } from "@/src/db/dao";
 

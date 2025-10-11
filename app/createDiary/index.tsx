@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StatusBar, SafeAreaView } from "react-native";
-import { diaryStyles as styles } from "@/styles/createCoverStyles";
+import { diaryStyles as styles } from "../styles/createCoverStyles";
 import { useRouter } from "expo-router";
 import { uiColors, coverPalette } from "@/constants/colors";
 import ColorPalette from "@/components/ColorPalette";

@@ -22,7 +22,6 @@ WebBrowser.maybeCompleteAuthSession();
 export default function LoginScreen() {
   useWarmUpBrowser();
 
-  
   const { width } = Dimensions.get("window");
 
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
@@ -63,7 +62,7 @@ export default function LoginScreen() {
 
   //Estructura de la pantalla de login
   return (
-    <View style={styles.container}>  
+    <View style={styles.container}>
       <View style={styles.imageColumn}>
         <Image source={login1} style={[styles.image, { width }]} />
           <Image source={login2} style={styles.imageVertical} resizeMode="contain" />
