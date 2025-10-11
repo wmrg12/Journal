@@ -59,9 +59,18 @@ export async function initDb() {
       );
 
       // Índices (idempotentes)
-      await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_pages_journal ON pages(journal_id);`);
-      await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_pages_journal_number ON pages(journal_id, page_number);`);
-      await execTx(tx, `CREATE UNIQUE INDEX IF NOT EXISTS ux_pages_journal_number ON pages(journal_id, page_number);`);
+      await execTx(
+        tx,
+        `CREATE INDEX IF NOT EXISTS idx_pages_journal ON pages(journal_id);`
+      );
+      await execTx(
+        tx,
+        `CREATE INDEX IF NOT EXISTS idx_pages_journal_number ON pages(journal_id, page_number);`
+      );
+      await execTx(
+        tx,
+        `CREATE UNIQUE INDEX IF NOT EXISTS ux_pages_journal_number ON pages(journal_id, page_number);`
+      );
     });
 
     return;
@@ -105,14 +114,22 @@ export async function initDb() {
     );
 
     // Índices
-    await runAsync(`CREATE INDEX IF NOT EXISTS idx_pages_journal ON pages(journal_id);`);
-    await runAsync(`CREATE INDEX IF NOT EXISTS idx_pages_journal_number ON pages(journal_id, page_number);`);
-    await runAsync(`CREATE UNIQUE INDEX IF NOT EXISTS ux_pages_journal_number ON pages(journal_id, page_number);`);
+    await runAsync(
+      `CREATE INDEX IF NOT EXISTS idx_pages_journal ON pages(journal_id);`
+    );
+    await runAsync(
+      `CREATE INDEX IF NOT EXISTS idx_pages_journal_number ON pages(journal_id, page_number);`
+    );
+    await runAsync(
+      `CREATE UNIQUE INDEX IF NOT EXISTS ux_pages_journal_number ON pages(journal_id, page_number);`
+    );
 
     return;
   }
 
-  throw new Error("expo-sqlite no disponible. Instala: npx expo install expo-sqlite");
+  throw new Error(
+    "expo-sqlite no disponible. Instala: npx expo install expo-sqlite"
+  );
 }
 
 // ---------- Utilidades de ejecución ----------
@@ -132,29 +149,44 @@ function execTx(tx: any, sql: string, params: any[] = []): Promise<void> {
 
 // Igual que execTx pero ignora el error (útil para ALTER COLUMN ya existente)
 async function execTxIgnore(tx: any, sql: string, params: any[] = []) {
-  try { await execTx(tx, sql, params); } catch { /* no-op */ }
+  try {
+    await execTx(tx, sql, params);
+  } catch {
+    /* no-op */
+  }
 }
 
 async function runAsync(sql: string, params: any[] = []): Promise<void> {
   if (!adb) throw new Error("DB async no inicializada");
   if (typeof (adb as any).runAsync === "function") {
     await (adb as any).runAsync(sql, params);
-  } else if (params.length === 0 && typeof (adb as any).execAsync === "function") {
+  } else if (
+    params.length === 0 &&
+    typeof (adb as any).execAsync === "function"
+  ) {
     await (adb as any).execAsync(sql);
   } else {
-    throw new Error("Método runAsync/execAsync no disponible para consultas parametrizadas");
+    throw new Error(
+      "Método runAsync/execAsync no disponible para consultas parametrizadas"
+    );
   }
 }
 
 async function runAsyncIgnore(sql: string, params: any[] = []) {
-  try { await runAsync(sql, params); } catch { /* no-op */ }
+  try {
+    await runAsync(sql, params);
+  } catch {
+    /* no-op */
+  }
 }
 
 function txLegacy<T>(fn: (tx: any) => Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     (legacyDb as any).transaction(
       (tx: any) => {
-        Promise.resolve(fn(tx)).catch((e) => { throw e; });
+        Promise.resolve(fn(tx)).catch((e) => {
+          throw e;
+        });
       },
       (err: any) => reject(err),
       () => resolve(undefined as unknown as T)
@@ -186,6 +218,46 @@ export async function createJournal(name: string, color: string) {
   return { id };
 }
 
+export type Journal = {
+  id: string;
+  name: string;
+  color: string;
+  is_favorite: number; // 0/1
+  created_at: number;
+  updated_at: number;
+};
+
+export async function listJournals(): Promise<Journal[]> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync?.(
+      `SELECT id, name, color, is_favorite, created_at, updated_at
+         FROM journals
+         ORDER BY created_at DESC`
+    );
+    return rows ?? [];
+  }
+
+  return new Promise<Journal[]>((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT id, name, color, is_favorite, created_at, updated_at
+           FROM journals
+           ORDER BY created_at DESC`,
+        [],
+        (_: any, res: any) => {
+          const out: Journal[] = [];
+          for (let i = 0; i < res.rows.length; i++) out.push(res.rows.item(i));
+          resolve(out);
+        },
+        (_: any, err: any) => {
+          reject(err);
+          return true;
+        }
+      );
+    });
+  });
+}
+
 // ---------- DAO: Pages ----------
 export async function getTotalPages(journalId: string): Promise<number> {
   if (isAsync) {
@@ -202,7 +274,10 @@ export async function getTotalPages(journalId: string): Promise<number> {
         `SELECT COALESCE(MAX(page_number),0) AS total FROM pages WHERE journal_id = ?`,
         [journalId],
         (_: any, res: any) => resolve(res.rows.item(0).total ?? 0),
-        (_: any, err: any) => { reject(err); return true; }
+        (_: any, err: any) => {
+          reject(err);
+          return true;
+        }
       );
     });
   });
@@ -242,8 +317,14 @@ export async function createPage(journalId: string, bgColor: string) {
       tx.executeSql(
         `SELECT COALESCE(MAX(page_number),0)+1 AS next FROM pages WHERE journal_id = ?`,
         [journalId],
-        (_: any, res: any) => { next = res.rows.item(0).next ?? 1; resolve(); },
-        (_: any, err: any) => { reject(err); return true; }
+        (_: any, res: any) => {
+          next = res.rows.item(0).next ?? 1;
+          resolve();
+        },
+        (_: any, err: any) => {
+          reject(err);
+          return true;
+        }
       );
     });
 
