@@ -149,7 +149,12 @@ export default function PageView() {
         </View>
 
         <TouchableOpacity
-          onPress={() => {}}
+          onPress={() => {
+            router.replace({
+              pathname: "/tabs/home",
+              params: { journalId, color: String(color ?? bg) },
+            });
+          }}
           style={S.checkButton}
           accessibilityLabel="Hecho"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
