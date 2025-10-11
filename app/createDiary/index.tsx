@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StatusBar, SafeAreaView } from "react-native";
-import { diaryStyles as styles } from "@/app/styles/createCoverStyles";
+import { diaryStyles as styles } from "@/styles/createCoverStyles";
 import { useRouter } from "expo-router"; 
 import { uiColors, coverPalette } from "@/constants/colors";
-import ColorPalette from "@/components/ColorPalette";
+import ColorPalette from "@/components/colorPalette";
 
 export default function CrearDiario() {
   const [selectedColor, setSelectedColor] = useState<string>(coverPalette[0]);
