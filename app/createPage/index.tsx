@@ -2,8 +2,8 @@ import { pagePalette, uiColors } from "@/constants/colors";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Image, Text, View, TouchableOpacity } from "react-native";
-import S from "../styles/createPageStyles";
-import ColorPalette from "@/components/ColorPalette";
+import S from "@/styles/createPageStyles";
+import ColorPalette from "@/components/colorPalette";
 
 type Params = { journalId?: string; color?: string; name?: string };
 
