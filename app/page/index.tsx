@@ -125,22 +125,22 @@ export default function PageView() {
             </TouchableOpacity>
           )}
           {pageNum < total && (
-          <TouchableOpacity
-            onPress={() =>
-              router.push({
-                pathname: "/page",
-                params: {
-                  journalId,
-                  color: String(color ?? bg),
-                  pageNumber: String(pageNum + 1),
-                  totalPages: String(total),
-                },
-              })
-            }
-            style={{ marginLeft: 12 }}
-          >
-            <Text style={S.nextIcon as any}>→</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: "/page",
+                  params: {
+                    journalId,
+                    color: String(color ?? bg),
+                    pageNumber: String(pageNum + 1),
+                    totalPages: String(total),
+                  },
+                })
+              }
+              style={{ marginLeft: 12 }}
+            >
+              <Text style={S.nextIcon as any}>→</Text>
+            </TouchableOpacity>
           )}
         </View>
 
@@ -188,7 +188,7 @@ export default function PageView() {
           <Text style={S.toolIcon as any}>✎</Text>
         </TouchableOpacity>
 
-        {/*5) undo) */}
+        {/* 5) undo */}
         <TouchableOpacity style={S.toolCircle} onPress={() => {}}>
           <Text style={S.toolIcon as any}>↩</Text>
         </TouchableOpacity>

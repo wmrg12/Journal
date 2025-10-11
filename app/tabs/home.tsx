@@ -11,6 +11,7 @@ export default function Home() {
   const { highlight } = useLocalSearchParams<{ highlight?: string }>();
   const [items, setItems] = useState<Journal[]>([]);
   const [hl, setHl] = useState<string | undefined>(undefined);
+  const [tab, setTab] = useState<"mine" | "fav">("mine");
 
   const load = useCallback(async () => {
     const rows = await listJournals();
@@ -22,11 +23,13 @@ export default function Home() {
       load();
       if (typeof highlight === "string" && highlight.length > 0) {
         setHl(highlight);
-        const t = setTimeout(() => setHl(undefined), 2500); // quitar resaltado
+        const t = setTimeout(() => setHl(undefined), 2500);
         return () => clearTimeout(t);
       }
     }, [load, highlight])
   );
+
+  const filtered = tab === "fav" ? items.filter((i) => i.is_favorite === 1) : items;
 
   const openJournal = async (j: Journal) => {
     const total = Math.max(await getTotalPages(j.id), 1);
@@ -46,11 +49,7 @@ export default function Home() {
     return (
       <TouchableOpacity
         onPress={() => openJournal(item)}
-        style={[
-          styles.card,
-          isHL && styles.cardHL,
-          { backgroundColor: item.color }, // dinámico: solo el color
-        ]}
+        style={[styles.card, isHL && styles.cardHL, { backgroundColor: item.color }]}
       >
         <Text numberOfLines={1} style={styles.cardTitle}>
           {item.name}
@@ -62,41 +61,38 @@ export default function Home() {
   const Empty = () => (
     <View style={styles.content}>
       <Ionicons name="book-outline" size={80} color={uiColors.brown} />
-      <Text style={styles.message}>CREA UN DIARIO..!</Text>
+      <Text style={styles.message}>
+        {tab === "fav" ? "Aún no tienes favoritos" : "CREA UN DIARIO..!"}
+      </Text>
     </View>
   );
 
   return (
     <View style={styles.container}>
-
-      <HeaderDiarios />
-
-      {/* Contenido central
-      <View style={styles.content}>
-        <Ionicons name="book-outline" size={80} color={uiColors.brown} />
-        <Text style={styles.message}>CREA UN DIARIO..!</Text>
-      </View>*/}
+      <HeaderDiarios
+        active={tab}
+        onChangeTab={(t) => setTab(t)}
+        onPressSearch={() => {
+        }}
+      />
 
       <FlatList
-        data={items}
+        data={filtered}
         keyExtractor={(it) => it.id}
         renderItem={renderItem}
         numColumns={2}
-        contentContainerStyle={items.length ? styles.gridContent : styles.emptyContent}
+        contentContainerStyle={
+          filtered.length ? styles.gridContent : styles.emptyContent
+        }
         ListEmptyComponent={<Empty />}
       />
 
-      {/* Boton */}
       <TouchableOpacity
-      style={styles.fab}
-      onPress={() =>
-        router.push({
-          pathname: "/createDiary"
-        })
-      }
-    >
-      <Ionicons name="add" size={28} color={uiColors.white} />
-    </TouchableOpacity>
+        style={styles.fab}
+        onPress={() => router.push({ pathname: "/createDiary" })}
+      >
+        <Ionicons name="add" size={28} color={uiColors.white} />
+      </TouchableOpacity>
     </View>
   );
 }
