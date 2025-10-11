@@ -283,6 +283,43 @@ export async function getTotalPages(journalId: string): Promise<number> {
   });
 }
 
+export async function getPageColor(
+  journalId: string,
+  pageNumber: number
+): Promise<string | null> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync?.(
+      `SELECT bg_color
+         FROM pages
+        WHERE journal_id = ? AND page_number = ?
+        LIMIT 1`,
+      [journalId, pageNumber]
+    );
+    return rows?.[0]?.bg_color ?? null;
+  }
+
+  return new Promise<string | null>((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT bg_color
+           FROM pages
+          WHERE journal_id = ? AND page_number = ?
+          LIMIT 1`,
+        [journalId, pageNumber],
+        (_: any, res: any) => {
+          resolve(
+            res.rows.length ? (res.rows.item(0).bg_color as string) : null
+          );
+        },
+        (_: any, err: any) => {
+          reject(err);
+          return true;
+        }
+      );
+    });
+  });
+}
+
 export async function createPage(journalId: string, bgColor: string) {
   const id = await Crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
@@ -303,7 +340,7 @@ export async function createPage(journalId: string, bgColor: string) {
       );
 
       await runAsync("COMMIT");
-      return { pageNumber: next, total: next }; // contiguo
+      return { pageNumber: next, total: next };
     } catch (e) {
       await runAsync("ROLLBACK");
       throw e;

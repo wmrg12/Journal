@@ -1,10 +1,10 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { View, Text, TouchableOpacity, Alert } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { pagePalette } from "@/constants/colors";
 import S from "../../styles/pageViewStyles";
-import { createPage, deletePage, getTotalPages } from "@/src/db/dao";
+import { createPage, deletePage, getTotalPages, getPageColor } from "@/src/db/dao";
 
 type Params = {
   journalId?: string;
@@ -18,6 +18,60 @@ export default function PageView() {
     useLocalSearchParams<Params>();
   const router = useRouter();
 
+  const [bg, setBg] = useState<(typeof pagePalette)[number]>(pagePalette[0]);
+
+  // inicializa desde el param `color` si viene
+  useEffect(() => {
+    if (typeof color === "string") {
+      const found = (pagePalette as readonly string[]).find(
+        (c) => c.toLowerCase() === color.toLowerCase()
+      );
+      setBg((found ?? pagePalette[0]) as (typeof pagePalette)[number]);
+    } else {
+      setBg(pagePalette[0]);
+    }
+  }, [color]);
+
+  // consulta el color guardado en BD para esta página y lo aplica
+  const pageNum = Math.max(Number(pageNumber ?? 1) || 1, 1);
+  useEffect(() => {
+    if (!journalId) return;
+    (async () => {
+      const dbColor = await getPageColor(String(journalId), pageNum);
+      if (typeof dbColor === "string" && dbColor.length > 0) {
+        const found = (pagePalette as readonly string[]).find(
+          (c) => c.toLowerCase() === dbColor.toLowerCase()
+        );
+        if (found) setBg(found as (typeof pagePalette)[number]);
+      }
+    })().catch(console.error);
+  }, [journalId, pageNum]);
+
+  const total = Math.max(Number(totalPages ?? 1) || 1, 1);
+  const totalParam = Math.max(total, 1);
+
+  // al cargar, sincroniza el total con lo que hay en BD
+  useEffect(() => {
+    if (!journalId) return;
+    (async () => {
+      const dbTotal = await getTotalPages(String(journalId));
+      const safeTotal = Math.max(dbTotal, 1);
+      if (safeTotal !== totalParam || pageNum > safeTotal) {
+        router.replace({
+          pathname: "/page",
+          params: {
+            journalId,
+            color: String(bg),
+            pageNumber: String(Math.min(pageNum, safeTotal)),
+            totalPages: String(safeTotal),
+          },
+        });
+      }
+    })().catch(console.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journalId]);
+
+  // acciones
   const handleDeletePage = () => {
     if (totalParam <= 1 || !journalId) {
       Alert.alert("No se puede eliminar", "Debe existir al menos una página.");
@@ -30,12 +84,15 @@ export default function PageView() {
         style: "destructive",
         onPress: async () => {
           try {
-            const { pageNumber: target, total: newTotal } = await deletePage(String(journalId), pageNum);
+            const { pageNumber: target, total: newTotal } = await deletePage(
+              String(journalId),
+              pageNum
+            );
             router.replace({
               pathname: "/page",
               params: {
                 journalId,
-                color: String(color ?? bg),
+                color: String(bg),
                 pageNumber: String(target),
                 totalPages: String(newTotal),
               },
@@ -52,14 +109,18 @@ export default function PageView() {
   const handleAddPage = async () => {
     if (!journalId) return;
     try {
-      const { pageNumber, total } = await createPage(String(journalId), String(color ?? bg));
+      // crea heredando el color actual de la hoja
+      const { pageNumber: newNum, total: newTotal } = await createPage(
+        String(journalId),
+        String(bg)
+      );
       router.replace({
         pathname: "/page",
         params: {
           journalId,
-          color: String(color ?? bg),
-          pageNumber: String(pageNumber),
-          totalPages: String(total),
+          color: String(bg),
+          pageNumber: String(newNum),
+          totalPages: String(newTotal),
         },
       });
     } catch (e) {
@@ -67,36 +128,6 @@ export default function PageView() {
       Alert.alert("Error", "No se pudo crear la página.");
     }
   };
-
-  const bg = useMemo(() => {
-    if (!color || typeof color !== "string") return pagePalette[0];
-    const found = (pagePalette as readonly string[]).find((c) => c.toLowerCase() === color.toLowerCase());
-    return (found ?? pagePalette[0]) as (typeof pagePalette)[number];
-  }, [color]);
-
-  const pageNum = Math.max(Number(pageNumber ?? 1) || 1, 1);
-  const total = Math.max(Number(totalPages ?? 1) || 1, 1);
-  const totalParam = Math.max(total, 1);
-
-  useEffect(() => {
-    if (!journalId) return;
-    (async () => {
-      const dbTotal = await getTotalPages(String(journalId));
-      const safeTotal = Math.max(dbTotal, 1);
-      if (safeTotal !== totalParam || pageNum > safeTotal) {
-        router.replace({
-          pathname: "/page",
-          params: {
-            journalId,
-            color: String(color ?? bg),
-            pageNumber: String(Math.min(pageNum, safeTotal)),
-            totalPages: String(safeTotal),
-          },
-        });
-      }
-    })().catch(console.error);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [journalId]);
 
   return (
     <SafeAreaView
@@ -114,7 +145,7 @@ export default function PageView() {
                   pathname: "/page",
                   params: {
                     journalId,
-                    color: String(color ?? bg),
+                    color: String(bg),
                     pageNumber: String(pageNum - 1),
                     totalPages: String(total),
                   },
@@ -131,7 +162,7 @@ export default function PageView() {
                   pathname: "/page",
                   params: {
                     journalId,
-                    color: String(color ?? bg),
+                    color: String(bg),
                     pageNumber: String(pageNum + 1),
                     totalPages: String(total),
                   },
@@ -152,7 +183,7 @@ export default function PageView() {
           onPress={() => {
             router.replace({
               pathname: "/tabs/home",
-              params: { journalId, color: String(color ?? bg) },
+              params: { journalId, color: String(bg) },
             });
           }}
           style={S.checkButton}
