@@ -1,6 +1,6 @@
 import { View, Text, Image, TouchableOpacity, ActivityIndicator, Dimensions, } from "react-native";
 import React from "react";
-import styles from "../styles/loginStyles";
+import styles from "@/styles/loginStyles";
 import * as WebBrowser from "expo-web-browser";
 import { useOAuth, useAuth } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
