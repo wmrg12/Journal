@@ -5,7 +5,7 @@ import { FlatList, Text, TouchableOpacity, View } from "react-native";
 import HeaderDiarios from "../../components/headerDiary";
 import styles from "@/styles/globalStyles";
 import { useCallback, useState } from "react";
-import { listJournals, Journal, getTotalPages } from "@/src/db/dao";
+import { listJournals, Journal, getTotalPages, getPageColor } from "@/src/db/dao";
 
 export default function Home() {
   const { highlight } = useLocalSearchParams<{ highlight?: string }>();
@@ -33,11 +33,13 @@ export default function Home() {
 
   const openJournal = async (j: Journal) => {
     const total = Math.max(await getTotalPages(j.id), 1);
+    const c1 = (await getPageColor(j.id, 1)) ?? j.color;
+
     router.push({
       pathname: "/page",
       params: {
         journalId: j.id,
-        color: j.color,
+        color: c1,
         pageNumber: "1",
         totalPages: String(total),
       },
