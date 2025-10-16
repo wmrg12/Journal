@@ -198,6 +198,7 @@ function txLegacy<T>(fn: (tx: any) => Promise<T>): Promise<T> {
 export async function createJournal(name: string, color: string) {
   const id = await Crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
+   
 
   if (isAsync) {
     await runAsync(
@@ -222,7 +223,7 @@ export type Journal = {
   id: string;
   name: string;
   color: string;
-  is_favorite: number; // 0/1
+  is_favorite: number; 
   created_at: number;
   updated_at: number;
 };
@@ -256,6 +257,26 @@ export async function listJournals(): Promise<Journal[]> {
       );
     });
   });
+}
+
+export async function toggleFavorite(journalId: string, favorite: boolean) {
+  const value = favorite ? 1 : 0;
+  const now = Math.floor(Date.now() / 1000);
+
+  if (isAsync) {
+    await runAsync(
+      `UPDATE journals SET is_favorite = ?, updated_at = ? WHERE id = ?`,
+      [value, now, journalId]
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(
+        tx,
+        `UPDATE journals SET is_favorite = ?, updated_at = ? WHERE id = ?`,
+        [value, now, journalId]
+      );
+    });
+  }
 }
 
 // ---------- DAO: Pages ----------
