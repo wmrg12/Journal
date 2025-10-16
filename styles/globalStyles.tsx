@@ -1,4 +1,4 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, Platform } from "react-native";
 import { uiColors } from "../constants/colors";
 
 const styles = StyleSheet.create({
@@ -136,7 +136,8 @@ const styles = StyleSheet.create({
     height: 180,
     margin: 12,
     borderRadius: 12,
-    justifyContent: "flex-end",
+    justifyContent: "center",
+    alignItems: "center", 
     padding: 10,
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.15)",
@@ -147,7 +148,50 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardHL: { borderWidth: 2, borderColor: "#FFB300" },
-  cardTitle: { color: uiColors.black, fontWeight: "600" },
+  cardTitle: { textAlign: "center", color: uiColors.gray, fontWeight: "600", fontSize: 18, 
+    fontFamily: Platform.select({
+    ios: "Times New Roman",
+    android: "serif",
+    default: "serif",
+  }),
+  },
+
+  cardWrapper: {
+    alignItems: "center",
+    marginBottom: 8, 
+
+  },
+  // --- fecha ---
+  cardDate: {
+    textAlign: "center",
+    fontSize: 13,
+    color: "rgba(0,0,0,0.65)",
+    textTransform: "lowercase",
+    marginTop: -4,
+  },
+  
+  // --- favorito ---
+  favWrap: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    zIndex: 2,
+  },
+  favBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 78,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
+    elevation: 0,
+  },
+  favBtnActive: {
+    backgroundColor: "rgba(230,57,70,0.22)",
+    borderWidth: 1,
+    borderColor: "rgba(230,57,70,0.55)",
+  },
+
 } as const);
 
 export default styles;
