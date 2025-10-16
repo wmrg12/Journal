@@ -3,13 +3,14 @@ import { View, Text, TextInput, TouchableOpacity, StatusBar, SafeAreaView, Alert
 import { diaryStyles as styles } from "@/app/styles/createCoverStyles";
 import { useRouter } from "expo-router";
 import { uiColors, coverPalette } from "@/constants/colors";
-import ColorPalette from "@/components/ColorPalette";
+import ColorPalette from "@/components/colorPalette";
 import { createJournal } from "@/src/db/dao";
 
 export default function CrearDiario() {
   const [selectedColor, setSelectedColor] = useState<string>(coverPalette[0]);
   const [diaryName, setDiaryName] = useState<string>("");
   const router = useRouter();
+
   const handleSave = async () => {
     if (!diaryName.trim()) {
       Alert.alert("Nombre requerido", "Ingresa un nombre para el diario.");
@@ -72,6 +73,7 @@ export default function CrearDiario() {
             onChange={setSelectedColor}
           />
         </View>
+
 
         {/* Save */}
         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
