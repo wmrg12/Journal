@@ -5,14 +5,14 @@ import { FlatList, Text, TouchableOpacity, View } from "react-native";
 import HeaderDiarios from "../../components/headerDiary";
 import styles from "@/styles/globalStyles";
 import { useCallback, useState } from "react";
-import { listJournals, Journal, getTotalPages, getPageColor } from "@/src/db/dao";
+import { listJournals, Journal, getTotalPages, getPageColor, toggleFavorite } from "@/src/db/dao";
 
 export default function Home() {
   const { highlight } = useLocalSearchParams<{ highlight?: string }>();
   const [items, setItems] = useState<Journal[]>([]);
   const [hl, setHl] = useState<string | undefined>(undefined);
   const [tab, setTab] = useState<"mine" | "fav">("mine");
-
+  
   const load = useCallback(async () => {
     const rows = await listJournals();
     setItems(rows);
@@ -46,17 +46,64 @@ export default function Home() {
     });
   };
 
+   const onToggleFavorite = async (j: Journal) => {
+    const next = j.is_favorite === 1 ? 0 : 1;
+
+    setItems(prev => prev.map(it => (it.id === j.id ? { ...it, is_favorite: next } : it)));
+
+    try {
+      await toggleFavorite(j.id, next === 1);
+    } catch (e) {
+      console.error("toggleFavorite error:", e);
+      setItems(prev => prev.map(it => (it.id === j.id ? { ...it, is_favorite: j.is_favorite } : it)));
+    }
+  };
+
+
   const renderItem = ({ item }: { item: Journal }) => {
     const isHL = !!hl && item.id === hl;
+    const isFav = item.is_favorite === 1;
+    const fecha = new Date(item.created_at * 1000).toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+  });
+
     return (
+    <View style={styles.cardWrapper}>
       <TouchableOpacity
-        onPress={() => openJournal(item)}
-        style={[styles.card, isHL && styles.cardHL, { backgroundColor: item.color }]}
+          onPress={() => openJournal(item)}
+          style={[styles.card, isHL && styles.cardHL, { backgroundColor: item.color }]}
+          activeOpacity={0.9}
       >
-        <Text numberOfLines={1} style={styles.cardTitle}>
-          {item.name}
-        </Text>
+      {/* botón favorito */}
+        <View style={styles.favWrap}>
+          <TouchableOpacity
+            onPress={(e) => {
+              // @ts-ignore
+              e?.stopPropagation?.();
+              onToggleFavorite(item);
+            }}
+            activeOpacity={0.85}
+            style={[styles.favBtn, isFav && styles.favBtnActive]}
+            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+        >
+            <Ionicons
+              name={isFav ? "heart" : "heart-outline"}
+              size={20}
+              color={isFav ? (uiColors.danger ?? "#E63946") : uiColors.white}
+            />
+          </TouchableOpacity>
+      </View>
+
+      <Text numberOfLines={1} style={styles.cardTitle}>
+        {item.name}
+      </Text>
       </TouchableOpacity>
+
+       {/* Fecha debajo de la tarjeta */}
+        <Text style={styles.cardDate}>{fecha}</Text>
+      </View>
     );
   };
 
@@ -64,7 +111,7 @@ export default function Home() {
     <View style={styles.content}>
       <Ionicons name="book-outline" size={80} color={uiColors.brown} />
       <Text style={styles.message}>
-        {tab === "fav" ? "Aún no tienes favoritos" : "CREA UN DIARIO..!"}
+        {tab === "fav" ? "Aun no tienes favoritos" : "CREA UN DIARIO..!"}
       </Text>
     </View>
   );
