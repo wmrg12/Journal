@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
     paddingVertical: 0,
-    width: 240,
+    width: 260,
     borderWidth: 1,
     borderColor: uiColors.white,
   },
@@ -90,6 +90,28 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
 
+  // Franja izquierda (encuadernación)
+  bookBinding: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 22,
+    backgroundColor: "rgba(255,255,255,0.28)", // más claro que la tapa
+    borderTopLeftRadius: 10,
+    borderBottomLeftRadius: 10,
+  },
+  // Línea divisoria sutil
+  bookDivider: {
+    position: "absolute",
+    left: 22,
+    top: 10,
+    bottom: 10,
+    width: 2,
+    backgroundColor: "rgba(0,0,0,0.08)",
+    borderRadius: 1,
+  },
+
   // --- filtros de tab ---
   containerTab: {
     position: "absolute",
@@ -112,9 +134,19 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
   rowTab: { flexDirection: "row", flex: 1, justifyContent: "space-around" },
-  tabButton: { paddingVertical: 10, alignItems: "center", justifyContent: "center", zIndex: 1 },
+  tabButton: {
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1,
+  },
   tabLabel: { marginLeft: 6 },
-  homeRowTab: { flexDirection: "row", alignItems: "center", justifyContent: "center", position: "relative" },
+  homeRowTab: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
   iconOnTop: { zIndex: 10 },
 
   // --- Grid de diarios ---
@@ -137,7 +169,7 @@ const styles = StyleSheet.create({
     margin: 12,
     borderRadius: 12,
     justifyContent: "center",
-    alignItems: "center", 
+    alignItems: "center",
     padding: 10,
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.15)",
@@ -148,18 +180,21 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardHL: { borderWidth: 2, borderColor: "#FFB300" },
-  cardTitle: { textAlign: "center", color: uiColors.gray, fontWeight: "600", fontSize: 18, 
+  cardTitle: {
+    textAlign: "center",
+    color: uiColors.gray,
+    fontWeight: "600",
+    fontSize: 18,
     fontFamily: Platform.select({
-    ios: "Times New Roman",
-    android: "serif",
-    default: "serif",
-  }),
+      ios: "Times New Roman",
+      android: "serif",
+      default: "serif",
+    }),
   },
 
   cardWrapper: {
     alignItems: "center",
-    marginBottom: 8, 
-
+    marginBottom: 8,
   },
   // --- fecha ---
   cardDate: {
@@ -169,7 +204,7 @@ const styles = StyleSheet.create({
     textTransform: "lowercase",
     marginTop: -4,
   },
-  
+
   // --- favorito ---
   favWrap: {
     position: "absolute",
@@ -191,7 +226,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(230,57,70,0.55)",
   },
-
 } as const);
 
 export default styles;

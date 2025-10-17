@@ -76,6 +76,9 @@ export default function Home() {
           style={[styles.card, isHL && styles.cardHL, { backgroundColor: item.color }]}
           activeOpacity={0.9}
       >
+        <View style={styles.bookBinding} />
+        <View style={styles.bookDivider} />
+        
       {/* botón favorito */}
         <View style={styles.favWrap}>
           <TouchableOpacity
