@@ -226,6 +226,113 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(230,57,70,0.55)",
   },
-} as const);
 
+
+
+  // --- Panel de búsqueda por fechas ---
+searchPanel: {
+  overflow: "hidden",
+  paddingHorizontal: 16,
+},
+searchRow: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  gap: 8,
+  paddingTop: 8,
+},
+chip: {
+  paddingHorizontal: 10,
+  paddingVertical: 8,
+  backgroundColor: "#fff",
+  borderRadius: 10,
+  borderWidth: 1,
+  borderColor: "rgba(0,0,0,0.08)",
+  elevation: 1,
+},
+chipActive: {
+  backgroundColor: uiColors.rgba,
+},
+chipText: {
+  fontSize: 12,
+  color: uiColors.brown,
+},
+rangeRow: {
+  flexDirection: "row",
+  alignItems: "flex-end",
+  gap: 10,
+  paddingTop: 10,
+},
+rangeCol: {
+  flex: 1,
+},
+dateInput: {
+  height: 40,
+  borderRadius: 10,
+  backgroundColor: "#fff",
+  paddingHorizontal: 12,
+  borderWidth: 1,
+  borderColor: "rgba(0,0,0,0.08)",
+},
+applyBtn: {
+  height: 40,
+  paddingHorizontal: 14,
+  backgroundColor: uiColors.primary,
+  borderRadius: 12,
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 6,
+},
+
+searchBarRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: "#fff",
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: "rgba(0,0,0,0.08)",
+  paddingHorizontal: 10,
+  height: 44,
+  gap: 6,
+},
+
+inputMM: {
+  width: 82,
+  textAlign: "center",
+  paddingHorizontal: 8,
+},
+
+inputYYYY: {
+  width: 110,
+  textAlign: "center",
+  paddingHorizontal: 8,
+},
+
+slash: {
+  marginHorizontal: 2,
+  color: "#777",
+},
+
+applyBtnInline: {
+  height: 36,
+  paddingHorizontal: 12,
+  backgroundColor: uiColors.primary,
+  borderRadius: 10,
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 6,
+},
+
+closeBtn: {
+  marginLeft: 6,
+  height: 36,
+  width: 36,
+  borderRadius: 10,
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: "rgba(0,0,0,0.05)",
+},
+
+
+} as const);
 export default styles;
+

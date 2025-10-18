@@ -4,7 +4,7 @@ import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { FlatList, Text, TouchableOpacity, View } from "react-native";
 import HeaderDiarios from "../../components/headerDiary";
 import styles from "@/styles/globalStyles";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useMemo } from "react";
 import { listJournals, Journal, getTotalPages, getPageColor, toggleFavorite } from "@/src/db/dao";
 
 export default function Home() {
@@ -12,6 +12,7 @@ export default function Home() {
   const [items, setItems] = useState<Journal[]>([]);
   const [hl, setHl] = useState<string | undefined>(undefined);
   const [tab, setTab] = useState<"mine" | "fav">("mine");
+  const [range, setRange] = useState<{ from?: number; to?: number }>({});
   
   const load = useCallback(async () => {
     const rows = await listJournals();
@@ -28,8 +29,15 @@ export default function Home() {
       }
     }, [load, highlight])
   );
+  const byTab = useMemo(
+    () => (tab === "fav" ? items.filter(i => i.is_favorite === 1) : items),
+    [items, tab]
+  );
 
-  const filtered = tab === "fav" ? items.filter((i) => i.is_favorite === 1) : items;
+const filtered = useMemo(() => {
+  if (!range.from || !range.to) return byTab;
+  return byTab.filter((d: Journal) => d.created_at >= range.from! && d.created_at < range.to!);
+  }, [byTab, range]);
 
   const openJournal = async (j: Journal) => {
     const total = Math.max(await getTotalPages(j.id), 1);
@@ -124,8 +132,7 @@ export default function Home() {
       <HeaderDiarios
         active={tab}
         onChangeTab={(t) => setTab(t)}
-        onPressSearch={() => {
-        }}
+        onApplyDates={setRange}
       />
 
       <FlatList
