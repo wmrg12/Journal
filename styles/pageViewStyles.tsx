@@ -1,5 +1,5 @@
-import { StyleSheet } from "react-native";
-import { uiColors } from "@/constants/colors";
+import { StyleSheet } from 'react-native';
+import { uiColors } from '@/constants/colors';
 
 export default StyleSheet.create({
   container: {
@@ -7,24 +7,24 @@ export default StyleSheet.create({
   },
   header: {
     height: 48,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 16,
-    position: "relative",
+    position: 'relative',
   },
   backButton: {
-    position: "absolute",
+    position: 'absolute',
     left: 20,
     paddingHorizontal: 8,
-    height: "100%",
-    justifyContent: "center",
+    height: '100%',
+    justifyContent: 'center',
   },
   rightButton: {
-    position: "absolute",
+    position: 'absolute',
     right: 20,
     paddingHorizontal: 8,
-    height: "100%",
-    justifyContent: "center",
+    height: '100%',
+    justifyContent: 'center',
   },
   backIcon: {
     fontSize: 18,
@@ -35,19 +35,23 @@ export default StyleSheet.create({
     color: uiColors.danger,
   },
   leftGroup: {
-    position: "absolute",
+    position: 'absolute',
     left: 16,
     top: 0,
     bottom: 0,
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  navButton: {
+    padding: 10,
+    marginHorizontal: 4,
   },
   checkButton: {
-    position: "absolute",
+    position: 'absolute',
     right: 16,
     top: 0,
     bottom: 0,
-    justifyContent: "center",
+    justifyContent: 'center',
     paddingHorizontal: 8,
   },
   checkIcon: {
@@ -56,42 +60,42 @@ export default StyleSheet.create({
   },
   titleWrap: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
+    fontWeight: '600',
+    color: '#333',
   },
   canvas: {
     flex: 1,
   },
   toolbar: {
-    position: "absolute",
+    position: 'absolute',
     left: 0,
     right: 0,
     bottom: 24,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: 20,
   },
   toolCircle: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.6)",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginHorizontal: 6,
   },
   toolPlain: {
     paddingHorizontal: 6,
     paddingVertical: 6,
     marginHorizontal: 6,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   toolIcon: {
     fontSize: 20,

@@ -1,10 +1,11 @@
-import { useMemo, useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, Alert } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { pagePalette } from "@/constants/colors";
-import S from "../../styles/pageViewStyles";
-import { createPage, deletePage, getTotalPages, getPageColor } from "@/src/db/dao";
+import { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialIcons } from '@expo/vector-icons';
+import { pagePalette, uiColors } from '@/constants/colors';
+import S from '../../styles/pageViewStyles';
+import { createPage, deletePage, getTotalPages, getPageColor } from '@/src/db/dao';
 
 type Params = {
   journalId?: string;
@@ -14,17 +15,16 @@ type Params = {
 };
 
 export default function PageView() {
-  const { journalId, color, pageNumber, totalPages } =
-    useLocalSearchParams<Params>();
+  const { journalId, color, pageNumber, totalPages } = useLocalSearchParams<Params>();
   const router = useRouter();
 
   const [bg, setBg] = useState<(typeof pagePalette)[number]>(pagePalette[0]);
 
   // inicializa desde el param `color` si viene
   useEffect(() => {
-    if (typeof color === "string") {
+    if (typeof color === 'string') {
       const found = (pagePalette as readonly string[]).find(
-        (c) => c.toLowerCase() === color.toLowerCase()
+        (c) => c.toLowerCase() === color.toLowerCase(),
       );
       setBg((found ?? pagePalette[0]) as (typeof pagePalette)[number]);
     } else {
@@ -38,9 +38,9 @@ export default function PageView() {
     if (!journalId) return;
     (async () => {
       const dbColor = await getPageColor(String(journalId), pageNum);
-      if (typeof dbColor === "string" && dbColor.length > 0) {
+      if (typeof dbColor === 'string' && dbColor.length > 0) {
         const found = (pagePalette as readonly string[]).find(
-          (c) => c.toLowerCase() === dbColor.toLowerCase()
+          (c) => c.toLowerCase() === dbColor.toLowerCase(),
         );
         if (found) setBg(found as (typeof pagePalette)[number]);
       }
@@ -58,7 +58,7 @@ export default function PageView() {
       const safeTotal = Math.max(dbTotal, 1);
       if (safeTotal !== totalParam || pageNum > safeTotal) {
         router.replace({
-          pathname: "/page",
+          pathname: '/page',
           params: {
             journalId,
             color: String(bg),
@@ -74,22 +74,22 @@ export default function PageView() {
   // acciones
   const handleDeletePage = () => {
     if (totalParam <= 1 || !journalId) {
-      Alert.alert("No se puede eliminar", "Debe existir al menos una página.");
+      Alert.alert('No se puede eliminar', 'Debe existir al menos una página.');
       return;
     }
-    Alert.alert("Eliminar página", `¿Eliminar la página ${pageNum}?`, [
-      { text: "Cancelar", style: "cancel" },
+    Alert.alert('Eliminar página', `¿Eliminar la página ${pageNum}?`, [
+      { text: 'Cancelar', style: 'cancel' },
       {
-        text: "Eliminar",
-        style: "destructive",
+        text: 'Eliminar',
+        style: 'destructive',
         onPress: async () => {
           try {
             const { pageNumber: target, total: newTotal } = await deletePage(
               String(journalId),
-              pageNum
+              pageNum,
             );
             router.replace({
-              pathname: "/page",
+              pathname: '/page',
               params: {
                 journalId,
                 color: String(bg),
@@ -99,7 +99,7 @@ export default function PageView() {
             });
           } catch (e) {
             console.error(e);
-            Alert.alert("Error", "No se pudo eliminar la página.");
+            Alert.alert('Error', 'No se pudo eliminar la página.');
           }
         },
       },
@@ -112,10 +112,10 @@ export default function PageView() {
       // crea heredando el color actual de la hoja
       const { pageNumber: newNum, total: newTotal } = await createPage(
         String(journalId),
-        String(bg)
+        String(bg),
       );
       router.replace({
-        pathname: "/page",
+        pathname: '/page',
         params: {
           journalId,
           color: String(bg),
@@ -125,15 +125,12 @@ export default function PageView() {
       });
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "No se pudo crear la página.");
+      Alert.alert('Error', 'No se pudo crear la página.');
     }
   };
 
   return (
-    <SafeAreaView
-      style={[S.container, { backgroundColor: bg }]}
-      edges={["top", "left", "right"]}
-    >
+    <SafeAreaView style={[S.container, { backgroundColor: bg }]} edges={['top', 'left', 'right']}>
       {/* header */}
       <View style={S.header}>
         {/* IZQUIERDA: ← → */}
@@ -142,7 +139,7 @@ export default function PageView() {
             <TouchableOpacity
               onPress={() =>
                 router.replace({
-                  pathname: "/page",
+                  pathname: '/page',
                   params: {
                     journalId,
                     color: String(bg),
@@ -151,15 +148,18 @@ export default function PageView() {
                   },
                 })
               }
+              style={S.navButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={0.6}
             >
-              <Text style={S.backIcon as any}>←</Text>
+              <MaterialIcons name="arrow-back-ios" size={22} color={uiColors.danger} />
             </TouchableOpacity>
           )}
           {pageNum < total && (
             <TouchableOpacity
               onPress={() =>
                 router.push({
-                  pathname: "/page",
+                  pathname: '/page',
                   params: {
                     journalId,
                     color: String(bg),
@@ -168,29 +168,32 @@ export default function PageView() {
                   },
                 })
               }
-              style={{ marginLeft: 12 }}
+              style={S.navButton}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              activeOpacity={0.6}
             >
-              <Text style={S.nextIcon as any}>→</Text>
+              <MaterialIcons name="arrow-forward-ios" size={22} color={uiColors.danger} />
             </TouchableOpacity>
           )}
         </View>
 
         <View style={S.titleWrap} pointerEvents="none">
-          <Text style={S.title}>{`pag ${pageNum}`}</Text>
+          <Text style={S.title}>{`Pag ${pageNum}`}</Text>
         </View>
 
         <TouchableOpacity
           onPress={() => {
             router.replace({
-              pathname: "/tabs/home",
+              pathname: '/tabs/home',
               params: { journalId, color: String(bg) },
             });
           }}
           style={S.checkButton}
           accessibilityLabel="Hecho"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          activeOpacity={0.6}
         >
-          <Text style={S.checkIcon as any}>✓</Text>
+          <MaterialIcons name="check" size={22} color={uiColors.danger} />
         </TouchableOpacity>
       </View>
 
@@ -200,33 +203,63 @@ export default function PageView() {
       {/* toolbar */}
       <View style={S.toolbar}>
         {/* 1) subir img,audio, etc */}
-        <TouchableOpacity style={S.toolCircle} onPress={() => {}}>
-          <Text style={S.toolIcon as any}>...</Text>
+        <TouchableOpacity
+          style={S.toolCircle}
+          onPress={() => {}}
+          activeOpacity={0.6}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <MaterialIcons name="more-horiz" size={28} color="#333" />
         </TouchableOpacity>
 
         {/* 2) eliminar pag actual */}
-        <TouchableOpacity style={S.toolCircle} onPress={handleDeletePage}>
-          <Text style={S.toolIcon as any}>x</Text>
+        <TouchableOpacity
+          style={S.toolCircle}
+          onPress={handleDeletePage}
+          activeOpacity={0.6}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <MaterialIcons name="delete-outline" size={28} color="#d32f2f" />
         </TouchableOpacity>
 
         {/* 3) añadir pag */}
-        <TouchableOpacity style={S.toolCircle} onPress={handleAddPage}>
-          <Text style={S.toolIcon as any}>+</Text>
+        <TouchableOpacity
+          style={S.toolCircle}
+          onPress={handleAddPage}
+          activeOpacity={0.6}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <MaterialIcons name="add" size={32} color="#2576b9ff" />
         </TouchableOpacity>
 
         {/* 4) dibujar */}
-        <TouchableOpacity style={S.toolCircle} onPress={() => {}}>
-          <Text style={S.toolIcon as any}>✎</Text>
+        <TouchableOpacity
+          style={S.toolCircle}
+          onPress={() => {}}
+          activeOpacity={0.6}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <MaterialIcons name="edit" size={26} color="#333" />
         </TouchableOpacity>
 
         {/* 5) undo */}
-        <TouchableOpacity style={S.toolCircle} onPress={() => {}}>
-          <Text style={S.toolIcon as any}>↩</Text>
+        <TouchableOpacity
+          style={S.toolCircle}
+          onPress={() => {}}
+          activeOpacity={0.6}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <MaterialIcons name="undo" size={26} color="#757575" />
         </TouchableOpacity>
 
         {/* 6) redo */}
-        <TouchableOpacity style={S.toolCircle} onPress={() => {}}>
-          <Text style={S.toolIcon as any}>↪</Text>
+        <TouchableOpacity
+          style={S.toolCircle}
+          onPress={() => {}}
+          activeOpacity={0.6}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <MaterialIcons name="redo" size={26} color="#757575" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
