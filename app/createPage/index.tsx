@@ -1,10 +1,10 @@
-import { pagePalette, uiColors } from "@/constants/colors";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Image, Text, View, TouchableOpacity, Alert } from "react-native";
-import S from "../styles/createPageStyles";
-import ColorPalette from "@/components/colorPalette";
-import { createPage } from "@/src/db/dao";
+import { pagePalette, uiColors } from '@/constants/colors';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Image, Text, View, TouchableOpacity, Alert } from 'react-native';
+import S from '../styles/createPageStyles';
+import ColorPalette from '@/components/ColorPalette';
+import { createPage } from '@/src/db/dao';
 
 type Params = { journalId?: string; color?: string; name?: string };
 
@@ -14,18 +14,18 @@ export default function CreatePageScreen() {
   const [bgColor, setBgColor] = useState<(typeof pagePalette)[number]>(pagePalette[0]);
 
   useEffect(() => {
-    if (typeof color === "string") {
+    if (typeof color === 'string') {
       const found = (pagePalette as readonly string[]).find(
-        (c) => c.toLowerCase() === color.toLowerCase()
+        (c) => c.toLowerCase() === color.toLowerCase(),
       );
       if (found) setBgColor(found as (typeof pagePalette)[number]);
     }
   }, [color]);
 
-  if (!journalId || typeof journalId !== "string") {
+  if (!journalId || typeof journalId !== 'string') {
     // defensa
     return (
-      <View style={[S.container, { justifyContent: "center", alignItems: "center" }]}>
+      <View style={[S.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <Text>Falta journalId. Vuelve a “Crear Diario”.</Text>
       </View>
     );
@@ -35,7 +35,7 @@ export default function CreatePageScreen() {
     try {
       const { pageNumber, total } = await createPage(journalId as string, bgColor);
       router.push({
-        pathname: "/page",
+        pathname: '/page',
         params: {
           journalId,
           color: bgColor,
@@ -45,7 +45,7 @@ export default function CreatePageScreen() {
       });
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "No se pudo crear la página.");
+      Alert.alert('Error', 'No se pudo crear la página.');
     }
   }
 
@@ -66,13 +66,12 @@ export default function CreatePageScreen() {
         accessibilityLabel="Vista previa de la página"
       >
         <Image
-          source={require("../../assets/images/notebook-open.png")}
+          source={require('../../assets/images/notebook-open.png')}
           resizeMode="contain"
           style={{
-            width: "100%",
-            height: "100%",
-            opacity:
-              bgColor.toLowerCase() === uiColors.white.toLowerCase() ? 1 : 0.95,
+            width: '100%',
+            height: '100%',
+            opacity: bgColor.toLowerCase() === uiColors.white.toLowerCase() ? 1 : 0.95,
           }}
         />
       </View>
@@ -85,7 +84,7 @@ export default function CreatePageScreen() {
           value={bgColor}
           onChange={(color) => {
             const found = (pagePalette as readonly string[]).find(
-              (c) => c.toLowerCase() === color.toLowerCase()
+              (c) => c.toLowerCase() === color.toLowerCase(),
             );
             if (found) setBgColor(found as (typeof pagePalette)[number]);
           }}

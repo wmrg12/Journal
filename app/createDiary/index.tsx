@@ -1,40 +1,45 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StatusBar, SafeAreaView, Alert } from "react-native";
-import { diaryStyles as styles } from "@/app/styles/createCoverStyles";
-import { useRouter } from "expo-router";
-import { uiColors, coverPalette } from "@/constants/colors";
-import ColorPalette from "@/components/colorPalette";
-import { createJournal } from "@/src/db/dao";
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StatusBar,
+  SafeAreaView,
+  Alert,
+} from 'react-native';
+import { diaryStyles as styles } from '@/app/styles/createCoverStyles';
+import { useRouter } from 'expo-router';
+import { uiColors, coverPalette } from '@/constants/colors';
+import ColorPalette from '@/components/ColorPalette';
+import { createJournal } from '@/src/db/dao';
 
 export default function CrearDiario() {
   const [selectedColor, setSelectedColor] = useState<string>(coverPalette[0]);
-  const [diaryName, setDiaryName] = useState<string>("");
+  const [diaryName, setDiaryName] = useState<string>('');
   const router = useRouter();
 
   const handleSave = async () => {
     if (!diaryName.trim()) {
-      Alert.alert("Nombre requerido", "Ingresa un nombre para el diario.");
+      Alert.alert('Nombre requerido', 'Ingresa un nombre para el diario.');
       return;
     }
 
     try {
       const { id } = await createJournal(diaryName.trim(), selectedColor);
       router.push({
-        pathname: "/createPage",
+        pathname: '/createPage',
         params: { journalId: id, color: selectedColor },
       });
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "No se pudo crear el diario.");
+      Alert.alert('Error', 'No se pudo crear el diario.');
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar
-        backgroundColor={uiColors.background}
-        barStyle="dark-content"
-      />
+      <StatusBar backgroundColor={uiColors.background} barStyle="dark-content" />
 
       {/* Header */}
       <View style={styles.header}>
@@ -67,13 +72,8 @@ export default function CrearDiario() {
         {/* Color picker */}
         <View style={styles.colorSection}>
           <Text style={styles.colorLabel}>Color:</Text>
-          <ColorPalette
-            options={coverPalette}
-            value={selectedColor}
-            onChange={setSelectedColor}
-          />
+          <ColorPalette options={coverPalette} value={selectedColor} onChange={setSelectedColor} />
         </View>
-
 
         {/* Save */}
         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
