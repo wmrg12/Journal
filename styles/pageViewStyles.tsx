@@ -101,4 +101,38 @@ export default StyleSheet.create({
     fontSize: 20,
     color: uiColors.black,
   },
+  // Estilos del modal
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingBottom: 90,
+  },
+  modalMenuContainer: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 10,
+    flexDirection: 'row',
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 10,
+    marginHorizontal: 20,
+  },
+  modalOption: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    flex: 1,
+    borderRadius: 15,
+    minWidth: 100,
+  },
+  modalOptionText: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
+  },
 });

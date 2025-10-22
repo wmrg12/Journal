@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Modal } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -19,6 +19,7 @@ export default function PageView() {
   const router = useRouter();
 
   const [bg, setBg] = useState<(typeof pagePalette)[number]>(pagePalette[0]);
+  const [showDrawMenu, setShowDrawMenu] = useState(false);
 
   // inicializa desde el param `color` si viene
   useEffect(() => {
@@ -129,6 +130,12 @@ export default function PageView() {
     }
   };
 
+  const handleSelectDrawMode = (mode: 'text' | 'draw') => {
+    setShowDrawMenu(false);
+    // implementar lógica de texto o dibujo
+    Alert.alert('Modo seleccionado', mode === 'text' ? 'Modo Texto' : 'Modo Dibujo');
+  };
+
   return (
     <SafeAreaView style={[S.container, { backgroundColor: bg }]} edges={['top', 'left', 'right']}>
       {/* header */}
@@ -178,7 +185,7 @@ export default function PageView() {
         </View>
 
         <View style={S.titleWrap} pointerEvents="none">
-          <Text style={S.title}>{`Pag ${pageNum}`}</Text>
+          <Text style={S.title}>{`pag ${pageNum}`}</Text>
         </View>
 
         <TouchableOpacity
@@ -229,13 +236,16 @@ export default function PageView() {
           activeOpacity={0.6}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <MaterialIcons name="add" size={32} color="#2576b9ff" />
+          <MaterialIcons name="add" size={32} color="#2e7d32" />
         </TouchableOpacity>
 
         {/* 4) dibujar */}
         <TouchableOpacity
           style={S.toolCircle}
-          onPress={() => {}}
+          onPress={() => {
+            console.log('Botón lápiz presionado');
+            setShowDrawMenu(!showDrawMenu);
+          }}
           activeOpacity={0.6}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
@@ -262,6 +272,42 @@ export default function PageView() {
           <MaterialIcons name="redo" size={26} color="#757575" />
         </TouchableOpacity>
       </View>
+
+      {/* Modal de selección de modo */}
+      <Modal
+        visible={showDrawMenu}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDrawMenu(false)}
+      >
+        <TouchableOpacity
+          style={S.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowDrawMenu(false)}
+        >
+          <View style={S.modalMenuContainer}>
+            {/* Opción Dibujar */}
+            <TouchableOpacity
+              style={S.modalOption}
+              onPress={() => handleSelectDrawMode('draw')}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="brush" size={22} color="#333" />
+              <Text style={S.modalOptionText}>Dibujar</Text>
+            </TouchableOpacity>
+
+            {/* Opción Texto */}
+            <TouchableOpacity
+              style={S.modalOption}
+              onPress={() => handleSelectDrawMode('text')}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="text-fields" size={22} color="#333" />
+              <Text style={S.modalOptionText}>Texto</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
