@@ -236,7 +236,7 @@ export default function PageView() {
           activeOpacity={0.6}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <MaterialIcons name="add" size={32} color="#2e7d32" />
+          <MaterialIcons name="add" size={32} color="#2467a5ea" />
         </TouchableOpacity>
 
         {/* 4) dibujar */}
