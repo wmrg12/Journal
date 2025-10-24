@@ -249,7 +249,7 @@ export default function PageView() {
         <TouchableOpacity
           onPress={() => {
             router.replace({
-              pathname: "/tabs/home",
+              pathname: "/pageList",
               params: { journalId, color: String(bg) },
             });
           }}
