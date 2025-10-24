@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, Alert, Modal, TextInput, ScrollView } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { pagePalette, uiColors } from '@/constants/colors';
+import { pagePalette, uiColors, textColors } from '@/constants/colors';
+import { textFonts, TextFont } from '@/constants/fonts';
 import S from '../../styles/pageViewStyles';
 import { createPage, deletePage, getTotalPages, getPageColor } from '@/src/db/dao';
 
@@ -20,6 +21,12 @@ export default function PageView() {
 
   const [bg, setBg] = useState<(typeof pagePalette)[number]>(pagePalette[0]);
   const [showDrawMenu, setShowDrawMenu] = useState(false);
+  const [showTextOptions, setShowTextOptions] = useState(false);
+  const [selectedTextColor, setSelectedTextColor] = useState<(typeof textColors)[number]>(
+    textColors[0],
+  );
+  const [selectedFont, setSelectedFont] = useState<TextFont>(textFonts[0]);
+  const [textInput, setTextInput] = useState('');
 
   // inicializa desde el param `color` si viene
   useEffect(() => {
@@ -132,8 +139,21 @@ export default function PageView() {
 
   const handleSelectDrawMode = (mode: 'text' | 'draw') => {
     setShowDrawMenu(false);
-    // implementar lógica de texto o dibujo
-    Alert.alert('Modo seleccionado', mode === 'text' ? 'Modo Texto' : 'Modo Dibujo');
+    if (mode === 'text') {
+      setShowTextOptions(true);
+    } else {
+      // implementar lógica de dibujo
+      Alert.alert('Modo dibujo', 'Funcionalidad no implementada aún.');
+    }
+  };
+
+  const handleAddText = () => {
+    if (textInput.trim()) {
+      // implementarías la lógica para añadir el texto al canvas
+      Alert.alert('Texto añadido', `Color: ${selectedTextColor}, Font: ${selectedFont}`);
+      setTextInput('');
+      setShowTextOptions(false);
+    }
   };
 
   return (
@@ -185,7 +205,7 @@ export default function PageView() {
         </View>
 
         <View style={S.titleWrap} pointerEvents="none">
-          <Text style={S.title}>{`pag ${pageNum}`}</Text>
+          <Text style={S.title}>{`Pag ${pageNum}`}</Text>
         </View>
 
         <TouchableOpacity
@@ -307,6 +327,89 @@ export default function PageView() {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Modal de opciones de texto */}
+      <Modal
+        visible={showTextOptions}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowTextOptions(false)}
+      >
+        <View style={S.textModalOverlay}>
+          <TouchableOpacity
+            style={S.textModalBackground}
+            activeOpacity={1}
+            onPress={() => setShowTextOptions(false)}
+          />
+          <View style={S.textOptionsContainer}>
+            {/* Header */}
+            <View style={S.textOptionsHeader}>
+              <View style={S.textIconContainer}>
+                <Text style={S.textIconLetter}>T</Text>
+              </View>
+              <Text style={S.textOptionsTitle}>Escribir texto</Text>
+            </View>
+
+            {/* Input de texto */}
+            <TextInput
+              style={S.textInput}
+              placeholder="Escribe aquí..."
+              value={textInput}
+              onChangeText={setTextInput}
+              multiline
+              autoFocus
+            />
+
+            {/* Colores */}
+            <View style={S.colorSection}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {textColors.map((colorOption) => (
+                  <TouchableOpacity
+                    key={colorOption}
+                    onPress={() => setSelectedTextColor(colorOption)}
+                    style={[
+                      S.colorCircle,
+                      { backgroundColor: colorOption },
+                      selectedTextColor === colorOption && S.colorCircleSelected,
+                    ]}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Fuentes */}
+            <View style={S.fontSection}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {textFonts.map((font) => (
+                  <TouchableOpacity
+                    key={font}
+                    onPress={() => setSelectedFont(font)}
+                    style={[S.fontButton, selectedFont === font && S.fontButtonSelected]}
+                  >
+                    <Text
+                      style={[
+                        S.fontButtonText,
+                        { fontFamily: font },
+                        selectedFont === font && S.fontButtonTextSelected,
+                      ]}
+                    >
+                      {font}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity style={S.fontButton}>
+                  <Text style={S.fontButtonText}>...</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+
+            {/* Botón añadir */}
+            <TouchableOpacity style={S.addTextButton} onPress={handleAddText} activeOpacity={0.7}>
+              <Text style={S.addTextButtonText}>Añadir texto</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
