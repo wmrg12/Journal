@@ -1,11 +1,18 @@
-import { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Alert, Modal } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
-import { pagePalette, uiColors } from '@/constants/colors';
-import S from '../../styles/pageViewStyles';
-import { createPage, deletePage, getTotalPages, getPageColor } from '@/src/db/dao';
+import { useEffect, useState } from "react";
+import { View, Text, TouchableOpacity, Alert, Modal } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { TouchableWithoutFeedback } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import { drawColors, pagePalette, uiColors } from "@/constants/colors";
+import Slider from "@react-native-community/slider";
+import S from "../../styles/pageViewStyles";
+import {
+  createPage,
+  deletePage,
+  getTotalPages,
+  getPageColor,
+} from "@/src/db/dao";
 
 type Params = {
   journalId?: string;
@@ -14,18 +21,30 @@ type Params = {
   totalPages?: string;
 };
 
+type DrawTool = "pencil" | "pen" | "marker";
+
 export default function PageView() {
-  const { journalId, color, pageNumber, totalPages } = useLocalSearchParams<Params>();
+  const { journalId, color, pageNumber, totalPages } =
+    useLocalSearchParams<Params>();
   const router = useRouter();
 
   const [bg, setBg] = useState<(typeof pagePalette)[number]>(pagePalette[0]);
   const [showDrawMenu, setShowDrawMenu] = useState(false);
+  const [showDrawTools, setShowDrawTools] = useState(false);
+
+  // Estados para herramientas de dibujo
+  const [selectedTool, setSelectedTool] = useState<DrawTool>("pencil");
+  const [selectedColor, setSelectedColor] = useState("#000000");
+  const [strokeWidth, setStrokeWidth] = useState(2);
+
+  // Grosores disponibles
+  const strokeWidths = [1, 2, 4, 6, 8];
 
   // inicializa desde el param `color` si viene
   useEffect(() => {
-    if (typeof color === 'string') {
+    if (typeof color === "string") {
       const found = (pagePalette as readonly string[]).find(
-        (c) => c.toLowerCase() === color.toLowerCase(),
+        (c) => c.toLowerCase() === color.toLowerCase()
       );
       setBg((found ?? pagePalette[0]) as (typeof pagePalette)[number]);
     } else {
@@ -39,9 +58,9 @@ export default function PageView() {
     if (!journalId) return;
     (async () => {
       const dbColor = await getPageColor(String(journalId), pageNum);
-      if (typeof dbColor === 'string' && dbColor.length > 0) {
+      if (typeof dbColor === "string" && dbColor.length > 0) {
         const found = (pagePalette as readonly string[]).find(
-          (c) => c.toLowerCase() === dbColor.toLowerCase(),
+          (c) => c.toLowerCase() === dbColor.toLowerCase()
         );
         if (found) setBg(found as (typeof pagePalette)[number]);
       }
@@ -59,7 +78,7 @@ export default function PageView() {
       const safeTotal = Math.max(dbTotal, 1);
       if (safeTotal !== totalParam || pageNum > safeTotal) {
         router.replace({
-          pathname: '/page',
+          pathname: "/page",
           params: {
             journalId,
             color: String(bg),
@@ -75,22 +94,22 @@ export default function PageView() {
   // acciones
   const handleDeletePage = () => {
     if (totalParam <= 1 || !journalId) {
-      Alert.alert('No se puede eliminar', 'Debe existir al menos una página.');
+      Alert.alert("No se puede eliminar", "Debe existir al menos una página.");
       return;
     }
-    Alert.alert('Eliminar página', `¿Eliminar la página ${pageNum}?`, [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert("Eliminar página", `¿Eliminar la página ${pageNum}?`, [
+      { text: "Cancelar", style: "cancel" },
       {
-        text: 'Eliminar',
-        style: 'destructive',
+        text: "Eliminar",
+        style: "destructive",
         onPress: async () => {
           try {
             const { pageNumber: target, total: newTotal } = await deletePage(
               String(journalId),
-              pageNum,
+              pageNum
             );
             router.replace({
-              pathname: '/page',
+              pathname: "/page",
               params: {
                 journalId,
                 color: String(bg),
@@ -100,7 +119,7 @@ export default function PageView() {
             });
           } catch (e) {
             console.error(e);
-            Alert.alert('Error', 'No se pudo eliminar la página.');
+            Alert.alert("Error", "No se pudo eliminar la página.");
           }
         },
       },
@@ -113,10 +132,10 @@ export default function PageView() {
       // crea heredando el color actual de la hoja
       const { pageNumber: newNum, total: newTotal } = await createPage(
         String(journalId),
-        String(bg),
+        String(bg)
       );
       router.replace({
-        pathname: '/page',
+        pathname: "/page",
         params: {
           journalId,
           color: String(bg),
@@ -126,18 +145,43 @@ export default function PageView() {
       });
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'No se pudo crear la página.');
+      Alert.alert("Error", "No se pudo crear la página.");
     }
   };
 
-  const handleSelectDrawMode = (mode: 'text' | 'draw') => {
-    setShowDrawMenu(false);
-    // implementar lógica de texto o dibujo
-    Alert.alert('Modo seleccionado', mode === 'text' ? 'Modo Texto' : 'Modo Dibujo');
+  const handleSelectDrawMode = (mode: "text" | "draw") => {
+    if (mode === "draw") {
+      setShowDrawMenu(false);
+      setShowDrawTools(true);
+    } else {
+      setShowDrawMenu(false);
+      Alert.alert("Modo seleccionado", "Modo Texto");
+    }
+  };
+
+  const handleSelectTool = (tool: DrawTool) => {
+    setSelectedTool(tool);
+  };
+
+  const handleContinue = () => {
+    setShowDrawTools(false);
+    Alert.alert(
+      "Herramienta seleccionada",
+      `${
+        selectedTool === "pencil"
+          ? "Lápiz"
+          : selectedTool === "pen"
+          ? "Pincel"
+          : "Marcador"
+      }\nColor: ${selectedColor}\nGrosor: ${strokeWidth}`
+    );
   };
 
   return (
-    <SafeAreaView style={[S.container, { backgroundColor: bg }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={[S.container, { backgroundColor: bg }]}
+      edges={["top", "left", "right"]}
+    >
       {/* header */}
       <View style={S.header}>
         {/* IZQUIERDA: ← → */}
@@ -146,7 +190,7 @@ export default function PageView() {
             <TouchableOpacity
               onPress={() =>
                 router.replace({
-                  pathname: '/page',
+                  pathname: "/page",
                   params: {
                     journalId,
                     color: String(bg),
@@ -159,14 +203,18 @@ export default function PageView() {
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               activeOpacity={0.6}
             >
-              <MaterialIcons name="arrow-back-ios" size={22} color={uiColors.danger} />
+              <MaterialIcons
+                name="arrow-back-ios"
+                size={22}
+                color={uiColors.danger}
+              />
             </TouchableOpacity>
           )}
           {pageNum < total && (
             <TouchableOpacity
               onPress={() =>
                 router.push({
-                  pathname: '/page',
+                  pathname: "/page",
                   params: {
                     journalId,
                     color: String(bg),
@@ -179,7 +227,11 @@ export default function PageView() {
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               activeOpacity={0.6}
             >
-              <MaterialIcons name="arrow-forward-ios" size={22} color={uiColors.danger} />
+              <MaterialIcons
+                name="arrow-forward-ios"
+                size={22}
+                color={uiColors.danger}
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -191,7 +243,7 @@ export default function PageView() {
         <TouchableOpacity
           onPress={() => {
             router.replace({
-              pathname: '/tabs/home',
+              pathname: "/tabs/home",
               params: { journalId, color: String(bg) },
             });
           }}
@@ -243,7 +295,7 @@ export default function PageView() {
         <TouchableOpacity
           style={S.toolCircle}
           onPress={() => {
-            console.log('Botón lápiz presionado');
+            console.log("Botón lápiz presionado");
             setShowDrawMenu(!showDrawMenu);
           }}
           activeOpacity={0.6}
@@ -289,7 +341,7 @@ export default function PageView() {
             {/* Opción Dibujar */}
             <TouchableOpacity
               style={S.modalOption}
-              onPress={() => handleSelectDrawMode('draw')}
+              onPress={() => handleSelectDrawMode("draw")}
               activeOpacity={0.7}
             >
               <MaterialIcons name="brush" size={22} color="#333" />
@@ -299,7 +351,7 @@ export default function PageView() {
             {/* Opción Texto */}
             <TouchableOpacity
               style={S.modalOption}
-              onPress={() => handleSelectDrawMode('text')}
+              onPress={() => handleSelectDrawMode("text")}
               activeOpacity={0.7}
             >
               <MaterialIcons name="text-fields" size={22} color="#333" />
@@ -307,6 +359,101 @@ export default function PageView() {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Modal de herramientas de dibujo */}
+      <Modal
+        visible={showDrawTools}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowDrawTools(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowDrawTools(false)}>
+          <View style={S.modalOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={S.drawModalContent}>
+                {/* Herramientas y colores en una misma fila */}
+                <View style={S.toolsAndColorsRow}>
+                  {/* Herramientas */}
+                  <View style={S.toolsRow}>
+                    {[
+                      { id: "pencil", icon: "edit", label: "Lápiz" },
+                      { id: "pen", icon: "brush", label: "Pincel" },
+                      { id: "marker", icon: "create", label: "Marcador" },
+                    ].map((tool) => (
+                      <TouchableOpacity
+                        key={tool.id}
+                        style={[
+                          S.toolButtonCompact,
+                          selectedTool === tool.id && S.toolButtonActive,
+                        ]}
+                        onPress={() => handleSelectTool(tool.id as DrawTool)}
+                      >
+                        <MaterialIcons
+                          name={tool.icon as any}
+                          size={20}
+                          color="#333"
+                        />
+                        <Text style={S.toolLabelCompact}>{tool.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Colores */}
+                  <View style={S.colorsRow}>
+                    {drawColors.map((clr) => (
+                      <TouchableOpacity
+                        key={clr}
+                        style={[
+                          S.colorButtonCompact,
+                          { backgroundColor: clr },
+                          selectedColor === clr && S.colorButtonActive,
+                        ]}
+                        onPress={() => setSelectedColor(clr)}
+                      />
+                    ))}
+                  </View>
+                </View>
+
+                <View style={S.thicknessSliderSection}>
+                  <Text style={S.sectionLabel}>Grosor</Text>
+
+                  <View style={S.sliderWrapper}>
+                    <Slider
+                      style={S.slider}
+                      minimumValue={1}
+                      maximumValue={6}
+                      step={1}
+                      value={strokeWidth}
+                      onValueChange={(value) => setStrokeWidth(value)}
+                      minimumTrackTintColor="#2196F3"
+                      maximumTrackTintColor="#ddd"
+                      thumbTintColor="#2196F3"
+                    />
+
+                    <View style={S.dotsRow}>
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <View
+                          key={i}
+                          style={[
+                            S.dot,
+                            {
+                              backgroundColor:
+                                i + 1 === Math.round(strokeWidth)
+                                  ? "#2196F3"
+                                  : "#bbb",
+                              transform: [{ scale: (i + 1) / 5 }],
+                            },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </SafeAreaView>
   );
