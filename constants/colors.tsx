@@ -19,3 +19,7 @@ export const coverPalette = [
   "#F3B8C7", "#F06E9C", "#CBE8BA", "#E692F8", "#F2C9FB",
   "#D4E3FC", "#91E4FB", "#F4EB49", "#FFC957", "#AFD2D5",
 ] as const;
+
+export const drawColors = [
+  "#000000ff","#f90404ff", "#82d4dbff", "#f160c1ff",  "#fbc628ff"
+] as const;
