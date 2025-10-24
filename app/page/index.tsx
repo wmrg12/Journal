@@ -1,18 +1,13 @@
-import { useEffect, useState } from "react";
-import { View, Text, TouchableOpacity, Alert, Modal } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { TouchableWithoutFeedback } from "react-native";
-import { MaterialIcons } from "@expo/vector-icons";
-import { drawColors, pagePalette, uiColors } from "@/constants/colors";
+import { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, TouchableWithoutFeedback, Alert, Modal, TextInput, ScrollView } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialIcons } from '@expo/vector-icons';
+import { pagePalette, uiColors, textColors} from '@/constants/colors';
+import { textFonts, TextFont } from '@/constants/fonts';
 import Slider from "@react-native-community/slider";
-import S from "../../styles/pageViewStyles";
-import {
-  createPage,
-  deletePage,
-  getTotalPages,
-  getPageColor,
-} from "@/src/db/dao";
+import S from '../../styles/pageViewStyles';
+import { createPage, deletePage, getTotalPages, getPageColor } from '@/src/db/dao';
 
 type Params = {
   journalId?: string;
@@ -39,6 +34,14 @@ export default function PageView() {
 
   // Grosores disponibles
   const strokeWidths = [1, 2, 4, 6, 8];
+
+
+  const [showTextOptions, setShowTextOptions] = useState(false);
+  const [selectedTextColor, setSelectedTextColor] = useState<(typeof textColors)[number]>(
+    textColors[0],
+  );
+  const [selectedFont, setSelectedFont] = useState<TextFont>(textFonts[0]);
+  const [textInput, setTextInput] = useState('');
 
   // inicializa desde el param `color` si viene
   useEffect(() => {
@@ -154,8 +157,7 @@ export default function PageView() {
       setShowDrawMenu(false);
       setShowDrawTools(true);
     } else {
-      setShowDrawMenu(false);
-      Alert.alert("Modo seleccionado", "Modo Texto");
+      setShowTextOptions(true);
     }
   };
 
@@ -163,18 +165,7 @@ export default function PageView() {
     setSelectedTool(tool);
   };
 
-  const handleContinue = () => {
-    setShowDrawTools(false);
-    Alert.alert(
-      "Herramienta seleccionada",
-      `${
-        selectedTool === "pencil"
-          ? "Lápiz"
-          : selectedTool === "pen"
-          ? "Pincel"
-          : "Marcador"
-      }\nColor: ${selectedColor}\nGrosor: ${strokeWidth}`
-    );
+  
   };
 
   return (
@@ -237,7 +228,7 @@ export default function PageView() {
         </View>
 
         <View style={S.titleWrap} pointerEvents="none">
-          <Text style={S.title}>{`pag ${pageNum}`}</Text>
+          <Text style={S.title}>{`Pag ${pageNum}`}</Text>
         </View>
 
         <TouchableOpacity
@@ -361,7 +352,89 @@ export default function PageView() {
         </TouchableOpacity>
       </Modal>
 
-      {/* Modal de herramientas de dibujo */}
+      {/* Modal de opciones de texto */}
+      <Modal
+        visible={showTextOptions}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowTextOptions(false)}
+      >
+        <View style={S.textModalOverlay}>
+          <TouchableOpacity
+            style={S.textModalBackground}
+            activeOpacity={1}
+            onPress={() => setShowTextOptions(false)}
+          />
+          <View style={S.textOptionsContainer}>
+            {/* Header */}
+            <View style={S.textOptionsHeader}>
+              <View style={S.textIconContainer}>
+                <Text style={S.textIconLetter}>T</Text>
+              </View>
+              <Text style={S.textOptionsTitle}>Escribir texto</Text>
+            </View>
+
+            {/* Input de texto */}
+            <TextInput
+              style={S.textInput}
+              placeholder="Escribe aquí..."
+              value={textInput}
+              onChangeText={setTextInput}
+              multiline
+              autoFocus
+            />
+
+            {/* Colores */}
+            <View style={S.colorSection}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {textColors.map((colorOption) => (
+                  <TouchableOpacity
+                    key={colorOption}
+                    onPress={() => setSelectedTextColor(colorOption)}
+                    style={[
+                      S.colorCircle,
+                      { backgroundColor: colorOption },
+                      selectedTextColor === colorOption && S.colorCircleSelected,
+                    ]}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Fuentes */}
+            <View style={S.fontSection}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {textFonts.map((font) => (
+                  <TouchableOpacity
+                    key={font}
+                    onPress={() => setSelectedFont(font)}
+                    style={[S.fontButton, selectedFont === font && S.fontButtonSelected]}
+                  >
+                    <Text
+                      style={[
+                        S.fontButtonText,
+                        { fontFamily: font },
+                        selectedFont === font && S.fontButtonTextSelected,
+                      ]}
+                    >
+                      {font}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity style={S.fontButton}>
+                  <Text style={S.fontButtonText}>...</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+
+            {/* Botón añadir */}
+            <TouchableOpacity style={S.addTextButton} onPress={handleAddText} activeOpacity={0.7}>
+              <Text style={S.addTextButtonText}>Añadir texto</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+                {/* Modal de herramientas de dibujo */}
       <Modal
         visible={showDrawTools}
         transparent={true}
@@ -455,6 +528,7 @@ export default function PageView() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
     </SafeAreaView>
   );
 }
