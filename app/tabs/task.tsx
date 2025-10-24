@@ -17,7 +17,7 @@ import {
   deleteTask,
   Task,
 } from "@/src/db/dao";
-import { stylest } from "@/styles/taskStyle"; 
+import { stylest } from "@/styles/taskStyles"; 
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
