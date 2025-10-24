@@ -301,7 +301,6 @@ export default function PageView() {
         <TouchableOpacity
           style={S.toolCircle}
           onPress={() => {
-            console.log("Botón lápiz presionado");
             setShowDrawMenu(!showDrawMenu);
           }}
           activeOpacity={0.6}

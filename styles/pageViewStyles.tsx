@@ -102,7 +102,7 @@ export default StyleSheet.create({
     color: uiColors.black,
   },
 
-  // Estilos del modal de deibujo
+  // Estilos del modal de dibujo
   modalOverlay: {
     flex: 1,
     justifyContent: "flex-end",
@@ -178,7 +178,6 @@ export default StyleSheet.create({
     alignItems: "center",
     marginBottom: 5,
   },
-
   toolsRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -191,7 +190,6 @@ export default StyleSheet.create({
     borderRadius: 8,
     backgroundColor: "#f5f5f5",
   },
-
   toolLabelCompact: {
     fontSize: 11,
     color: "#333",
@@ -214,12 +212,10 @@ export default StyleSheet.create({
     borderColor: "#2196F3",
     borderWidth: 2,
   },
-
   colorsRow: {
     flexDirection: "row",
     alignItems: "center",
   },
-
   colorButtonCompact: {
     width: 26,
     height: 26,
@@ -228,7 +224,6 @@ export default StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "transparent",
   },
-
   thicknessSliderSection: {
     flexDirection: "row",
     alignItems: "center",
@@ -239,12 +234,17 @@ export default StyleSheet.create({
   thicknessSection: {
     marginBottom: 25,
   },
+
+  // 🔹 AQUÍ está el label alineado totalmente a la derecha
   sectionLabel: {
     fontSize: 14,
     color: "#666",
-    textAlign: "left",
+    textAlign: "right",
+    alignSelf: "flex-end",
     marginRight: 10,
+    flexShrink: 1,
   },
+
   thicknessSlider: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -289,145 +289,122 @@ export default StyleSheet.create({
     borderRadius: 10,
   },
   colorCircleSelected: {
-    borderColor: '#333',
+    borderColor: "#333",
     borderWidth: 2.5,
   },
 
-  // Estilos del modal de texto
+  // Modal de texto
   textModalOverlay: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
-
   textModalBackground: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
   },
-
   textOptionsContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopLeftRadius: 35,
     borderTopRightRadius: 35,
     padding: 20,
     minHeight: 350,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: -2,
-    },
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
   },
-
   textOptionsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 20,
     paddingBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
   },
-
   textIconContainer: {
     width: 30,
     height: 30,
     borderRadius: 8,
-    backgroundColor: '#f5f5f5',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#f5f5f5",
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 10,
   },
-
   textIconLetter: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
   },
-
   textOptionsTitle: {
     fontSize: 16,
-    fontWeight: '400',
-    color: '#333',
+    fontWeight: "400",
+    color: "#333",
   },
-
-  // Input de texto
   textInput: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
     borderRadius: 8,
     padding: 12,
     minHeight: 70,
     fontSize: 16,
-    color: '#333',
+    color: "#333",
     marginBottom: 20,
-    textAlignVertical: 'top',
-    backgroundColor: '#fafafa',
+    textAlignVertical: "top",
+    backgroundColor: "#fafafa",
   },
-
-  // Sección de colores
   colorSection: {
     marginBottom: 20,
   },
-
   colorCircle: {
     width: 28,
     height: 28,
     borderRadius: 16,
     marginRight: 13,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: "transparent",
   },
-
-  // Sección de fuentes
   fontSection: {
     marginBottom: 20,
   },
-
   fontButton: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
     marginRight: 10,
     minWidth: 100,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-
   fontButtonSelected: {
-    backgroundColor: '#e0e0e0',
+    backgroundColor: "#e0e0e0",
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
   },
-
   fontButtonText: {
     fontSize: 14,
-    color: '#666',
-    fontWeight: '400',
+    color: "#666",
+    fontWeight: "400",
   },
-
   fontButtonTextSelected: {
-    color: '#333',
-    fontWeight: '500',
+    color: "#333",
+    fontWeight: "500",
   },
-
-  // Botón añadir texto
   addTextButton: {
-    backgroundColor: '#2467a5',
+    backgroundColor: "#2467a5",
     paddingVertical: 14,
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 8,
   },
-
   addTextButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

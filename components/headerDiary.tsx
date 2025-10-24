@@ -188,7 +188,7 @@ export default function HeaderDiarios({
               placeholder="MM"
               value={month}
               onChangeText={handleMonthChange}
-              style={[styles.dateInput, styles.inputMM]}
+              style={[styles.inputMM]}
               keyboardType="number-pad"
               maxLength={2}
             />
@@ -198,7 +198,7 @@ export default function HeaderDiarios({
               placeholder="AAAA"
               value={year}
               onChangeText={handleYearChange}
-              style={[styles.dateInput, styles.inputYYYY]}
+              style={[ styles.inputYYYY]}
               keyboardType="number-pad"
               maxLength={4}
             />
