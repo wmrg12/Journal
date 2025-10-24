@@ -30,15 +30,6 @@ export default function PillTabBar({
     setWidth(e.nativeEvent.layout.width);
   };
 
-  const labelOpacity =
-    itemW > 0
-      ? translateX.interpolate({
-          inputRange: [-itemW * 0.5, 0, itemW * 0.5],
-          outputRange: [0, 1, 0],
-          extrapolate: "clamp",
-        })
-      : 0;
-
   return (
   <View
     onLayout={onLayout}

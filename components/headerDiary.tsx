@@ -8,17 +8,14 @@ import {
   View,
   TextInput,
 } from "react-native";
-import styles from "@/styles/globalStyles"; // ruta correcta desde /components
+import styles from "@/styles/globalStyles"; 
 import { uiColors } from "../constants/colors";
 
 export type TabKey = "mine" | "fav";
 
 type Props = {
-  /** Tab activo controlado desde el padre */
   active?: TabKey;
-  /** Notifica al padre cuando cambia la pestaña */
   onChangeTab?: (tab: TabKey) => void;
-  //accion del boton de fecha
   onApplyDates?: (range: { from?: number; to?: number }) => void;
 };
 
@@ -27,7 +24,6 @@ export default function HeaderDiarios({
   onChangeTab,
   onApplyDates,
 }: Props) {
-  // 0 = mine, 1 = fav
   const [activeIdx, setActiveIdx] = useState<number>(
     activeProp === "fav" ? 1 : 0
   );
@@ -112,7 +108,6 @@ export default function HeaderDiarios({
     // Si el valor supera 12, no se actualiza
     if (isNaN(value) || value < 1 || value > 12) return;
 
-    // Si tiene un solo dígito y es > 1, lo completa con 0 adelante
     if (numeric.length === 1 && value > 1) {
       const formatted = value.toString().padStart(2, "0");
       setMonth(formatted);
@@ -121,7 +116,6 @@ export default function HeaderDiarios({
       return;
     }
 
-    // Si ya tiene 2 dígitos, completa y pasa al año
     if (numeric.length === 2) {
       setMonth(numeric);
       yearRef.current?.focus();
@@ -140,7 +134,7 @@ export default function HeaderDiarios({
       return;
     }
 
-    // No permitir antes de 1970 o después del año actual
+    // Control de anios
     if (value > currentYear) value = currentYear;
 
     setYear(value.toString());
@@ -255,7 +249,7 @@ export default function HeaderDiarios({
           </Pressable>
         </View>
       )}
-      {/* Lupa SOLO cuando la barra no está visible */}
+      {/* Lupa  */}
       {!showSearchBar && (
         <TouchableOpacity style={styles.searchButton} onPress={openPanel}>
           <Ionicons name="search" size={22} color={uiColors.danger} />

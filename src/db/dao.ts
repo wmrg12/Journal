@@ -22,9 +22,9 @@ export async function initDb() {
       ) ?? resolve();
     });
 
-    // Bootstrap + migraciones en una transacción
+    // Tablas sql
     await txLegacy(async (tx: any) => {
-      // Tablas base (sin suponer columnas nuevas)
+
       await execTx(
         tx,
         `CREATE TABLE IF NOT EXISTS journals(
@@ -48,7 +48,18 @@ export async function initDb() {
         );`
       );
 
-      // ---- MIGRACIONES: añade columnas si faltan (idempotentes) ----
+      await execTx(
+        tx,
+        `CREATE TABLE IF NOT EXISTS tasks(
+          id TEXT PRIMARY KEY NOT NULL,
+          title TEXT NOT NULL,
+          is_completed INTEGER NOT NULL DEFAULT 0 CHECK(is_completed IN (0,1)),
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        );`
+      );
+
+      // ---- MIGRACIONES ----
       await execTxIgnore(
         tx,
         `ALTER TABLE journals ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`
@@ -58,7 +69,7 @@ export async function initDb() {
         `ALTER TABLE pages ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`
       );
 
-      // Índices (idempotentes)
+      // Índices
       await execTx(
         tx,
         `CREATE INDEX IF NOT EXISTS idx_pages_journal ON pages(journal_id);`
@@ -71,6 +82,7 @@ export async function initDb() {
         tx,
         `CREATE UNIQUE INDEX IF NOT EXISTS ux_pages_journal_number ON pages(journal_id, page_number);`
       );
+
     });
 
     return;
@@ -102,6 +114,16 @@ export async function initDb() {
         bg_color TEXT NOT NULL,
         created_at INTEGER NOT NULL,
         FOREIGN KEY(journal_id) REFERENCES journals(id) ON DELETE CASCADE
+      );`
+    );
+
+    await runAsync(
+      `CREATE TABLE IF NOT EXISTS tasks(
+        id TEXT PRIMARY KEY NOT NULL,
+        title TEXT NOT NULL,
+        is_completed INTEGER NOT NULL DEFAULT 0 CHECK(is_completed IN (0,1)),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
       );`
     );
 
@@ -147,12 +169,11 @@ function execTx(tx: any, sql: string, params: any[] = []): Promise<void> {
   });
 }
 
-// Igual que execTx pero ignora el error (útil para ALTER COLUMN ya existente)
+// Ignora errores
 async function execTxIgnore(tx: any, sql: string, params: any[] = []) {
   try {
     await execTx(tx, sql, params);
   } catch {
-    /* no-op */
   }
 }
 
@@ -176,7 +197,7 @@ async function runAsyncIgnore(sql: string, params: any[] = []) {
   try {
     await runAsync(sql, params);
   } catch {
-    /* no-op */
+
   }
 }
 
@@ -275,6 +296,16 @@ export async function toggleFavorite(journalId: string, favorite: boolean) {
         `UPDATE journals SET is_favorite = ?, updated_at = ? WHERE id = ?`,
         [value, now, journalId]
       );
+    });
+  }
+}
+
+export async function deleteJournal(journalId: string) {
+  if (isAsync) {
+    await runAsync(`DELETE FROM journals WHERE id = ?`, [journalId]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, `DELETE FROM journals WHERE id = ?`, [journalId]);
     });
   }
 }
@@ -452,4 +483,134 @@ export async function deletePage(journalId: string, pageNumber: number) {
   const total = await getTotalPages(journalId);
   const target = Math.max(Math.min(pageNumber, total), 1);
   return { pageNumber: Math.max(target, 1), total: Math.max(total, 1) };
+}
+
+// ---------- DAO: Tasks ----------
+export type Task = {
+  id: string;
+  title: string;
+  is_completed: number;
+  created_at: number;
+  updated_at: number;
+};
+
+export async function createTask(title: string) {
+  const id = await Crypto.randomUUID();
+  const now = Math.floor(Date.now() / 1000);
+
+  if (isAsync) {
+    await runAsync(
+      `INSERT INTO tasks(id, title, is_completed, created_at, updated_at)
+       VALUES(?,?,?,?,?)`,
+      [id, title, 0, now, now]
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(
+        tx,
+        `INSERT INTO tasks(id, title, is_completed, created_at, updated_at)
+         VALUES(?,?,?,?,?)`,
+        [id, title, 0, now, now]
+      );
+    });
+  }
+  return { id };
+}
+
+export async function listTasks(): Promise<Task[]> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync?.(
+      `SELECT id, title, is_completed, created_at, updated_at
+         FROM tasks
+        ORDER BY is_completed ASC, created_at ASC`
+    );
+    return rows ?? [];
+  }
+
+  return new Promise<Task[]>((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT id, title, is_completed, created_at, updated_at
+           FROM tasks
+          ORDER BY is_completed ASC, created_at ASC`,
+        [],
+        (_: any, res: any) => {
+          const out: Task[] = [];
+          for (let i = 0; i < res.rows.length; i++) out.push(res.rows.item(i));
+          resolve(out);
+        },
+        (_: any, err: any) => {
+          reject(err);
+          return true;
+        }
+      );
+    });
+  });
+}
+
+export async function updateTask(
+  taskId: string,
+  updates: {
+    title?: string;
+    is_completed?: boolean;
+  }
+) {
+  const now = Math.floor(Date.now() / 1000);
+  const fields: string[] = [];
+  const values: any[] = [];
+
+  if (updates.title !== undefined) {
+    fields.push("title = ?");
+    values.push(updates.title);
+  }
+  if (updates.is_completed !== undefined) {
+    fields.push("is_completed = ?");
+    values.push(updates.is_completed ? 1 : 0);
+  }
+
+  if (fields.length === 0) return;
+
+  fields.push("updated_at = ?");
+  values.push(now);
+  values.push(taskId);
+
+  const sql = `UPDATE tasks SET ${fields.join(", ")} WHERE id = ?`;
+
+  if (isAsync) {
+    await runAsync(sql, values);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, sql, values);
+    });
+  }
+}
+
+export async function toggleTaskCompletion(taskId: string, completed: boolean) {
+  const value = completed ? 1 : 0;
+  const now = Math.floor(Date.now() / 1000);
+
+  if (isAsync) {
+    await runAsync(
+      `UPDATE tasks SET is_completed = ?, updated_at = ? WHERE id = ?`,
+      [value, now, taskId]
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(
+        tx,
+        `UPDATE tasks SET is_completed = ?, updated_at = ? WHERE id = ?`,
+        [value, now, taskId]
+      );
+    });
+  }
+}
+
+export async function deleteTask(taskId: string) {
+  if (isAsync) {
+    await runAsync(`DELETE FROM tasks WHERE id = ?`, [taskId]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, `DELETE FROM tasks WHERE id = ?`, [taskId]);
+    });
+  }
 }

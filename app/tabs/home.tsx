@@ -44,7 +44,7 @@ const filtered = useMemo(() => {
     const c1 = (await getPageColor(j.id, 1)) ?? j.color;
 
     router.push({
-      pathname: "/page",
+      pathname: "/pageList",
       params: {
         journalId: j.id,
         color: c1,
@@ -91,7 +91,6 @@ const filtered = useMemo(() => {
         <View style={styles.favWrap}>
           <TouchableOpacity
             onPress={(e) => {
-              // @ts-ignore
               e?.stopPropagation?.();
               onToggleFavorite(item);
             }}
