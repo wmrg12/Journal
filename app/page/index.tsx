@@ -1,13 +1,27 @@
-import { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, TouchableWithoutFeedback, Alert, Modal, TextInput, ScrollView } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
-import { pagePalette, uiColors, textColors} from '@/constants/colors';
-import { textFonts, TextFont } from '@/constants/fonts';
+import { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  Alert,
+  Modal,
+  TextInput,
+  ScrollView,
+} from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialIcons } from "@expo/vector-icons";
+import { pagePalette, uiColors, textColors, drawColors } from "@/constants/colors";
+import { textFonts, TextFont } from "@/constants/fonts";
 import Slider from "@react-native-community/slider";
-import S from '../../styles/pageViewStyles';
-import { createPage, deletePage, getTotalPages, getPageColor } from '@/src/db/dao';
+import S from "../../styles/pageViewStyles";
+import {
+  createPage,
+  deletePage,
+  getTotalPages,
+  getPageColor,
+} from "@/src/db/dao";
 
 type Params = {
   journalId?: string;
@@ -27,21 +41,17 @@ export default function PageView() {
   const [showDrawMenu, setShowDrawMenu] = useState(false);
   const [showDrawTools, setShowDrawTools] = useState(false);
 
-  // Estados para herramientas de dibujo
   const [selectedTool, setSelectedTool] = useState<DrawTool>("pencil");
   const [selectedColor, setSelectedColor] = useState("#000000");
   const [strokeWidth, setStrokeWidth] = useState(2);
-
-  // Grosores disponibles
   const strokeWidths = [1, 2, 4, 6, 8];
 
-
   const [showTextOptions, setShowTextOptions] = useState(false);
-  const [selectedTextColor, setSelectedTextColor] = useState<(typeof textColors)[number]>(
-    textColors[0],
-  );
+  const [selectedTextColor, setSelectedTextColor] = useState<
+    (typeof textColors)[number]
+  >(textColors[0]);
   const [selectedFont, setSelectedFont] = useState<TextFont>(textFonts[0]);
-  const [textInput, setTextInput] = useState('');
+  const [textInput, setTextInput] = useState("");
 
   // inicializa desde el param `color` si viene
   useEffect(() => {
@@ -153,8 +163,8 @@ export default function PageView() {
   };
 
   const handleSelectDrawMode = (mode: "text" | "draw") => {
+    setShowDrawMenu(false);
     if (mode === "draw") {
-      setShowDrawMenu(false);
       setShowDrawTools(true);
     } else {
       setShowTextOptions(true);
@@ -164,8 +174,13 @@ export default function PageView() {
   const handleSelectTool = (tool: DrawTool) => {
     setSelectedTool(tool);
   };
-
-  
+  const handleAddText = () => {
+    if (textInput.trim()) {
+      // implementarías la lógica para añadir el texto al canvas
+      Alert.alert('Texto añadido', `Color: ${selectedTextColor}, Font: ${selectedFont}`);
+      setTextInput('');
+      setShowTextOptions(false);
+    }
   };
 
   return (
@@ -394,7 +409,8 @@ export default function PageView() {
                     style={[
                       S.colorCircle,
                       { backgroundColor: colorOption },
-                      selectedTextColor === colorOption && S.colorCircleSelected,
+                      selectedTextColor === colorOption &&
+                        S.colorCircleSelected,
                     ]}
                   />
                 ))}
@@ -408,7 +424,10 @@ export default function PageView() {
                   <TouchableOpacity
                     key={font}
                     onPress={() => setSelectedFont(font)}
-                    style={[S.fontButton, selectedFont === font && S.fontButtonSelected]}
+                    style={[
+                      S.fontButton,
+                      selectedFont === font && S.fontButtonSelected,
+                    ]}
                   >
                     <Text
                       style={[
@@ -428,13 +447,17 @@ export default function PageView() {
             </View>
 
             {/* Botón añadir */}
-            <TouchableOpacity style={S.addTextButton} onPress={handleAddText} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={S.addTextButton}
+              onPress={handleAddText}
+              activeOpacity={0.7}
+            >
               <Text style={S.addTextButtonText}>Añadir texto</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-                {/* Modal de herramientas de dibujo */}
+      {/* Modal de herramientas de dibujo */}
       <Modal
         visible={showDrawTools}
         transparent={true}
@@ -528,7 +551,6 @@ export default function PageView() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-
     </SafeAreaView>
   );
 }
