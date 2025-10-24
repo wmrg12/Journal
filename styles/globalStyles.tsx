@@ -265,14 +265,6 @@ rangeRow: {
 rangeCol: {
   flex: 1,
 },
-dateInput: {
-  height: 40,
-  borderRadius: 10,
-  backgroundColor: "#fff",
-  paddingHorizontal: 12,
-  borderWidth: 1,
-  borderColor: "rgba(0,0,0,0.08)",
-},
 applyBtn: {
   height: 40,
   paddingHorizontal: 14,
