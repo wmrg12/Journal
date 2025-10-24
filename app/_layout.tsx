@@ -44,6 +44,7 @@ export default function RootLayout() {
       <Stack.Screen name="login/index" options={{ title: "Iniciar Sesion" }} />
       <Stack.Screen name="createPage/index" options={{ title: "Crear pagina" }} />
       <Stack.Screen name="page/index" options={{ headerShown: false }} />
+      <Stack.Screen name="pageList"/>
     </Stack>
   </ClerkProvider>
   );
