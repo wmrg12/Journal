@@ -4,7 +4,7 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useEffect, useRef, useState } from "react";
 import type { LayoutChangeEvent } from "react-native";
 import { Animated, TouchableOpacity, View } from "react-native";
-import styles from "../app/styles/globalStyles";
+import styles from "@/styles/globalStyles";
 
 export default function PillTabBar({
   state,
