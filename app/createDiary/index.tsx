@@ -8,7 +8,7 @@ import {
   SafeAreaView,
   Alert,
 } from 'react-native';
-import { diaryStyles as styles } from '@/app/styles/createCoverStyles';
+import { diaryStyles as styles } from '@/styles/createCoverStyles';
 import { useRouter } from 'expo-router';
 import { uiColors, coverPalette } from '@/constants/colors';
 import ColorPalette from '@/components/ColorPalette';
