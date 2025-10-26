@@ -1,10 +1,10 @@
+import ColorPalette from '@/components/ColorPalette';
 import { pagePalette, uiColors } from '@/constants/colors';
+import { createPage } from '@/src/db/dao';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Image, Text, View, TouchableOpacity, Alert } from 'react-native';
-import S from '../styles/createPageStyles';
-import ColorPalette from '@/components/ColorPalette';
-import { createPage } from '@/src/db/dao';
+import { Alert, Image, Text, TouchableOpacity, View } from 'react-native';
+import S from '../../styles/createPageStyles';
 
 type Params = { journalId?: string; color?: string; name?: string };
 
