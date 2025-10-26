@@ -29,14 +29,15 @@ export default function Home() {
       }
     }, [load, highlight])
   );
+  
   const byTab = useMemo(
     () => (tab === "fav" ? items.filter(i => i.is_favorite === 1) : items),
     [items, tab]
   );
 
-const filtered = useMemo(() => {
-  if (!range.from || !range.to) return byTab;
-  return byTab.filter((d: Journal) => d.created_at >= range.from! && d.created_at < range.to!);
+  const filtered = useMemo(() => {
+    if (!range.from || !range.to) return byTab;
+    return byTab.filter((d: Journal) => d.created_at >= range.from! && d.created_at < range.to!);
   }, [byTab, range]);
 
   const openJournal = async (j: Journal) => {
@@ -45,16 +46,15 @@ const filtered = useMemo(() => {
 
     router.push({
       pathname: "/pageList",
-      params: {
+      params: { 
         journalId: j.id,
+        totalPages: total.toString(),
         color: c1,
-        pageNumber: "1",
-        totalPages: String(total),
-      },
+      }
     });
   };
 
-   const onToggleFavorite = async (j: Journal) => {
+  const onToggleFavorite = async (j: Journal) => {
     const next = j.is_favorite === 1 ? 0 : 1;
 
     setItems(prev => prev.map(it => (it.id === j.id ? { ...it, is_favorite: next } : it)));
@@ -67,51 +67,68 @@ const filtered = useMemo(() => {
     }
   };
 
-
   const renderItem = ({ item }: { item: Journal }) => {
     const isHL = !!hl && item.id === hl;
     const isFav = item.is_favorite === 1;
     const fecha = new Date(item.created_at * 1000).toLocaleDateString("es-ES", {
-    day: "numeric",
-    month: "numeric",
-    year: "numeric",
-  });
+      day: "numeric",
+      month: "numeric",
+      year: "numeric",
+    });
 
     return (
-    <View style={styles.cardWrapper}>
-      <TouchableOpacity
+      <View style={styles.cardWrapper}>
+        <TouchableOpacity
           onPress={() => openJournal(item)}
           style={[styles.card, isHL && styles.cardHL, { backgroundColor: item.color }]}
           activeOpacity={0.9}
-      >
-        <View style={styles.bookBinding} />
-        <View style={styles.bookDivider} />
-        
-      {/* botón favorito */}
-        <View style={styles.favWrap}>
-          <TouchableOpacity
-            onPress={(e) => {
-              e?.stopPropagation?.();
-              onToggleFavorite(item);
-            }}
-            activeOpacity={0.85}
-            style={[styles.favBtn, isFav && styles.favBtnActive]}
-            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
         >
-            <Ionicons
-              name={isFav ? "heart" : "heart-outline"}
-              size={20}
-              color={isFav ? (uiColors.danger ?? "#E63946") : uiColors.white}
-            />
-          </TouchableOpacity>
-      </View>
+          <View style={styles.bookBinding} />
+          <View style={styles.bookDivider} />
+          
+          {/* Boton favorito */}
+          <View style={styles.favWrap}>
+            <TouchableOpacity
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                onToggleFavorite(item);
+              }}
+              activeOpacity={0.85}
+              style={[styles.favBtn, isFav && styles.favBtnActive]}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <Ionicons
+                name={isFav ? "heart" : "heart-outline"}
+                size={20}
+                color={isFav ? (uiColors.danger ?? "#E63946") : uiColors.white}
+              />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Boton editar */}
+          <View style={styles.editWrap}>
+            <TouchableOpacity
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                router.push({
+                  pathname: "/editCover",
+                  params: { journalId: item.id },
+                });
+              }}
+              activeOpacity={0.85}
+              style={styles.editBtn}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+            >
+              <Ionicons name="ellipsis-vertical" size={18} color={uiColors.gray} />
+            </TouchableOpacity>
+          </View>
 
-      <Text numberOfLines={1} style={styles.cardTitle}>
-        {item.name}
-      </Text>
-      </TouchableOpacity>
+          <Text numberOfLines={1} style={styles.cardTitle}>
+            {item.name}
+          </Text>
+        </TouchableOpacity>
 
-       {/* Fecha debajo de la tarjeta */}
+        {/* Fecha  */}
         <Text style={styles.cardDate}>{fecha}</Text>
       </View>
     );
