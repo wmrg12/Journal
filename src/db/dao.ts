@@ -247,6 +247,7 @@ export type Journal = {
   is_favorite: number; 
   created_at: number;
   updated_at: number;
+
 };
 
 export async function listJournals(): Promise<Journal[]> {
@@ -306,6 +307,44 @@ export async function deleteJournal(journalId: string) {
   } else {
     await txLegacy(async (tx) => {
       await execTx(tx, `DELETE FROM journals WHERE id = ?`, [journalId]);
+    });
+  }
+}
+
+// ---------- DAO: Update Journal Cover ----------
+export async function updateJournalCover(
+  journalId: string,
+  updates: {
+    name?: string;
+    color?: string;
+  }
+): Promise<void> {
+  const now = Math.floor(Date.now() / 1000);
+  const fields: string[] = [];
+  const values: any[] = [];
+
+  if (updates.name !== undefined) {
+    fields.push("name = ?");
+    values.push(updates.name);
+  }
+  if (updates.color !== undefined) {
+    fields.push("color = ?");
+    values.push(updates.color);
+  }
+
+  if (fields.length === 0) return;
+
+  fields.push("updated_at = ?");
+  values.push(now);
+  values.push(journalId);
+
+  const sql = `UPDATE journals SET ${fields.join(", ")} WHERE id = ?`;
+
+  if (isAsync) {
+    await runAsync(sql, values);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, sql, values);
     });
   }
 }
