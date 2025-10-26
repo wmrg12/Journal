@@ -45,6 +45,8 @@ export default function RootLayout() {
       <Stack.Screen name="createPage/index" options={{ title: "Crear pagina" }} />
       <Stack.Screen name="page/index" options={{ headerShown: false }} />
       <Stack.Screen name="pageList"/>
+      <Stack.Screen name="editCover/index" options={{ title: "Editar portada" }} />
+
     </Stack>
   </ClerkProvider>
   );
