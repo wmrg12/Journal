@@ -9,7 +9,10 @@ export const uiColors = {
   brown: "#8B5E3C",      // icono
   rgba: "rgba(233, 106, 83, 0.33)",  // filtro
   cards: "#efc8b5ff",   
-  bord: "#E0E0E0"
+  bord: "#E0E0E0",
+  grayLight: "rgba(255, 255, 255, 0.4)",
+  grayO: "#dfdfdfff",  
+  transparent: "rgba(255, 255, 255, 0.7)",     
 } as const;
 
 export const pagePalette = [
@@ -27,14 +30,14 @@ export const pagePalette = [
 
 export const coverPalette = [
   '#F3B8C7',
-  '#F06E9C',
+  '#8e737dff',
   '#CBE8BA',
-  '#E692F8',
+  '#ab90b1ff',
   '#F2C9FB',
   '#D4E3FC',
   '#91E4FB',
   '#F4EB49',
-  '#FFC957',
+  '#a39e92ff',
   '#AFD2D5',
 ] as const;
 
