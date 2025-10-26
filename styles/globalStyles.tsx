@@ -1,7 +1,8 @@
 import { StyleSheet, Platform } from "react-native";
-import { uiColors } from "../constants/colors";
+import { uiColors } from "@/constants/colors";
 
 const styles = StyleSheet.create({
+
   // --- Estilos Globales ---
   container: {
     flex: 1,
@@ -227,13 +228,32 @@ const styles = StyleSheet.create({
     borderColor: "rgba(230,57,70,0.55)",
   },
 
+  // --- Editar ---
+  editWrap: {
+    position: "absolute",
+    top: 135,           
+    right: 100,
+  },
 
+  editBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: uiColors.transparent,
+    shadowColor: uiColors.transparent,
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
 
-  // --- Panel de búsqueda por fechas ---
-searchPanel: {
-  overflow: "hidden",
-  paddingHorizontal: 16,
-},
+  // --- Panel de busqueda por fechas ---
+  searchPanel: {
+    overflow: "hidden",
+    paddingHorizontal: 16,
+  },
 searchRow: {
   flexDirection: "row",
   flexWrap: "wrap",
@@ -299,12 +319,12 @@ inputYYYY: {
   paddingHorizontal: 8,
 },
 
-slash: {
+  slash: {
   marginHorizontal: 2,
   color: "#777",
-},
+  },
 
-applyBtnInline: {
+  applyBtnInline: {
   height: 36,
   paddingHorizontal: 12,
   backgroundColor: uiColors.primary,
@@ -312,9 +332,9 @@ applyBtnInline: {
   flexDirection: "row",
   alignItems: "center",
   gap: 6,
-},
+  },
 
-closeBtn: {
+  closeBtn: {
   marginLeft: 6,
   height: 36,
   width: 36,
@@ -322,9 +342,9 @@ closeBtn: {
   alignItems: "center",
   justifyContent: "center",
   backgroundColor: "rgba(0,0,0,0.05)",
-},
+  },
 
 
-} as const);
-export default styles;
+  } as const);
+  export default styles;
 
