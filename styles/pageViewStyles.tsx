@@ -1,372 +1,326 @@
-import { StyleSheet } from "react-native";
-import { uiColors } from "@/constants/colors";
+import { StyleSheet } from 'react-native';
+import { uiColors } from '@/constants/colors';
 
 export default StyleSheet.create({
-  container: {
-    flex: 1,
+  container: { flex: 1 },
+
+  // Loading overlay
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
   },
+
+  // Header
   header: {
     height: 48,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 16,
-    position: "relative",
-  },
-  backButton: {
-    position: "absolute",
-    left: 20,
-    paddingHorizontal: 8,
-    height: "100%",
-    justifyContent: "center",
-  },
-  rightButton: {
-    position: "absolute",
-    right: 20,
-    paddingHorizontal: 8,
-    height: "100%",
-    justifyContent: "center",
-  },
-  backIcon: {
-    fontSize: 18,
-    color: uiColors.danger,
-  },
-  nextIcon: {
-    fontSize: 18,
-    color: uiColors.danger,
+    position: 'relative',
   },
   leftGroup: {
-    position: "absolute",
+    position: 'absolute',
     left: 16,
     top: 0,
     bottom: 0,
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   navButton: {
     padding: 10,
     marginHorizontal: 4,
   },
   checkButton: {
-    position: "absolute",
+    position: 'absolute',
     right: 16,
     top: 0,
     bottom: 0,
-    justifyContent: "center",
+    justifyContent: 'center',
     paddingHorizontal: 8,
-  },
-  checkIcon: {
-    fontSize: 18,
-    color: uiColors.danger,
   },
   titleWrap: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     fontSize: 18,
-    fontWeight: "600",
-    color: "#333",
-  },
-  canvas: {
-    flex: 1,
-  },
-  toolbar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 24,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
-  },
-  toolCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.6)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: 6,
-  },
-  toolPlain: {
-    paddingHorizontal: 6,
-    paddingVertical: 6,
-    marginHorizontal: 6,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  toolIcon: {
-    fontSize: 20,
+    fontWeight: '600',
     color: uiColors.black,
   },
 
-  // Estilos del modal de dibujo
-  modalOverlay: {
+  // Canvas
+  canvas: {
     flex: 1,
-    justifyContent: "flex-end",
-    alignItems: "center",
-    paddingBottom: 80,
-  },
-  modalMenuContainer: {
-    backgroundColor: "white",
-    borderRadius: 20,
-    padding: 10,
-    flexDirection: "row",
-    gap: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 10,
-    marginHorizontal: 20,
-  },
-  modalOption: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 12,
-    flex: 1,
-    borderRadius: 15,
-    minWidth: 80,
-  },
-  modalOptionText: {
-    marginTop: 8,
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#333",
+    marginBottom: 0,
   },
 
-  drawModalContent: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 0,
-    height: 145,
-    marginLeft: 10,
-    marginRight: 10,
-    width: 380,
+  // Toolbar horizontal fijo en la parte inferior
+  toolbarWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: uiColors.white,
+    borderTopWidth: 1,
+    borderTopColor: uiColors.bord,
+    paddingBottom: 8,
+    shadowColor: uiColors.black,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 8,
   },
-  toolsSection: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginBottom: 10,
+  toolbarBar: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  toolButton: {
-    alignItems: "center",
-    paddingVertical: 5,
-    paddingHorizontal: 20,
+  toolItem: {
+    minWidth: 68,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderRadius: 12,
-    backgroundColor: "#f5f5f5",
-    minWidth: 90,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 4,
+    backgroundColor: 'transparent',
   },
-  toolButtonActive: {
-    backgroundColor: "#e3f2fd",
-    borderWidth: 2,
-    borderColor: "#2196F3",
+  toolItemDisabled: {
+    opacity: 0.4,
   },
-  toolLabel: {
-    marginTop: 6,
-    fontSize: 12,
-    color: "#333",
-    fontWeight: "500",
+  toolItemIcon: {
+    marginBottom: 3,
   },
-  toolsAndColorsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 5,
+  toolItemLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: uiColors.black,
+  },
+  toolItemLabelDisabled: {
+    color: uiColors.gray,
+  },
+
+  // Modal de dibujo
+  drawModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  drawModalBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  drawOptionsContainer: {
+    backgroundColor: uiColors.white,
+    borderTopLeftRadius: 35,
+    borderTopRightRadius: 35,
+    padding: 20,
+    minHeight: 300,
+    shadowColor: uiColors.black,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  drawOptionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: uiColors.bord,
+  },
+  drawIconContainer: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: uiColors.grayO,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  drawOptionsTitle: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: uiColors.black,
+  },
+
+  // Sección de herramientas
+  toolsSection: {
+    marginBottom: 24,
   },
   toolsRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  toolButtonCompact: {
-    alignItems: "center",
-    marginRight: 3,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: "#f5f5f5",
-  },
-  toolLabelCompact: {
-    fontSize: 11,
-    color: "#333",
-    marginTop: 3,
-  },
-  colorsSection: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 15,
-    marginBottom: 25,
-  },
-  colorButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: "transparent",
-  },
-  colorButtonActive: {
-    borderColor: "#2196F3",
-    borderWidth: 2,
-  },
-  colorsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  colorButtonCompact: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+  toolButtonLarge: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 12,
+    backgroundColor: uiColors.grayO,
     marginHorizontal: 4,
-    borderWidth: 1.5,
-    borderColor: "transparent",
   },
-  thicknessSliderSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 10,
+  toolButtonActive: {
+    backgroundColor: uiColors.cards,
+    borderWidth: 2,
+    borderColor: uiColors.primary,
+  },
+  toolLabelLarge: {
+    fontSize: 13,
+    color: uiColors.black,
+    marginTop: 6,
+    fontWeight: '500',
+  },
+
+  // Sección de colores para dibujo
+  colorSectionDraw: {
+    marginBottom: 16,
+  },
+  colorCircleLarge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+
+  // Sección de grosor
+  thicknessSection: {
+    marginBottom: 12,
+  },
+  drawSectionLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: uiColors.black,
     marginBottom: 10,
   },
-  thicknessSection: {
-    marginBottom: 25,
+  dotBar: {
+    position: 'relative',
+    height: 36,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
   },
-
-  // 🔹 AQUÍ está el label alineado totalmente a la derecha
-  sectionLabel: {
-    fontSize: 14,
-    color: "#666",
-    textAlign: "right",
-    alignSelf: "flex-end",
-    marginRight: 10,
-    flexShrink: 1,
+  dotBarTrack: {
+    position: 'absolute',
+    left: 19,
+    right: 14,
+    height: 3,
+    backgroundColor: '#ddd',
+    borderRadius: 3,
   },
-
-  thicknessSlider: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingHorizontal: 10,
+  dotBarFill: {
+    position: 'absolute',
+    left: 18,
+    height: 3,
+    backgroundColor: uiColors.primary,
+    borderRadius: 3,
   },
-  thicknessOption: {
-    width: 50,
-    height: 50,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 25,
-    backgroundColor: "#f5f5f5",
-  },
-  thicknessOptionActive: {
-    backgroundColor: "#e3f2fd",
-    borderWidth: 2,
-    borderColor: "#2196F3",
-  },
-  thicknessDot: {
-    backgroundColor: "#333",
-  },
-  sliderWrapper: {
-    flex: 1,
-    alignItems: "stretch",
-  },
-  slider: {
-    width: "100%",
-    height: 47,
-  },
-  dotsRow: {
-    position: "absolute",
-    top: 18,
-    left: 8,
-    right: 10,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  dot: {
+  dotTap: {
     width: 10,
-    height: 10,
-    borderRadius: 10,
+    height: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  colorCircleSelected: {
-    borderColor: "#333",
-    borderWidth: 2.5,
+  dotSelectable: {
+    backgroundColor: uiColors.primary,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
   },
 
   // Modal de texto
   textModalOverlay: {
     flex: 1,
-    justifyContent: "flex-end",
+    justifyContent: 'flex-end',
   },
   textModalBackground: {
-    position: "absolute",
+    position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
   },
   textOptionsContainer: {
-    backgroundColor: "#fff",
+    backgroundColor: uiColors.white,
     borderTopLeftRadius: 35,
     borderTopRightRadius: 35,
     padding: 20,
     minHeight: 350,
-    shadowColor: "#000",
+    shadowColor: uiColors.black,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
   },
   textOptionsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 20,
     paddingBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
+    borderBottomColor: uiColors.bord,
   },
   textIconContainer: {
     width: 30,
     height: 30,
     borderRadius: 8,
-    backgroundColor: "#f5f5f5",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: uiColors.grayO,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 10,
   },
   textIconLetter: {
     fontSize: 20,
-    fontWeight: "600",
-    color: "#333",
+    fontWeight: '600',
+    color: uiColors.black,
   },
   textOptionsTitle: {
     fontSize: 16,
-    fontWeight: "400",
-    color: "#333",
+    fontWeight: '400',
+    color: uiColors.black,
   },
   textInput: {
     borderWidth: 1,
-    borderColor: "#e0e0e0",
+    borderColor: uiColors.bord,
     borderRadius: 8,
     padding: 12,
     minHeight: 70,
     fontSize: 16,
-    color: "#333",
+    color: uiColors.black,
     marginBottom: 20,
-    textAlignVertical: "top",
-    backgroundColor: "#fafafa",
+    textAlignVertical: 'top',
+    backgroundColor: uiColors.background,
   },
+
+  // Sección de colores para texto
   colorSection: {
     marginBottom: 20,
   },
   colorCircle: {
     width: 28,
     height: 28,
-    borderRadius: 16,
+    borderRadius: 14,
     marginRight: 13,
     borderWidth: 2,
-    borderColor: "transparent",
+    borderColor: 'transparent',
   },
+  colorCircleSelected: {
+    borderColor: uiColors.black,
+    borderWidth: 2.5,
+  },
+
+  // Sección de fuentes
   fontSection: {
     marginBottom: 20,
   },
@@ -374,37 +328,39 @@ export default StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: uiColors.grayO,
     marginRight: 10,
     minWidth: 100,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   fontButtonSelected: {
-    backgroundColor: "#e0e0e0",
+    backgroundColor: uiColors.bord,
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: uiColors.gray,
   },
   fontButtonText: {
     fontSize: 14,
-    color: "#666",
-    fontWeight: "400",
+    color: uiColors.gray,
+    fontWeight: '400',
   },
   fontButtonTextSelected: {
-    color: "#333",
-    fontWeight: "500",
+    color: uiColors.black,
+    fontWeight: '500',
   },
+
+  // Botón de añadir texto
   addTextButton: {
-    backgroundColor: "#2467a5",
+    backgroundColor: uiColors.primary,
     paddingVertical: 14,
     borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 8,
   },
   addTextButtonText: {
-    color: "#fff",
+    color: uiColors.white,
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '600',
   },
 });
