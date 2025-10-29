@@ -58,6 +58,23 @@ export default StyleSheet.create({
     marginBottom: 0,
   },
 
+  // Textos en canvas
+  textContainer: {
+    position: 'absolute',
+  },
+  textContent: {},
+  textDeleteButton: {
+    position: 'absolute',
+    top: -10,
+    right: -10,
+    backgroundColor: uiColors.danger,
+    borderRadius: 12,
+    width: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
   // Toolbar horizontal fijo en la parte inferior
   toolbarWrap: {
     position: 'absolute',
