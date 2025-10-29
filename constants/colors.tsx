@@ -1,18 +1,18 @@
 export const uiColors = {
-  primary: "#BF5D4C",    // botón
-  background: "#FFF7EA", // fondo
-  danger: "#B70F0A",     // icono
-  accent: "#B70F0A",     // texto
-  white: "#FFFFFF",      // texto claro
-  black: "#000000",      // texto oscuro
-  gray: "#555555",       // texto gris
-  brown: "#8B5E3C",      // icono
-  rgba: "rgba(233, 106, 83, 0.33)",  // filtro
-  cards: "#efc8b5ff",   
-  bord: "#E0E0E0",
-  grayLight: "rgba(255, 255, 255, 0.4)",
-  grayO: "#dfdfdfff",  
-  transparent: "rgba(255, 255, 255, 0.7)",     
+  primary: '#BF5D4C', // botón
+  background: '#FFF7EA', // fondo
+  danger: '#B70F0A', // icono
+  accent: '#B70F0A', // texto
+  white: '#FFFFFF', // texto claro
+  black: '#000000', // texto oscuro
+  gray: '#555555', // texto gris
+  brown: '#8B5E3C', // icono
+  rgba: 'rgba(233, 106, 83, 0.33)', // filtro
+  cards: '#efc8b5ff',
+  bord: '#E0E0E0',
+  grayLight: 'rgba(255, 255, 255, 0.4)',
+  grayO: '#dfdfdfff',
+  transparent: 'rgba(255, 255, 255, 0.7)',
 } as const;
 
 export const pagePalette = [
@@ -55,5 +55,14 @@ export const textColors = [
 ] as const;
 
 export const drawColors = [
-  "#000000ff","#f90404ff", "#82d4dbff", "#f160c1ff",  "#fbc628ff"
+  '#000000ff',
+  '#e71d1dff',
+  '#82d4dbff',
+  '#f160c1ff',
+  '#fbc628ff',
+  '#4caf50ff',
+  '#2196f3ff',
+  '#9c27b0ff',
+  '#ff9800ff',
+  '#795548ff',
 ] as const;
