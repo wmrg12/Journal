@@ -1,4 +1,11 @@
-import React, { useEffect, useMemo, useState, useCallback, useRef, memo } from 'react';
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+  memo,
+} from "react";
 import {
   View,
   Text,
@@ -12,13 +19,19 @@ import {
   Platform,
   PanResponder,
   Animated,
-} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
-import { pagePalette, uiColors, textColors, drawColors } from '@/constants/colors';
-import { textFonts, TextFont } from '@/constants/fonts';
-import S from '../../styles/pageViewStyles';
+} from "react-native";
+import Svg, { Path } from "react-native-svg";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialIcons } from "@expo/vector-icons";
+import {
+  pagePalette,
+  uiColors,
+  textColors,
+  drawColors,
+} from "@/constants/colors";
+import { textFonts, TextFont } from "@/constants/fonts";
+import S from "../../styles/pageViewStyles";
 import {
   createPage,
   deletePage,
@@ -30,7 +43,9 @@ import {
   updatePageText,
   deletePageText,
   PageText,
-} from '@/src/db/dao';
+  listPageDraws,
+  createPageDraw,
+} from "@/src/db/dao";
 
 type Params = {
   journalId?: string;
@@ -39,7 +54,17 @@ type Params = {
   totalPages?: string;
 };
 
-type DrawTool = 'pencil' | 'pen' | 'marker';
+type DrawTool = "pencil" | "pen" | "marker";
+
+type Stroke = {
+  id: string;
+  tool: DrawTool;
+  color: string;
+  width: number;
+  opacity: number;
+  points: { x: number; y: number }[];
+  _persistedPathD?: string;
+};
 
 // DraggableText
 
@@ -80,11 +105,15 @@ const DraggableTextBase = ({
     PanResponder.create({
       onStartShouldSetPanResponder: () => !deleteButtonPressed.current,
       onMoveShouldSetPanResponder: (_, g) =>
-        !deleteButtonPressed.current && (Math.abs(g.dx) > 5 || Math.abs(g.dy) > 5),
+        !deleteButtonPressed.current &&
+        (Math.abs(g.dx) > 5 || Math.abs(g.dy) > 5),
       onPanResponderGrant: () => {
         if (deleteButtonPressed.current) return;
         setIsDragging(true);
-        startRef.current = { x: (pan.x as any)._value, y: (pan.y as any)._value };
+        startRef.current = {
+          x: (pan.x as any)._value,
+          y: (pan.y as any)._value,
+        };
       },
       onPanResponderMove: (_, g) => {
         const nx = startRef.current.x + g.dx;
@@ -103,13 +132,16 @@ const DraggableTextBase = ({
         onPositionCommit(text.id, newX, newY);
         if (currentPageId) {
           try {
-            await updatePageText(text.id, { position_x: newX, position_y: newY });
+            await updatePageText(text.id, {
+              position_x: newX,
+              position_y: newY,
+            });
           } catch (e) {
-            console.error('Error updating text position:', e);
+            console.error("Error updating text position:", e);
           }
         }
       },
-    }),
+    })
   ).current;
 
   return (
@@ -156,27 +188,111 @@ const DraggableText = memo(DraggableTextBase);
 
 // PageView
 export default function PageView() {
-  const { journalId, color, pageNumber, totalPages } = useLocalSearchParams<Params>();
+  const { journalId, color, pageNumber, totalPages } =
+    useLocalSearchParams<Params>();
   const router = useRouter();
 
   const [bg, setBg] = useState<(typeof pagePalette)[number]>(pagePalette[0]);
   const [showDrawTools, setShowDrawTools] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [selectedTool, setSelectedTool] = useState<DrawTool>('pencil');
-  const [selectedColor, setSelectedColor] = useState('#000000');
+  const [selectedTool, setSelectedTool] = useState<DrawTool>("pencil");
+  const [selectedColor, setSelectedColor] = useState("#000000");
   const [strokeWidth, setStrokeWidth] = useState(2);
+  const [currentPageId, setCurrentPageId] = useState<string | null>(null);
+
+  // Dibujo
+
+  const [strokes, setStrokes] = useState<Stroke[]>([]);
+  const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
+  const [drawMode, setDrawMode] = useState(false);
+  // Convertir puntos -> path "d"
+  const pointsToPath = useCallback((pts: { x: number; y: number }[]) => {
+    if (!pts.length) return "";
+    const [p0, ...rest] = pts;
+    return `M ${p0.x} ${p0.y} ` + rest.map((p) => `L ${p.x} ${p.y}`).join(" ");
+  }, []);
+
+  // Presets por herramienta (usa tu slider como base 1..6)
+  const getToolStyle = useCallback(
+    (tool: DrawTool) => {
+      const base = strokeWidth; // 1..6
+      switch (tool) {
+        case "pencil": // delgado, casi opaco
+          return { width: Math.max(1, base), opacity: 0.95 };
+        case "marker": // grueso y translúcido
+          return { width: Math.max(6, base * 3), opacity: 0.5 };
+        case "pen": // pincel con grosor variable
+          return { width: Math.max(2, base * 2), opacity: 0.9 };
+        default:
+          return { width: base, opacity: 1 };
+      }
+    },
+    [strokeWidth]
+  );
+
+  // Gestos de dibujo sobre el canvas
+  const onDrawStart = useCallback(
+    (x: number, y: number) => {
+      const { width, opacity } = getToolStyle(selectedTool);
+      const s: Stroke = {
+        id: String(Date.now()) + Math.random().toString(36).slice(2),
+        tool: selectedTool,
+        color: selectedColor,
+        width,
+        opacity,
+        points: [{ x, y }],
+      };
+      setCurrentStroke(s);
+    },
+    [getToolStyle, selectedTool, selectedColor]
+  );
+
+  const onDrawMove = useCallback((x: number, y: number) => {
+    setCurrentStroke((prev) => {
+      if (!prev) return prev;
+      const last = prev.points[prev.points.length - 1];
+      const dx = x - last.x,
+        dy = y - last.y;
+      if (dx * dx + dy * dy < 1.5) return prev; // umbral para no saturar puntos
+      return { ...prev, points: [...prev.points, { x, y }] };
+    });
+  }, []);
+
+  const onDrawEnd = useCallback(() => {
+    setCurrentStroke((prev) => {
+      if (!prev || prev.points.length < 2) return null;
+      setStrokes((s) => [...s, prev]);
+      // guardar en BD
+      try {
+        if (currentPageId && typeof createPageDraw === "function") {
+          const pathD = pointsToPath(prev.points);
+          // @ts-ignore: solo si existe en tu DAO
+          createPageDraw(
+            currentPageId,
+            pathD,
+            prev.color,
+            prev.width,
+            prev.opacity,
+            prev.tool
+          );
+        }
+      } catch (e) {
+        console.error("No se pudo guardar el trazo", e);
+      }
+      return null;
+    });
+  }, [currentPageId, pointsToPath]);
 
   const [showTextOptions, setShowTextOptions] = useState(false);
-  const [selectedTextColor, setSelectedTextColor] = useState<(typeof textColors)[number]>(
-    textColors[0],
-  );
+  const [selectedTextColor, setSelectedTextColor] = useState<
+    (typeof textColors)[number]
+  >(textColors[0]);
   const [selectedFont, setSelectedFont] = useState<TextFont>(textFonts[0]);
-  const [textInput, setTextInput] = useState('');
+  const [textInput, setTextInput] = useState("");
 
   // Estado para textos en la página
   const [pageTexts, setPageTexts] = useState<PageText[]>([]);
-  const [currentPageId, setCurrentPageId] = useState<string | null>(null);
 
   // Mantener Animated.ValueXY por id
   const pansRef = useRef(new Map<string, Animated.ValueXY>());
@@ -200,8 +316,14 @@ export default function PageView() {
     return merged;
   }, []);
 
-  const pageNum = useMemo(() => Math.max(Number(pageNumber ?? 1) || 1, 1), [pageNumber]);
-  const total = useMemo(() => Math.max(Number(totalPages ?? 1) || 1, 1), [totalPages]);
+  const pageNum = useMemo(
+    () => Math.max(Number(pageNumber ?? 1) || 1, 1),
+    [pageNumber]
+  );
+  const total = useMemo(
+    () => Math.max(Number(totalPages ?? 1) || 1, 1),
+    [totalPages]
+  );
   const SEGMENTS = 6;
   const paddingH = 14;
   const dotBarRef = useRef<View>(null);
@@ -211,7 +333,10 @@ export default function PageView() {
 
   const hitTestToIndex = (pageX: number) => {
     if (!dotBarLayout.width) return;
-    const localX = Math.max(0, Math.min(pageX - dotBarLayout.x, dotBarLayout.width));
+    const localX = Math.max(
+      0,
+      Math.min(pageX - dotBarLayout.x, dotBarLayout.width)
+    );
     const prog = localX / dotBarLayout.width;
     const idx = Math.round(prog * (SEGMENTS - 1)) + 1;
     setStrokeWidth(idx);
@@ -219,9 +344,9 @@ export default function PageView() {
 
   // Cargar color desde parámetro
   useEffect(() => {
-    if (typeof color === 'string') {
+    if (typeof color === "string") {
       const found = (pagePalette as readonly string[]).find(
-        (c) => c.toLowerCase() === color.toLowerCase(),
+        (c) => c.toLowerCase() === color.toLowerCase()
       );
       setBg((found ?? pagePalette[0]) as (typeof pagePalette)[number]);
     } else {
@@ -237,14 +362,14 @@ export default function PageView() {
     (async () => {
       try {
         const dbColor = await getPageColor(String(journalId), pageNum);
-        if (mounted && typeof dbColor === 'string' && dbColor.length > 0) {
+        if (mounted && typeof dbColor === "string" && dbColor.length > 0) {
           const found = (pagePalette as readonly string[]).find(
-            (c) => c.toLowerCase() === dbColor.toLowerCase(),
+            (c) => c.toLowerCase() === dbColor.toLowerCase()
           );
           if (found) setBg(found as (typeof pagePalette)[number]);
         }
       } catch (error) {
-        console.error('Error loading page color:', error);
+        console.error("Error loading page color:", error);
       }
     })();
 
@@ -275,13 +400,37 @@ export default function PageView() {
           // Asegura ORDER BY en listPageTexts
           const texts = await listPageTexts(pageId);
           if (mounted) setPageTexts((prev) => mergeById(prev, texts));
+
+          try {
+            const draws = await listPageDraws(pageId);
+            if (mounted) {
+              setStrokes(
+                draws.map((d) => ({
+                  id: d.id,
+                  tool: d.tool as DrawTool,
+                  color: d.color,
+                  width: d.width,
+                  opacity: d.opacity,
+                  points: [],
+                  _persistedPathD: d.path_d,
+                }))
+              );
+            }
+          } catch (e) {
+            console.error("Error loading page draws:", e);
+            if (mounted) setStrokes([]); // fallback limpio
+          }
         } else if (mounted) {
           setCurrentPageId(null);
           setPageTexts([]);
+          setStrokes([]);
         }
       } catch (error) {
-        console.error('Error loading page texts:', error);
-        if (mounted) setPageTexts([]);
+        console.error("Error loading page texts:", error);
+        if (mounted) {
+          setPageTexts([]);
+          setStrokes([]);
+        }
       }
     })();
 
@@ -302,7 +451,7 @@ export default function PageView() {
 
         if (mounted && (safeTotal !== total || pageNum > safeTotal)) {
           router.replace({
-            pathname: '/page',
+            pathname: "/page",
             params: {
               journalId,
               color: String(bg),
@@ -312,7 +461,7 @@ export default function PageView() {
           });
         }
       } catch (error) {
-        console.error('Error validating pages:', error);
+        console.error("Error validating pages:", error);
       }
     })();
 
@@ -323,24 +472,24 @@ export default function PageView() {
 
   const handleDeletePage = useCallback(() => {
     if (total <= 1 || !journalId) {
-      Alert.alert('No se puede eliminar', 'Debe existir al menos una página.');
+      Alert.alert("No se puede eliminar", "Debe existir al menos una página.");
       return;
     }
 
-    Alert.alert('Eliminar página', `¿Eliminar la página ${pageNum}?`, [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert("Eliminar página", `¿Eliminar la página ${pageNum}?`, [
+      { text: "Cancelar", style: "cancel" },
       {
-        text: 'Eliminar',
-        style: 'destructive',
+        text: "Eliminar",
+        style: "destructive",
         onPress: async () => {
           setIsLoading(true);
           try {
             const { pageNumber: target, total: newTotal } = await deletePage(
               String(journalId),
-              pageNum,
+              pageNum
             );
             router.replace({
-              pathname: '/page',
+              pathname: "/page",
               params: {
                 journalId,
                 color: String(bg),
@@ -350,7 +499,7 @@ export default function PageView() {
             });
           } catch (e) {
             console.error(e);
-            Alert.alert('Error', 'No se pudo eliminar la página.');
+            Alert.alert("Error", "No se pudo eliminar la página.");
           } finally {
             setIsLoading(false);
           }
@@ -366,10 +515,10 @@ export default function PageView() {
     try {
       const { pageNumber: newNum, total: newTotal } = await createPage(
         String(journalId),
-        String(bg),
+        String(bg)
       );
       router.replace({
-        pathname: '/page',
+        pathname: "/page",
         params: {
           journalId,
           color: String(bg),
@@ -379,7 +528,7 @@ export default function PageView() {
       });
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'No se pudo crear la página.');
+      Alert.alert("Error", "No se pudo crear la página.");
     } finally {
       setIsLoading(false);
     }
@@ -392,7 +541,9 @@ export default function PageView() {
   //commit
   const commitTextPosition = useCallback((id: string, x: number, y: number) => {
     setPageTexts((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, position_x: x, position_y: y } : t)),
+      prev.map((t) =>
+        t.id === id ? { ...t, position_x: x, position_y: y } : t
+      )
     );
   }, []);
 
@@ -400,11 +551,11 @@ export default function PageView() {
   const handleAddText = useCallback(async () => {
     const trimmed = textInput.trim();
     if (!trimmed) {
-      Alert.alert('Error', 'Escribe algo primero');
+      Alert.alert("Error", "Escribe algo primero");
       return;
     }
     if (!currentPageId) {
-      Alert.alert('Error', 'No se pudo identificar la página');
+      Alert.alert("Error", "No se pudo identificar la página");
       return;
     }
 
@@ -413,16 +564,24 @@ export default function PageView() {
       const posX = 100;
       const posY = 150;
 
-      await createPageText(currentPageId, trimmed, selectedFont, selectedTextColor, posX, posY, 16);
+      await createPageText(
+        currentPageId,
+        trimmed,
+        selectedFont,
+        selectedTextColor,
+        posX,
+        posY,
+        16
+      );
 
       const latest = await listPageTexts(currentPageId);
       setPageTexts((prev) => mergeById(prev, latest));
 
-      setTextInput('');
+      setTextInput("");
       setShowTextOptions(false);
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'No se pudo añadir el texto.');
+      Alert.alert("Error", "No se pudo añadir el texto.");
     } finally {
       setIsLoading(false);
     }
@@ -433,11 +592,11 @@ export default function PageView() {
     async (textId: string) => {
       if (!currentPageId) return;
 
-      Alert.alert('Eliminar texto', '¿Estás seguro?', [
-        { text: 'Cancelar', style: 'cancel' },
+      Alert.alert("Eliminar texto", "¿Estás seguro?", [
+        { text: "Cancelar", style: "cancel" },
         {
-          text: 'Eliminar',
-          style: 'destructive',
+          text: "Eliminar",
+          style: "destructive",
           onPress: async () => {
             setPageTexts((prev) => prev.filter((t) => t.id !== textId));
             pansRef.current.delete(textId);
@@ -449,7 +608,7 @@ export default function PageView() {
               setPageTexts((prev) => mergeById(prev, latest));
             } catch (e) {
               console.error(e);
-              Alert.alert('Error', 'No se pudo eliminar el texto.');
+              Alert.alert("Error", "No se pudo eliminar el texto.");
               const latest = await listPageTexts(currentPageId);
               setPageTexts(latest);
             } finally {
@@ -459,13 +618,13 @@ export default function PageView() {
         },
       ]);
     },
-    [currentPageId, mergeById],
+    [currentPageId, mergeById]
   );
 
   const navigateToPage = useCallback(
     (newPageNum: number) => {
       router.replace({
-        pathname: '/page',
+        pathname: "/page",
         params: {
           journalId,
           color: String(bg),
@@ -474,48 +633,67 @@ export default function PageView() {
         },
       });
     },
-    [journalId, bg, total, router],
+    [journalId, bg, total, router]
   );
 
   // Toolbar items
   const toolbarItems = useMemo(
     () => [
       {
-        id: 'delete',
-        icon: 'delete-outline' as const,
-        label: 'Eliminar',
+        id: "delete",
+        icon: "delete-outline" as const,
+        label: "Eliminar",
         onPress: handleDeletePage,
         disabled: isLoading,
       },
       {
-        id: 'add',
-        icon: 'add' as const,
-        label: 'Nueva',
+        id: "add",
+        icon: "add" as const,
+        label: "Nueva",
         onPress: handleAddPage,
         disabled: isLoading,
       },
       {
-        id: 'text',
-        icon: 'text-fields' as const,
-        label: 'Texto',
-        onPress: () => setShowTextOptions(true),
+        id: "text",
+        icon: "text-fields" as const,
+        label: "Texto",
+        onPress: () => {
+          setDrawMode(false);
+          setShowTextOptions(true);
+        },
+
         disabled: isLoading,
       },
       {
-        id: 'draw',
-        icon: 'edit' as const,
-        label: 'Dibujar',
+        id: "draw",
+        icon: "edit" as const,
+        label: "Dibujar",
         onPress: () => setShowDrawTools(true),
         disabled: isLoading,
       },
-      { id: 'undo', icon: 'undo' as const, label: 'Deshacer', onPress: () => {}, disabled: true },
-      { id: 'redo', icon: 'redo' as const, label: 'Rehacer', onPress: () => {}, disabled: true },
+      {
+        id: "undo",
+        icon: "undo" as const,
+        label: "Deshacer",
+        onPress: () => {},
+        disabled: true,
+      },
+      {
+        id: "redo",
+        icon: "redo" as const,
+        label: "Rehacer",
+        onPress: () => {},
+        disabled: true,
+      },
     ],
-    [handleAddPage, handleDeletePage, isLoading],
+    [handleAddPage, handleDeletePage, isLoading]
   );
 
   return (
-    <SafeAreaView style={[S.container, { backgroundColor: bg }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={[S.container, { backgroundColor: bg }]}
+      edges={["top", "left", "right"]}
+    >
       {isLoading && (
         <View style={S.loadingOverlay}>
           <ActivityIndicator size="large" color={uiColors.danger} />
@@ -538,7 +716,7 @@ export default function PageView() {
               <MaterialIcons
                 name="arrow-back-ios"
                 size={22}
-                color={isLoading ? '#ccc' : uiColors.danger}
+                color={isLoading ? "#ccc" : uiColors.danger}
               />
             </TouchableOpacity>
           )}
@@ -555,7 +733,7 @@ export default function PageView() {
               <MaterialIcons
                 name="arrow-forward-ios"
                 size={22}
-                color={isLoading ? '#ccc' : uiColors.danger}
+                color={isLoading ? "#ccc" : uiColors.danger}
               />
             </TouchableOpacity>
           )}
@@ -567,7 +745,10 @@ export default function PageView() {
 
         <TouchableOpacity
           onPress={() => {
-            router.replace({ pathname: '/pageList', params: { journalId, color: String(bg) } });
+            router.replace({
+              pathname: "/pageList",
+              params: { journalId, color: String(bg) },
+            });
           }}
           style={S.checkButton}
           accessibilityLabel="Hecho"
@@ -576,22 +757,78 @@ export default function PageView() {
           activeOpacity={0.6}
           disabled={isLoading}
         >
-          <MaterialIcons name="check" size={22} color={isLoading ? '#ccc' : uiColors.danger} />
+          <MaterialIcons
+            name="check"
+            size={22}
+            color={isLoading ? "#ccc" : uiColors.danger}
+          />
         </TouchableOpacity>
       </View>
 
       {/* Canvas con textos arrastrables */}
-      <View style={S.canvas}>
-        {pageTexts.map((text) => (
-          <DraggableText
-            key={text.id}
-            text={text}
-            currentPageId={currentPageId}
-            handleDeleteText={handleDeleteText}
-            getPanFor={getPanFor}
-            onPositionCommit={commitTextPosition}
-          />
-        ))}
+      {/* Canvas con dibujo + textos */}
+      <View
+        style={S.canvas}
+        onStartShouldSetResponder={() => drawMode}
+        onMoveShouldSetResponder={() => drawMode}
+        onResponderGrant={(e) => {
+          if (!drawMode) return;
+          const { locationX, locationY } = e.nativeEvent;
+          onDrawStart(locationX, locationY);
+        }}
+        onResponderMove={(e) => {
+          if (!drawMode) return;
+          const { locationX, locationY } = e.nativeEvent;
+          onDrawMove(locationX, locationY);
+        }}
+        onResponderRelease={() => {
+          if (!drawMode) return;
+          onDrawEnd();
+        }}
+        onResponderTerminate={() => {
+          if (!drawMode) return;
+          onDrawEnd();
+        }}
+      >
+        <Svg style={{ position: "absolute", inset: 0 }}>
+          {strokes.map((s) => (
+            <Path
+              key={s.id}
+              d={s._persistedPathD ?? pointsToPath(s.points)}
+              stroke={s.color}
+              strokeWidth={s.width}
+              strokeOpacity={s.opacity}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
+          {currentStroke && (
+            <Path
+              d={pointsToPath(currentStroke.points)}
+              stroke={currentStroke.color}
+              strokeWidth={currentStroke.width}
+              strokeOpacity={currentStroke.opacity}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+        </Svg>
+
+        {/* 2) Textos arrastrables encima */}
+        <View pointerEvents={drawMode ? "none" : "auto"}>
+          {pageTexts.map((text) => (
+            <DraggableText
+              key={text.id}
+              text={text}
+              currentPageId={currentPageId}
+              handleDeleteText={handleDeleteText}
+              getPanFor={getPanFor}
+              onPositionCommit={commitTextPosition}
+            />
+          ))}
+        </View>
       </View>
 
       {/* Toolbar horizontal con scroll */}
@@ -610,7 +847,8 @@ export default function PageView() {
               style={[
                 S.toolItem,
                 it.disabled && S.toolItemDisabled,
-                (it.id === 'text' && showTextOptions) || (it.id === 'draw' && showDrawTools)
+                (it.id === "text" && showTextOptions) ||
+                (it.id === "draw" && showDrawTools)
                   ? { backgroundColor: uiColors.grayO }
                   : null,
               ]}
@@ -622,10 +860,15 @@ export default function PageView() {
               <MaterialIcons
                 name={it.icon}
                 size={22}
-                color={it.disabled ? '#aaa' : '#333'}
+                color={it.disabled ? "#aaa" : "#333"}
                 style={S.toolItemIcon}
               />
-              <Text style={[S.toolItemLabel, it.disabled && S.toolItemLabelDisabled]}>
+              <Text
+                style={[
+                  S.toolItemLabel,
+                  it.disabled && S.toolItemLabelDisabled,
+                ]}
+              >
                 {it.label}
               </Text>
             </TouchableOpacity>
@@ -642,7 +885,7 @@ export default function PageView() {
         statusBarTranslucent
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={{ flex: 1 }}
         >
           <View style={S.textModalOverlay}>
@@ -683,11 +926,14 @@ export default function PageView() {
                       style={[
                         S.colorCircle,
                         { backgroundColor: colorOption },
-                        selectedTextColor === colorOption && S.colorCircleSelected,
+                        selectedTextColor === colorOption &&
+                          S.colorCircleSelected,
                       ]}
                       accessibilityLabel={`Color ${colorOption}`}
                       accessibilityRole="button"
-                      accessibilityState={{ selected: selectedTextColor === colorOption }}
+                      accessibilityState={{
+                        selected: selectedTextColor === colorOption,
+                      }}
                     />
                   ))}
                 </ScrollView>
@@ -704,7 +950,10 @@ export default function PageView() {
                     <TouchableOpacity
                       key={font}
                       onPress={() => setSelectedFont(font)}
-                      style={[S.fontButton, selectedFont === font && S.fontButtonSelected]}
+                      style={[
+                        S.fontButton,
+                        selectedFont === font && S.fontButtonSelected,
+                      ]}
                       accessibilityLabel={`Fuente ${font}`}
                       accessibilityRole="button"
                       accessibilityState={{ selected: selectedFont === font }}
@@ -764,19 +1013,26 @@ export default function PageView() {
               <Text style={S.drawSectionLabel}>Herramienta</Text>
               <View style={S.toolsRow}>
                 {[
-                  { id: 'pencil', icon: 'edit', label: 'Lápiz' },
-                  { id: 'pen', icon: 'brush', label: 'Pincel' },
-                  { id: 'marker', icon: 'create', label: 'Marcador' },
+                  { id: "pencil", icon: "edit", label: "Lápiz" },
+                  { id: "pen", icon: "brush", label: "Pincel" },
+                  { id: "marker", icon: "create", label: "Marcador" },
                 ].map((tool) => (
                   <TouchableOpacity
                     key={tool.id}
-                    style={[S.toolButtonLarge, selectedTool === tool.id && S.toolButtonActive]}
+                    style={[
+                      S.toolButtonLarge,
+                      selectedTool === tool.id && S.toolButtonActive,
+                    ]}
                     onPress={() => handleSelectTool(tool.id as any)}
                     accessibilityLabel={tool.label}
                     accessibilityRole="button"
                     accessibilityState={{ selected: selectedTool === tool.id }}
                   >
-                    <MaterialIcons name={tool.icon as any} size={22} color={uiColors.black} />
+                    <MaterialIcons
+                      name={tool.icon as any}
+                      size={22}
+                      color={uiColors.black}
+                    />
                     <Text style={S.toolLabelLarge}>{tool.label}</Text>
                   </TouchableOpacity>
                 ))}
@@ -817,7 +1073,10 @@ export default function PageView() {
                 style={S.dotBar}
                 onLayout={() => {
                   dotBarRef.current?.measureInWindow((px, py, w) => {
-                    setDotBarLayout({ x: px + paddingH, width: w - paddingH * 2 });
+                    setDotBarLayout({
+                      x: px + paddingH,
+                      width: w - paddingH * 2,
+                    });
                   });
                 }}
                 onStartShouldSetResponder={() => true}
@@ -849,7 +1108,8 @@ export default function PageView() {
                             width: size,
                             height: size,
                             borderRadius: size / 2,
-                            backgroundColor: active || passed ? uiColors.primary : '#cfcfcf',
+                            backgroundColor:
+                              active || passed ? uiColors.primary : "#cfcfcf",
                             opacity: active ? 1 : passed ? 0.45 : 1,
                             transform: [{ scale: active ? 1.1 : 1 }],
                           },
@@ -860,6 +1120,16 @@ export default function PageView() {
                 })}
               </View>
             </View>
+            <TouchableOpacity
+              style={[S.addTextButton, { marginTop: 12 }]}
+              onPress={() => {
+                setShowDrawTools(false); // cerrar modal
+                setDrawMode(true); // activar modo de dibujo
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={S.addTextButtonText}>Empezar a dibujar</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
