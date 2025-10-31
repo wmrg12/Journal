@@ -21,7 +21,6 @@ import { stylest } from "@/styles/taskStyles";
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-
 interface TasksScreenProps {
   onClose?: () => void;
 }
@@ -33,7 +32,6 @@ export default function TasksScreen({ onClose }: TasksScreenProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const tabBarHeight = useBottomTabBarHeight();
   const insets = useSafeAreaInsets();
-
 
   useEffect(() => {
     loadTasks();
@@ -80,6 +78,18 @@ export default function TasksScreen({ onClose }: TasksScreenProps) {
     }
   };
 
+  //Volver a pendiente
+  const handleUncompleteTask = async (task: Task) => {
+    try {
+      await toggleTaskCompletion(task.id, false);
+      await loadTasks();
+    } catch (error) {
+      console.error('Error actualizando tarea:', error);
+      Alert.alert('Error', 'No se pudo actualizar la tarea');
+    }
+  };
+
+  // Eliminar tarea con confirmacion
   const confirmDeleteTask = async (taskId: string) => {
     Alert.alert(
       'Eliminar tarea',
@@ -124,10 +134,16 @@ export default function TasksScreen({ onClose }: TasksScreenProps) {
   };
 
   const renderCompleted = ({ item }: { item: Task }) => (
-    <View style={[stylest.card, stylest.cardCompleted]}>
+    <Pressable
+      onPress={() => confirmDeleteTask(item.id)}
+      style={({ pressed }) => [stylest.card, stylest.cardCompleted, pressed && stylest.cardPressed]}
+    >
       <TouchableOpacity
-        accessibilityLabel="Eliminar tarea"
-        onPress={() => confirmDeleteTask(item.id)}
+        accessibilityLabel="Volver a pendiente"
+        onPress={(e) => {
+          e.stopPropagation();
+          handleUncompleteTask(item);
+        }}
         style={stylest.leftIcon}
         activeOpacity={0.7}
       >
@@ -136,7 +152,7 @@ export default function TasksScreen({ onClose }: TasksScreenProps) {
         </View>
       </TouchableOpacity>
       <Text style={stylest.cardText} numberOfLines={2}>{item.title}</Text>
-    </View>
+    </Pressable>
   );
 
   return (
@@ -160,32 +176,31 @@ export default function TasksScreen({ onClose }: TasksScreenProps) {
       <ScrollView
         style={stylest.scroll}
         contentContainerStyle={[
-        stylest.scrollContent,
+          stylest.scrollContent,
           { paddingBottom: tabBarHeight + insets.bottom + 16 }  
-      ]}
+        ]}
         scrollIndicatorInsets={{ bottom: tabBarHeight + insets.bottom }}
         showsVerticalScrollIndicator={false}
-    >
-
-     {/* Lista de pendientes */}
-      {pendingTasks.length > 0 ? (
-        <View style={stylest.listBlock}>
-          <FlatList
-            data={pendingTasks}
-            keyExtractor={(item) => item.id}
-            renderItem={renderPending}
-            ItemSeparatorComponent={() => <View style={stylest.separator} />}
-            scrollEnabled={false}  
-          />
-        </View>
-      ) : (
+      >
+        {/* Lista de pendientes */}
+        {pendingTasks.length > 0 ? (
+          <View style={stylest.listBlock}>
+            <FlatList
+              data={pendingTasks}
+              keyExtractor={(item) => item.id}
+              renderItem={renderPending}
+              ItemSeparatorComponent={() => <View style={stylest.separator} />}
+              scrollEnabled={false}  
+            />
+          </View>
+        ) : (
           <Text style={stylest.emptyText}>No hay tareas pendientes</Text>
         )}
 
-     {/* Completadas */}
-      {completedTasks.length > 0 && (
-        <View style={stylest.completedBlock}>
-          <Text style={stylest.sectionTitle}>completas</Text>
+        {/* Completadas */}
+        {completedTasks.length > 0 && (
+          <View style={stylest.completedBlock}>
+            <Text style={stylest.sectionTitle}>completas</Text>
             <FlatList
               data={completedTasks}
               keyExtractor={(item) => item.id}

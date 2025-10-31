@@ -34,10 +34,10 @@ export const stylest = StyleSheet.create({
     marginTop: 15,
     paddingHorizontal: 18,
     paddingVertical: 10,
-    backgroundColor: uiColors.white,
+    backgroundColor: uiColors.buttont,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: uiColors.gray,
+    borderColor: uiColors.bord,
   },
   addBtnText: {
     fontSize: 14,
@@ -133,7 +133,7 @@ export const stylest = StyleSheet.create({
     marginTop: -1,
   },
 
-  // Botón guardar 
+  // Boton guardar 
   modalBackdrop: {
     flex: 1,
     backgroundColor: "rgba(29, 29, 29, 0.35)",
