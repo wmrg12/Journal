@@ -86,6 +86,11 @@ const DraggableTextBase = ({
   const [isDragging, setIsDragging] = useState(false);
   const toolbarButtonPressed = useRef(false);
   const startRef = useRef({ x: text.position_x, y: text.position_y });
+  const lockedRef = useRef(locked);
+
+  useEffect(() => {
+    lockedRef.current = locked;
+  }, [locked]);
 
   // Sync si la BD movió el texto (sin animación)
   useEffect(() => {
@@ -101,19 +106,26 @@ const DraggableTextBase = ({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !toolbarButtonPressed.current && !locked,
+      onStartShouldSetPanResponder: () => !toolbarButtonPressed.current,
       onMoveShouldSetPanResponder: (_, g) =>
-        !toolbarButtonPressed.current && !locked && (Math.abs(g.dx) > 5 || Math.abs(g.dy) > 5),
+        !toolbarButtonPressed.current &&
+        !lockedRef.current &&
+        (Math.abs(g.dx) > 5 || Math.abs(g.dy) > 5),
       onPanResponderGrant: () => {
-        if (toolbarButtonPressed.current || locked) return;
-        setIsDragging(true);
-        startRef.current = {
-          x: (pan.x as any)._value,
-          y: (pan.y as any)._value,
-        };
+        if (toolbarButtonPressed.current) return;
+
+        onSelect(text.id);
+
+        if (!lockedRef.current) {
+          setIsDragging(true);
+          startRef.current = {
+            x: (pan.x as any)._value,
+            y: (pan.y as any)._value,
+          };
+        }
       },
       onPanResponderMove: (_, g) => {
-        if (locked) return;
+        if (lockedRef.current) return;
         const nx = startRef.current.x + g.dx;
         const ny = startRef.current.y + g.dy;
         pan.setValue({ x: nx, y: ny });
@@ -125,9 +137,7 @@ const DraggableTextBase = ({
         }
         setIsDragging(false);
 
-        onSelect(text.id);
-
-        if (locked) return;
+        if (lockedRef.current) return;
 
         const newX = (pan.x as any)._value;
         const newY = (pan.y as any)._value;
@@ -828,14 +838,11 @@ export default function PageView() {
       {/* Canvas con dibujo + textos */}
       <View
         style={S.canvas}
-        onStartShouldSetResponder={() => true}
+        onStartShouldSetResponder={() => drawMode}
         onMoveShouldSetResponder={() => drawMode}
         onResponderGrant={(e) => {
+          if (!drawMode) return;
           const { locationX, locationY } = e.nativeEvent;
-          if (!drawMode) {
-            setSelectedTextId(null);
-            return;
-          }
           onDrawStart(locationX, locationY);
         }}
         onResponderMove={(e) => {
@@ -877,6 +884,20 @@ export default function PageView() {
             />
           )}
         </Svg>
+
+        {/* Deseleccionar texto */}
+        {!drawMode && (
+          <TouchableOpacity
+            style={{ position: 'absolute', inset: 0 }}
+            activeOpacity={1}
+            onPress={() => setSelectedTextId(null)}
+          />
+        )}
+        {/* Textos arrastrables encima del fondo */}
+        <View
+          style={{ position: 'absolute', inset: 0 }}
+          pointerEvents={drawMode ? 'none' : 'box-none'}
+        ></View>
 
         {/* 2) Textos arrastrables encima */}
         <View pointerEvents={drawMode ? 'none' : 'auto'}>
