@@ -62,6 +62,11 @@ type DraggableTextProps = {
   handleDeleteText: (id: string) => void;
   getPanFor: (t: PageText) => Animated.ValueXY;
   onPositionCommit: (id: string, x: number, y: number) => void;
+  locked: boolean;
+  isSelected: boolean;
+  onToggleLock: (id: string) => void;
+  onSelect: (id: string) => void;
+  onEdit: (t: PageText) => void;
 };
 
 const DraggableTextBase = ({
@@ -70,11 +75,16 @@ const DraggableTextBase = ({
   handleDeleteText,
   getPanFor,
   onPositionCommit,
+  locked,
+  isSelected,
+  onToggleLock,
+  onSelect,
+  onEdit,
 }: DraggableTextProps) => {
   // pan estable por id
   const pan = useMemo(() => getPanFor(text), [getPanFor, text]);
   const [isDragging, setIsDragging] = useState(false);
-  const deleteButtonPressed = useRef(false);
+  const toolbarButtonPressed = useRef(false);
   const startRef = useRef({ x: text.position_x, y: text.position_y });
 
   // Sync si la BD movió el texto (sin animación)
@@ -91,11 +101,11 @@ const DraggableTextBase = ({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !deleteButtonPressed.current,
+      onStartShouldSetPanResponder: () => !toolbarButtonPressed.current && !locked,
       onMoveShouldSetPanResponder: (_, g) =>
-        !deleteButtonPressed.current && (Math.abs(g.dx) > 5 || Math.abs(g.dy) > 5),
+        !toolbarButtonPressed.current && !locked && (Math.abs(g.dx) > 5 || Math.abs(g.dy) > 5),
       onPanResponderGrant: () => {
-        if (deleteButtonPressed.current) return;
+        if (toolbarButtonPressed.current || locked) return;
         setIsDragging(true);
         startRef.current = {
           x: (pan.x as any)._value,
@@ -103,16 +113,22 @@ const DraggableTextBase = ({
         };
       },
       onPanResponderMove: (_, g) => {
+        if (locked) return;
         const nx = startRef.current.x + g.dx;
         const ny = startRef.current.y + g.dy;
         pan.setValue({ x: nx, y: ny });
       },
       onPanResponderRelease: async () => {
-        if (deleteButtonPressed.current) {
-          deleteButtonPressed.current = false;
+        if (toolbarButtonPressed.current) {
+          toolbarButtonPressed.current = false;
           return;
         }
         setIsDragging(false);
+
+        onSelect(text.id);
+
+        if (locked) return;
+
         const newX = (pan.x as any)._value;
         const newY = (pan.y as any)._value;
 
@@ -142,31 +158,67 @@ const DraggableTextBase = ({
         },
       ]}
     >
-      <Text
-        style={[
-          S.textContent,
-          {
-            fontFamily: fontFamilyMap[text.font_family as TextFont] ?? text.font_family,
-            color: text.color,
-            fontSize: text.font_size,
-          },
-        ]}
-      >
-        {text.content}
-      </Text>
-      <TouchableOpacity
-        onPressIn={() => {
-          deleteButtonPressed.current = true;
-        }}
-        onPress={() => {
-          handleDeleteText(text.id);
-          deleteButtonPressed.current = false;
-        }}
-        style={S.textDeleteButton}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      >
-        <MaterialIcons name="close" size={16} color={uiColors.white} />
-      </TouchableOpacity>
+      {/* Toolbar tipo Canva */}
+      {isSelected && (
+        <View style={S.textToolbar}>
+          <TouchableOpacity
+            onPressIn={() => {
+              toolbarButtonPressed.current = true;
+            }}
+            onPress={() => {
+              onToggleLock(text.id);
+              toolbarButtonPressed.current = false;
+            }}
+            style={S.textToolbarButton}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <MaterialIcons name={locked ? 'lock' : 'lock-open'} size={14} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPressIn={() => {
+              toolbarButtonPressed.current = true;
+            }}
+            onPress={() => {
+              onSelect(text.id);
+              onEdit(text);
+              toolbarButtonPressed.current = false;
+            }}
+            style={S.textToolbarButton}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <MaterialIcons name="edit" size={14} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPressIn={() => {
+              toolbarButtonPressed.current = true;
+            }}
+            onPress={() => {
+              handleDeleteText(text.id);
+              toolbarButtonPressed.current = false;
+            }}
+            style={[S.textToolbarButton, S.textToolbarDelete]}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <MaterialIcons name="delete" size={14} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Recuadro del texto */}
+      <View style={[S.textBox, isSelected && S.textBoxSelected, locked && S.textBoxLocked]}>
+        <Text
+          style={[
+            S.textContent,
+            {
+              fontFamily: fontFamilyMap[text.font_family as TextFont] ?? text.font_family,
+              color: text.color,
+              fontSize: text.font_size,
+            },
+          ]}
+        >
+          {text.content}
+        </Text>
+      </View>
     </Animated.View>
   );
 };
@@ -269,6 +321,9 @@ export default function PageView() {
   );
   const [selectedFont, setSelectedFont] = useState<TextFont>(textFonts[0]);
   const [textInput, setTextInput] = useState('');
+  const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
+  const [lockedTextIds, setLockedTextIds] = useState<Record<string, boolean>>({});
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
   // Estado para textos en la página
   const [pageTexts, setPageTexts] = useState<PageText[]>([]);
@@ -515,8 +570,7 @@ export default function PageView() {
     );
   }, []);
 
-  // Añadir texto (merge para no remountar existentes)
-  const handleAddText = useCallback(async () => {
+  const handleConfirmText = useCallback(async () => {
     const trimmed = textInput.trim();
     if (!trimmed) {
       Alert.alert('Error', 'Escribe algo primero');
@@ -529,23 +583,45 @@ export default function PageView() {
 
     setIsLoading(true);
     try {
-      const posX = 100;
-      const posY = 150;
+      if (!editingTextId) {
+        // crear
+        const posX = 100;
+        const posY = 150;
 
-      await createPageText(currentPageId, trimmed, selectedFont, selectedTextColor, posX, posY, 16);
+        await createPageText(
+          currentPageId,
+          trimmed,
+          selectedFont,
+          selectedTextColor,
+          posX,
+          posY,
+          16,
+        );
+      } else {
+        // editar
+        await updatePageText(editingTextId, {
+          content: trimmed,
+          font_family: selectedFont,
+          color: selectedTextColor,
+        });
+      }
 
       const latest = await listPageTexts(currentPageId);
       setPageTexts((prev) => mergeById(prev, latest));
 
       setTextInput('');
+      setEditingTextId(null);
       setShowTextOptions(false);
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'No se pudo añadir el texto.');
+      Alert.alert(
+        'Error',
+        editingTextId ? 'No se pudo actualizar el texto.' : 'No se pudo añadir el texto.',
+      );
     } finally {
       setIsLoading(false);
     }
-  }, [textInput, selectedTextColor, selectedFont, currentPageId, mergeById]);
+  }, [textInput, selectedTextColor, selectedFont, currentPageId, mergeById, editingTextId]);
 
   // Eliminar texto (optimista + limpiar pan)
   const handleDeleteText = useCallback(
@@ -560,6 +636,12 @@ export default function PageView() {
           onPress: async () => {
             setPageTexts((prev) => prev.filter((t) => t.id !== textId));
             pansRef.current.delete(textId);
+            setLockedTextIds((prev) => {
+              const copy = { ...prev };
+              delete copy[textId];
+              return copy;
+            });
+            setSelectedTextId((prev) => (prev === textId ? null : prev));
 
             setIsLoading(true);
             try {
@@ -580,6 +662,28 @@ export default function PageView() {
     },
     [currentPageId, mergeById],
   );
+
+  const handleToggleLock = useCallback((id: string) => {
+    setLockedTextIds((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  }, []);
+
+  const handleSelectText = useCallback((id: string) => {
+    setSelectedTextId(id);
+  }, []);
+
+  const handleEditTextRequest = useCallback((t: PageText) => {
+    setDrawMode(false);
+    setEditingTextId(t.id);
+    setSelectedTextId(t.id);
+    setTextInput(t.content);
+    setSelectedFont(t.font_family as TextFont);
+    setSelectedTextColor(t.color as (typeof textColors)[number]);
+
+    setShowTextOptions(true);
+  }, []);
 
   const navigateToPage = useCallback(
     (newPageNum: number) => {
@@ -619,6 +723,8 @@ export default function PageView() {
         label: 'Texto',
         onPress: () => {
           setDrawMode(false);
+          setEditingTextId(null);
+          setTextInput('');
           setShowTextOptions(true);
         },
 
@@ -722,11 +828,14 @@ export default function PageView() {
       {/* Canvas con dibujo + textos */}
       <View
         style={S.canvas}
-        onStartShouldSetResponder={() => drawMode}
+        onStartShouldSetResponder={() => true}
         onMoveShouldSetResponder={() => drawMode}
         onResponderGrant={(e) => {
-          if (!drawMode) return;
           const { locationX, locationY } = e.nativeEvent;
+          if (!drawMode) {
+            setSelectedTextId(null);
+            return;
+          }
           onDrawStart(locationX, locationY);
         }}
         onResponderMove={(e) => {
@@ -779,6 +888,11 @@ export default function PageView() {
               handleDeleteText={handleDeleteText}
               getPanFor={getPanFor}
               onPositionCommit={commitTextPosition}
+              locked={!!lockedTextIds[text.id]}
+              isSelected={selectedTextId === text.id}
+              onToggleLock={handleToggleLock}
+              onSelect={handleSelectText}
+              onEdit={handleEditTextRequest}
             />
           ))}
         </View>
@@ -917,12 +1031,12 @@ export default function PageView() {
 
               <TouchableOpacity
                 style={S.addTextButton}
-                onPress={handleAddText}
+                onPress={handleConfirmText}
                 activeOpacity={0.7}
-                accessibilityLabel="Añadir texto"
-                accessibilityRole="button"
               >
-                <Text style={S.addTextButtonText}>Añadir texto</Text>
+                <Text style={S.addTextButtonText}>
+                  {editingTextId ? 'Guardar cambios' : 'Añadir texto'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>

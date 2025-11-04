@@ -63,17 +63,6 @@ export default StyleSheet.create({
     position: 'absolute',
   },
   textContent: {},
-  textDeleteButton: {
-    position: 'absolute',
-    top: -10,
-    right: -10,
-    backgroundColor: uiColors.danger,
-    borderRadius: 12,
-    width: 18,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
 
   // Toolbar horizontal fijo en la parte inferior
   toolbarWrap: {
@@ -120,6 +109,39 @@ export default StyleSheet.create({
   },
   toolItemLabelDisabled: {
     color: uiColors.gray,
+  },
+  // Texto en canvas
+  textBox: {
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 4,
+    backgroundColor: 'transparent',
+  },
+  textBoxSelected: {
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.25)',
+  },
+  textBoxLocked: {
+    borderStyle: 'dashed',
+  },
+  textToolbar: {
+    position: 'absolute',
+    top: -26,
+    left: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  textToolbarButton: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 6,
+  },
+  textToolbarDelete: {
+    backgroundColor: uiColors.danger,
   },
 
   // Modal de dibujo
