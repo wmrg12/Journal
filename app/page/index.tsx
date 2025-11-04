@@ -436,6 +436,14 @@ export default function PageView() {
           const texts = await listPageTexts(pageId);
           if (mounted) setPageTexts((prev) => mergeById(prev, texts));
 
+          const lockedState: Record<string, boolean> = {};
+          texts.forEach((text) => {
+            if (text.is_locked) {
+              lockedState[text.id] = true;
+            }
+          });
+          setLockedTextIds(lockedState);
+
           try {
             const draws = await listPageDraws(pageId);
             if (mounted) {
@@ -459,12 +467,14 @@ export default function PageView() {
           setCurrentPageId(null);
           setPageTexts([]);
           setStrokes([]);
+          setLockedTextIds({});
         }
       } catch (error) {
         console.error('Error loading page texts:', error);
         if (mounted) {
           setPageTexts([]);
           setStrokes([]);
+          setLockedTextIds({});
         }
       }
     })();
@@ -673,12 +683,27 @@ export default function PageView() {
     [currentPageId, mergeById],
   );
 
-  const handleToggleLock = useCallback((id: string) => {
-    setLockedTextIds((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  }, []);
+  const handleToggleLock = useCallback(
+    async (id: string) => {
+      setLockedTextIds((prev) => {
+        const newLocked = !prev[id];
+        if (currentPageId) {
+          updatePageText(id, { is_locked: newLocked ? 1 : 0 }).catch((e) => {
+            console.error('Error updating lock state:', e);
+            setLockedTextIds((current) => ({
+              ...current,
+              [id]: !newLocked,
+            }));
+          });
+        }
+        return {
+          ...prev,
+          [id]: newLocked,
+        };
+      });
+    },
+    [currentPageId],
+  );
 
   const handleSelectText = useCallback((id: string) => {
     setSelectedTextId(id);
