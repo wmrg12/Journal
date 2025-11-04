@@ -68,6 +68,7 @@ export async function initDb() {
           position_x REAL NOT NULL,
           position_y REAL NOT NULL,
           font_size INTEGER NOT NULL DEFAULT 16,
+          rotation REAL NOT NULL DEFAULT 0,
           created_at INTEGER NOT NULL,
           updated_at INTEGER NOT NULL,
           FOREIGN KEY(page_id) REFERENCES pages(id) ON DELETE CASCADE
@@ -106,6 +107,7 @@ export async function initDb() {
         tx,
         `ALTER TABLE page_texts ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1))`,
       );
+      await execTxIgnore(tx, `ALTER TABLE page_texts ADD COLUMN rotation REAL NOT NULL DEFAULT 0`);
 
       // Índices
       await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_pages_journal ON pages(journal_id);`);
@@ -175,6 +177,7 @@ export async function initDb() {
         position_x REAL NOT NULL,
         position_y REAL NOT NULL,
         font_size INTEGER NOT NULL DEFAULT 16,
+        rotation REAL NOT NULL DEFAULT 0,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY(page_id) REFERENCES pages(id) ON DELETE CASCADE
@@ -208,6 +211,7 @@ export async function initDb() {
     await runAsyncIgnore(
       `ALTER TABLE page_texts ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1))`,
     );
+    await runAsyncIgnore(`ALTER TABLE page_texts ADD COLUMN rotation REAL NOT NULL DEFAULT 0`);
 
     // Indices
     await runAsync(`CREATE INDEX IF NOT EXISTS idx_pages_journal ON pages(journal_id);`);
@@ -622,6 +626,7 @@ export type PageText = {
   created_at: number;
   updated_at: number;
   is_locked?: number;
+  rotation?: number;
 };
 
 export async function createPageText(
@@ -658,7 +663,7 @@ export async function createPageText(
 export async function listPageTexts(pageId: string): Promise<PageText[]> {
   if (isAsync) {
     const rows = await (adb as any).getAllAsync?.(
-      `SELECT id, page_id, content, font_family, color, position_x, position_y, font_size, created_at, updated_at, is_locked
+      `SELECT id, page_id, content, font_family, color, position_x, position_y, font_size, created_at, updated_at, is_locked, rotation
          FROM page_texts
         WHERE page_id = ?
         ORDER BY created_at ASC`,
@@ -670,7 +675,7 @@ export async function listPageTexts(pageId: string): Promise<PageText[]> {
   return new Promise<PageText[]>((resolve, reject) => {
     legacyDb.readTransaction((tx: any) => {
       tx.executeSql(
-        `SELECT id, page_id, content, font_family, color, position_x, position_y, font_size, created_at, updated_at, is_locked
+        `SELECT id, page_id, content, font_family, color, position_x, position_y, font_size, created_at, updated_at, is_locked, rotation
            FROM page_texts
           WHERE page_id = ?
           ORDER BY created_at ASC`,
@@ -699,6 +704,7 @@ export async function updatePageText(
     position_y?: number;
     font_size?: number;
     is_locked?: number;
+    rotation?: number;
   },
 ) {
   const now = Math.floor(Date.now() / 1000);
@@ -732,6 +738,10 @@ export async function updatePageText(
   if (updates.is_locked !== undefined) {
     fields.push('is_locked = ?');
     values.push(updates.is_locked);
+  }
+  if (updates.rotation !== undefined) {
+    fields.push('rotation = ?');
+    values.push(updates.rotation);
   }
 
   if (fields.length === 0) return;
