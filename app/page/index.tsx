@@ -30,10 +30,14 @@ import {
   listPageTexts,
   updatePageText,
   deletePageText,
-  PageText,
+  PageText as BasePageText,
   listPageDraws,
   createPageDraw,
 } from '@/src/db/dao';
+
+type PageText = BasePageText & {
+  rotation?: number;
+};
 
 type Params = {
   journalId?: string;
@@ -86,11 +90,22 @@ const DraggableTextBase = ({
   const [isDragging, setIsDragging] = useState(false);
   const toolbarButtonPressed = useRef(false);
   const startRef = useRef({ x: text.position_x, y: text.position_y });
+  const [rotation, setRotation] = useState(text.rotation ?? 0);
+  const rotationStartRef = useRef(rotation);
+  const rotationRef = useRef(rotation);
+  const [rotateMode] = useState(false);
   const lockedRef = useRef(locked);
+  const textBoxRef = useRef<View>(null);
+  const textCenterRef = useRef({ x: 0, y: 0 });
+  const initialAngleRef = useRef(0);
 
   useEffect(() => {
     lockedRef.current = locked;
   }, [locked]);
+
+  useEffect(() => {
+    rotationRef.current = rotation;
+  }, [rotation]);
 
   // Sync si la BD movió el texto (sin animación)
   useEffect(() => {
@@ -122,13 +137,22 @@ const DraggableTextBase = ({
             x: (pan.x as any)._value,
             y: (pan.y as any)._value,
           };
+          rotationStartRef.current = rotation;
+          if (!lockedRef.current && !rotateMode) {
+            setIsDragging(true);
+          }
         }
       },
       onPanResponderMove: (_, g) => {
         if (lockedRef.current) return;
-        const nx = startRef.current.x + g.dx;
-        const ny = startRef.current.y + g.dy;
-        pan.setValue({ x: nx, y: ny });
+        if (rotateMode) {
+          const delta = g.dx;
+          setRotation(rotationStartRef.current + delta);
+        } else {
+          const nx = startRef.current.x + g.dx;
+          const ny = startRef.current.y + g.dy;
+          pan.setValue({ x: nx, y: ny });
+        }
       },
       onPanResponderRelease: async () => {
         if (toolbarButtonPressed.current) {
@@ -157,13 +181,62 @@ const DraggableTextBase = ({
     }),
   ).current;
 
+  const rotatePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => !lockedRef.current,
+      onMoveShouldSetPanResponder: () => !lockedRef.current,
+
+      onPanResponderGrant: (evt) => {
+        toolbarButtonPressed.current = true;
+        rotationStartRef.current = rotationRef.current;
+
+        textBoxRef.current?.measureInWindow((x, y, width, height) => {
+          textCenterRef.current = {
+            x: x + width / 2,
+            y: y + height / 2,
+          };
+
+          const { pageX, pageY } = evt.nativeEvent;
+          const dx = pageX - textCenterRef.current.x;
+          const dy = pageY - textCenterRef.current.y;
+          initialAngleRef.current = Math.atan2(dy, dx) * (180 / Math.PI);
+        });
+      },
+
+      onPanResponderMove: (evt) => {
+        if (lockedRef.current) return;
+        const { pageX, pageY } = evt.nativeEvent;
+        const dx = pageX - textCenterRef.current.x;
+        const dy = pageY - textCenterRef.current.y;
+        const currentAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+        const angleDelta = currentAngle - initialAngleRef.current;
+        setRotation(rotationStartRef.current + angleDelta);
+      },
+
+      onPanResponderRelease: async () => {
+        toolbarButtonPressed.current = false;
+        if (lockedRef.current) return;
+
+        if (currentPageId) {
+          try {
+            await updatePageText(text.id, {
+              rotation: rotationRef.current,
+            });
+          } catch (e) {
+            console.error('Error updating text rotation:', e);
+          }
+        }
+      },
+    }),
+  ).current;
+
   return (
     <Animated.View
       {...panResponder.panHandlers}
       style={[
         S.textContainer,
         {
-          transform: [{ translateX: pan.x }, { translateY: pan.y }],
+          transform: [{ translateX: pan.x }, { translateY: pan.y }, { rotate: `${rotation}deg` }],
           opacity: isDragging ? 0.7 : 1,
         },
       ]}
@@ -189,11 +262,15 @@ const DraggableTextBase = ({
               toolbarButtonPressed.current = true;
             }}
             onPress={() => {
+              if (lockedRef.current) {
+                toolbarButtonPressed.current = false;
+                return;
+              }
               onSelect(text.id);
               onEdit(text);
               toolbarButtonPressed.current = false;
             }}
-            style={S.textToolbarButton}
+            style={[S.textToolbarButton, locked && { opacity: 0.4 }]}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <MaterialIcons name="edit" size={14} color="#fff" />
@@ -211,6 +288,13 @@ const DraggableTextBase = ({
           >
             <MaterialIcons name="delete" size={14} color="#fff" />
           </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Rotar */}
+      {isSelected && !locked && (
+        <View {...rotatePanResponder.panHandlers} style={S.rotateButton}>
+          <MaterialIcons name="rotate-right" size={16} color="#fff" />
         </View>
       )}
 

@@ -143,6 +143,22 @@ export default StyleSheet.create({
   textToolbarDelete: {
     backgroundColor: uiColors.danger,
   },
+  rotateButton: {
+    position: 'absolute',
+    bottom: -32,
+    right: 0,
+    backgroundColor: '#333',
+    borderRadius: 20,
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
+  },
 
   // Modal de dibujo
   drawModalOverlay: {
