@@ -1,5 +1,5 @@
-import * as SQLite from "expo-sqlite";
-import * as Crypto from "expo-crypto";
+import * as SQLite from 'expo-sqlite';
+import * as Crypto from 'expo-crypto';
 
 let legacyDb: any = null;
 let adb: any = null;
@@ -9,16 +9,14 @@ export async function initDb() {
   const anySQLite = SQLite as any;
 
   // -------- LEGACY (openDatabase) --------
-  if (typeof anySQLite.openDatabase === "function") {
-    legacyDb = anySQLite.openDatabase("journal.db");
+  if (typeof anySQLite.openDatabase === 'function') {
+    legacyDb = anySQLite.openDatabase('journal.db');
     isAsync = false;
 
     // PRAGMA FK
     await new Promise<void>((resolve) => {
-      (legacyDb as any).exec?.(
-        [{ sql: "PRAGMA foreign_keys = ON;", args: [] }],
-        false,
-        () => resolve()
+      (legacyDb as any).exec?.([{ sql: 'PRAGMA foreign_keys = ON;', args: [] }], false, () =>
+        resolve(),
       ) ?? resolve();
     });
 
@@ -32,7 +30,7 @@ export async function initDb() {
           color TEXT NOT NULL,
           is_favorite INTEGER NOT NULL DEFAULT 0 CHECK(is_favorite IN (0,1)),
           created_at INTEGER NOT NULL
-        );`
+        );`,
       );
 
       await execTx(
@@ -44,7 +42,7 @@ export async function initDb() {
           bg_color TEXT NOT NULL,
           created_at INTEGER NOT NULL,
           FOREIGN KEY(journal_id) REFERENCES journals(id) ON DELETE CASCADE
-        );`
+        );`,
       );
 
       await execTx(
@@ -55,7 +53,7 @@ export async function initDb() {
           is_completed INTEGER NOT NULL DEFAULT 0 CHECK(is_completed IN (0,1)),
           created_at INTEGER NOT NULL,
           updated_at INTEGER NOT NULL
-        );`
+        );`,
       );
 
       // Tabla para textos en páginas
@@ -73,7 +71,7 @@ export async function initDb() {
           created_at INTEGER NOT NULL,
           updated_at INTEGER NOT NULL,
           FOREIGN KEY(page_id) REFERENCES pages(id) ON DELETE CASCADE
-        );`
+        );`,
       );
 
       // Tabla para trazos de dibujo
@@ -91,53 +89,48 @@ export async function initDb() {
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
     FOREIGN KEY(page_id) REFERENCES pages(id) ON DELETE CASCADE
-  );`
+  );`,
       );
-      await execTx(
-        tx,
-        `CREATE INDEX IF NOT EXISTS idx_page_draws_page ON page_draws(page_id);`
-      );
+      await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_page_draws_page ON page_draws(page_id);`);
 
       // ---- MIGRACIONES ----
       await execTxIgnore(
         tx,
-        `ALTER TABLE journals ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`
+        `ALTER TABLE journals ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`,
       );
       await execTxIgnore(
         tx,
-        `ALTER TABLE pages ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`
+        `ALTER TABLE pages ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`,
+      );
+      await execTxIgnore(
+        tx,
+        `ALTER TABLE page_texts ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1))`,
       );
 
       // Índices
+      await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_pages_journal ON pages(journal_id);`);
       await execTx(
         tx,
-        `CREATE INDEX IF NOT EXISTS idx_pages_journal ON pages(journal_id);`
+        `CREATE INDEX IF NOT EXISTS idx_pages_journal_number ON pages(journal_id, page_number);`,
       );
       await execTx(
         tx,
-        `CREATE INDEX IF NOT EXISTS idx_pages_journal_number ON pages(journal_id, page_number);`
-      );
-      await execTx(
-        tx,
-        `CREATE UNIQUE INDEX IF NOT EXISTS ux_pages_journal_number ON pages(journal_id, page_number);`
+        `CREATE UNIQUE INDEX IF NOT EXISTS ux_pages_journal_number ON pages(journal_id, page_number);`,
       );
 
       // Indice para textos
-      await execTx(
-        tx,
-        `CREATE INDEX IF NOT EXISTS idx_page_texts_page ON page_texts(page_id);`
-      );
+      await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_page_texts_page ON page_texts(page_id);`);
     });
 
     return;
   }
 
   // -------- ASYNC (openDatabaseAsync) --------
-  if (typeof anySQLite.openDatabaseAsync === "function") {
-    adb = await anySQLite.openDatabaseAsync("journal.db");
+  if (typeof anySQLite.openDatabaseAsync === 'function') {
+    adb = await anySQLite.openDatabaseAsync('journal.db');
     isAsync = true;
 
-    await (adb as any).execAsync?.("PRAGMA foreign_keys = ON;");
+    await (adb as any).execAsync?.('PRAGMA foreign_keys = ON;');
 
     // Tablas base
     await runAsync(
@@ -147,7 +140,7 @@ export async function initDb() {
         color TEXT NOT NULL,
         is_favorite INTEGER NOT NULL DEFAULT 0 CHECK(is_favorite IN (0,1)),
         created_at INTEGER NOT NULL
-      );`
+      );`,
     );
 
     await runAsync(
@@ -158,7 +151,7 @@ export async function initDb() {
         bg_color TEXT NOT NULL,
         created_at INTEGER NOT NULL,
         FOREIGN KEY(journal_id) REFERENCES journals(id) ON DELETE CASCADE
-      );`
+      );`,
     );
 
     await runAsync(
@@ -168,7 +161,7 @@ export async function initDb() {
         is_completed INTEGER NOT NULL DEFAULT 0 CHECK(is_completed IN (0,1)),
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL
-      );`
+      );`,
     );
 
     // Tabla para textos en páginas
@@ -185,7 +178,7 @@ export async function initDb() {
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY(page_id) REFERENCES pages(id) ON DELETE CASCADE
-      );`
+      );`,
     );
     // tablas para trazos en dibujo
     await runAsync(
@@ -201,42 +194,37 @@ export async function initDb() {
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
     FOREIGN KEY(page_id) REFERENCES pages(id) ON DELETE CASCADE
-  );`
+  );`,
     );
-    await runAsync(
-      `CREATE INDEX IF NOT EXISTS idx_page_draws_page ON page_draws(page_id);`
-    );
+    await runAsync(`CREATE INDEX IF NOT EXISTS idx_page_draws_page ON page_draws(page_id);`);
 
     // ---- MIGRACIONES ----
     await runAsyncIgnore(
-      `ALTER TABLE journals ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`
+      `ALTER TABLE journals ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`,
     );
     await runAsyncIgnore(
-      `ALTER TABLE pages ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`
+      `ALTER TABLE pages ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`,
+    );
+    await runAsyncIgnore(
+      `ALTER TABLE page_texts ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1))`,
     );
 
     // Indices
+    await runAsync(`CREATE INDEX IF NOT EXISTS idx_pages_journal ON pages(journal_id);`);
     await runAsync(
-      `CREATE INDEX IF NOT EXISTS idx_pages_journal ON pages(journal_id);`
+      `CREATE INDEX IF NOT EXISTS idx_pages_journal_number ON pages(journal_id, page_number);`,
     );
     await runAsync(
-      `CREATE INDEX IF NOT EXISTS idx_pages_journal_number ON pages(journal_id, page_number);`
-    );
-    await runAsync(
-      `CREATE UNIQUE INDEX IF NOT EXISTS ux_pages_journal_number ON pages(journal_id, page_number);`
+      `CREATE UNIQUE INDEX IF NOT EXISTS ux_pages_journal_number ON pages(journal_id, page_number);`,
     );
 
     // Indice para textos
-    await runAsync(
-      `CREATE INDEX IF NOT EXISTS idx_page_texts_page ON page_texts(page_id);`
-    );
+    await runAsync(`CREATE INDEX IF NOT EXISTS idx_page_texts_page ON page_texts(page_id);`);
 
     return;
   }
 
-  throw new Error(
-    "expo-sqlite no disponible. Instala: npx expo install expo-sqlite"
-  );
+  throw new Error('expo-sqlite no disponible. Instala: npx expo install expo-sqlite');
 }
 
 // ---------- Utilidades de ejecución ----------
@@ -249,7 +237,7 @@ function execTx(tx: any, sql: string, params: any[] = []): Promise<void> {
       (_tx: any, err: any) => {
         reject(err);
         return true;
-      }
+      },
     );
   });
 }
@@ -262,18 +250,13 @@ async function execTxIgnore(tx: any, sql: string, params: any[] = []) {
 }
 
 async function runAsync(sql: string, params: any[] = []): Promise<void> {
-  if (!adb) throw new Error("DB async no inicializada");
-  if (typeof (adb as any).runAsync === "function") {
+  if (!adb) throw new Error('DB async no inicializada');
+  if (typeof (adb as any).runAsync === 'function') {
     await (adb as any).runAsync(sql, params);
-  } else if (
-    params.length === 0 &&
-    typeof (adb as any).execAsync === "function"
-  ) {
+  } else if (params.length === 0 && typeof (adb as any).execAsync === 'function') {
     await (adb as any).execAsync(sql);
   } else {
-    throw new Error(
-      "Método runAsync/execAsync no disponible para consultas parametrizadas"
-    );
+    throw new Error('Método runAsync/execAsync no disponible para consultas parametrizadas');
   }
 }
 
@@ -292,7 +275,7 @@ function txLegacy<T>(fn: (tx: any) => Promise<T>): Promise<T> {
         });
       },
       (err: any) => reject(err),
-      () => resolve(undefined as unknown as T)
+      () => resolve(undefined as unknown as T),
     );
   });
 }
@@ -306,7 +289,7 @@ export async function createJournal(name: string, color: string) {
     await runAsync(
       `INSERT INTO journals(id, name, color, is_favorite, created_at, updated_at)
        VALUES(?,?,?,?,?,?)`,
-      [id, name, color, 0, now, now]
+      [id, name, color, 0, now, now],
     );
   } else {
     await txLegacy(async (tx) => {
@@ -314,7 +297,7 @@ export async function createJournal(name: string, color: string) {
         tx,
         `INSERT INTO journals(id, name, color, is_favorite, created_at, updated_at)
          VALUES(?,?,?,?,?,?)`,
-        [id, name, color, 0, now, now]
+        [id, name, color, 0, now, now],
       );
     });
   }
@@ -335,7 +318,7 @@ export async function listJournals(): Promise<Journal[]> {
     const rows = await (adb as any).getAllAsync?.(
       `SELECT id, name, color, is_favorite, created_at, updated_at
          FROM journals
-         ORDER BY created_at DESC`
+         ORDER BY created_at DESC`,
     );
     return rows ?? [];
   }
@@ -355,7 +338,7 @@ export async function listJournals(): Promise<Journal[]> {
         (_: any, err: any) => {
           reject(err);
           return true;
-        }
+        },
       );
     });
   });
@@ -366,17 +349,18 @@ export async function toggleFavorite(journalId: string, favorite: boolean) {
   const now = Math.floor(Date.now() / 1000);
 
   if (isAsync) {
-    await runAsync(
-      `UPDATE journals SET is_favorite = ?, updated_at = ? WHERE id = ?`,
-      [value, now, journalId]
-    );
+    await runAsync(`UPDATE journals SET is_favorite = ?, updated_at = ? WHERE id = ?`, [
+      value,
+      now,
+      journalId,
+    ]);
   } else {
     await txLegacy(async (tx) => {
-      await execTx(
-        tx,
-        `UPDATE journals SET is_favorite = ?, updated_at = ? WHERE id = ?`,
-        [value, now, journalId]
-      );
+      await execTx(tx, `UPDATE journals SET is_favorite = ?, updated_at = ? WHERE id = ?`, [
+        value,
+        now,
+        journalId,
+      ]);
     });
   }
 }
@@ -397,28 +381,28 @@ export async function updateJournalCover(
   updates: {
     name?: string;
     color?: string;
-  }
+  },
 ): Promise<void> {
   const now = Math.floor(Date.now() / 1000);
   const fields: string[] = [];
   const values: any[] = [];
 
   if (updates.name !== undefined) {
-    fields.push("name = ?");
+    fields.push('name = ?');
     values.push(updates.name);
   }
   if (updates.color !== undefined) {
-    fields.push("color = ?");
+    fields.push('color = ?');
     values.push(updates.color);
   }
 
   if (fields.length === 0) return;
 
-  fields.push("updated_at = ?");
+  fields.push('updated_at = ?');
   values.push(now);
   values.push(journalId);
 
-  const sql = `UPDATE journals SET ${fields.join(", ")} WHERE id = ?`;
+  const sql = `UPDATE journals SET ${fields.join(', ')} WHERE id = ?`;
 
   if (isAsync) {
     await runAsync(sql, values);
@@ -434,7 +418,7 @@ export async function getTotalPages(journalId: string): Promise<number> {
   if (isAsync) {
     const rows = await (adb as any).getAllAsync?.(
       `SELECT COALESCE(MAX(page_number),0) AS total FROM pages WHERE journal_id = ?`,
-      [journalId]
+      [journalId],
     );
     return rows?.[0]?.total ?? 0;
   }
@@ -448,21 +432,18 @@ export async function getTotalPages(journalId: string): Promise<number> {
         (_: any, err: any) => {
           reject(err);
           return true;
-        }
+        },
       );
     });
   });
 }
 
 // Obtener el ID de la página
-export async function getPageId(
-  journalId: string,
-  pageNumber: number
-): Promise<string | null> {
+export async function getPageId(journalId: string, pageNumber: number): Promise<string | null> {
   if (isAsync) {
     const rows = await (adb as any).getAllAsync?.(
       `SELECT id FROM pages WHERE journal_id = ? AND page_number = ? LIMIT 1`,
-      [journalId, pageNumber]
+      [journalId, pageNumber],
     );
     return rows?.[0]?.id ?? null;
   }
@@ -478,23 +459,20 @@ export async function getPageId(
         (_: any, err: any) => {
           reject(err);
           return true;
-        }
+        },
       );
     });
   });
 }
 
-export async function getPageColor(
-  journalId: string,
-  pageNumber: number
-): Promise<string | null> {
+export async function getPageColor(journalId: string, pageNumber: number): Promise<string | null> {
   if (isAsync) {
     const rows = await (adb as any).getAllAsync?.(
       `SELECT bg_color
          FROM pages
         WHERE journal_id = ? AND page_number = ?
         LIMIT 1`,
-      [journalId, pageNumber]
+      [journalId, pageNumber],
     );
     return rows?.[0]?.bg_color ?? null;
   }
@@ -508,14 +486,12 @@ export async function getPageColor(
           LIMIT 1`,
         [journalId, pageNumber],
         (_: any, res: any) => {
-          resolve(
-            res.rows.length ? (res.rows.item(0).bg_color as string) : null
-          );
+          resolve(res.rows.length ? (res.rows.item(0).bg_color as string) : null);
         },
         (_: any, err: any) => {
           reject(err);
           return true;
-        }
+        },
       );
     });
   });
@@ -526,24 +502,24 @@ export async function createPage(journalId: string, bgColor: string) {
   const now = Math.floor(Date.now() / 1000);
 
   if (isAsync) {
-    await runAsync("BEGIN");
+    await runAsync('BEGIN');
     try {
       const rows = await (adb as any).getAllAsync?.(
         `SELECT COALESCE(MAX(page_number),0)+1 AS next FROM pages WHERE journal_id = ?`,
-        [journalId]
+        [journalId],
       );
       const next = rows?.[0]?.next ?? 1;
 
       await runAsync(
         `INSERT INTO pages(id, journal_id, page_number, bg_color, created_at, updated_at)
          VALUES(?,?,?,?,?,?)`,
-        [id, journalId, next, bgColor, now, now]
+        [id, journalId, next, bgColor, now, now],
       );
 
-      await runAsync("COMMIT");
+      await runAsync('COMMIT');
       return { pageNumber: next, total: next };
     } catch (e) {
-      await runAsync("ROLLBACK");
+      await runAsync('ROLLBACK');
       throw e;
     }
   }
@@ -562,7 +538,7 @@ export async function createPage(journalId: string, bgColor: string) {
         (_: any, err: any) => {
           reject(err);
           return true;
-        }
+        },
       );
     });
 
@@ -570,7 +546,7 @@ export async function createPage(journalId: string, bgColor: string) {
       tx,
       `INSERT INTO pages(id, journal_id, page_number, bg_color, created_at, updated_at)
        VALUES(?,?,?,?,?,?)`,
-      [id, journalId, next, bgColor, now, now]
+      [id, journalId, next, bgColor, now, now],
     );
   });
 
@@ -581,51 +557,50 @@ export async function deletePage(journalId: string, pageNumber: number) {
   if (pageNumber < 1) return { pageNumber: 1, total: 1 };
 
   if (isAsync) {
-    await runAsync("BEGIN");
+    await runAsync('BEGIN');
     try {
-      await runAsync(
-        `DELETE FROM pages WHERE journal_id = ? AND page_number = ?`,
-        [journalId, pageNumber]
-      );
+      await runAsync(`DELETE FROM pages WHERE journal_id = ? AND page_number = ?`, [
+        journalId,
+        pageNumber,
+      ]);
 
       await runAsync(
         `UPDATE pages
            SET page_number = page_number - 1,
                updated_at   = ?
          WHERE journal_id = ? AND page_number > ?`,
-        [Math.floor(Date.now() / 1000), journalId, pageNumber]
+        [Math.floor(Date.now() / 1000), journalId, pageNumber],
       );
 
-      await runAsync("COMMIT");
+      await runAsync('COMMIT');
 
       const rows = await (adb as any).getAllAsync?.(
         `SELECT COALESCE(MAX(page_number),0) AS total FROM pages WHERE journal_id = ?`,
-        [journalId]
+        [journalId],
       );
       const total = Math.max(rows?.[0]?.total ?? 0, 0);
       const target = Math.max(Math.min(pageNumber, total), 1);
 
       return { pageNumber: Math.max(target, 1), total: Math.max(total, 1) };
     } catch (e) {
-      await runAsync("ROLLBACK");
+      await runAsync('ROLLBACK');
       throw e;
     }
   }
 
   // Legacy
   await txLegacy(async (tx) => {
-    await execTx(
-      tx,
-      `DELETE FROM pages WHERE journal_id = ? AND page_number = ?`,
-      [journalId, pageNumber]
-    );
+    await execTx(tx, `DELETE FROM pages WHERE journal_id = ? AND page_number = ?`, [
+      journalId,
+      pageNumber,
+    ]);
     await execTx(
       tx,
       `UPDATE pages
          SET page_number = page_number - 1,
              updated_at   = ?
        WHERE journal_id = ? AND page_number > ?`,
-      [Math.floor(Date.now() / 1000), journalId, pageNumber]
+      [Math.floor(Date.now() / 1000), journalId, pageNumber],
     );
   });
 
@@ -646,6 +621,7 @@ export type PageText = {
   font_size: number;
   created_at: number;
   updated_at: number;
+  is_locked?: number;
 };
 
 export async function createPageText(
@@ -655,7 +631,7 @@ export async function createPageText(
   color: string,
   positionX: number,
   positionY: number,
-  fontSize: number = 16
+  fontSize: number = 16,
 ) {
   const id = await Crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
@@ -664,18 +640,7 @@ export async function createPageText(
     await runAsync(
       `INSERT INTO page_texts(id, page_id, content, font_family, color, position_x, position_y, font_size, created_at, updated_at)
        VALUES(?,?,?,?,?,?,?,?,?,?)`,
-      [
-        id,
-        pageId,
-        content,
-        fontFamily,
-        color,
-        positionX,
-        positionY,
-        fontSize,
-        now,
-        now,
-      ]
+      [id, pageId, content, fontFamily, color, positionX, positionY, fontSize, now, now],
     );
   } else {
     await txLegacy(async (tx) => {
@@ -683,18 +648,7 @@ export async function createPageText(
         tx,
         `INSERT INTO page_texts(id, page_id, content, font_family, color, position_x, position_y, font_size, created_at, updated_at)
          VALUES(?,?,?,?,?,?,?,?,?,?)`,
-        [
-          id,
-          pageId,
-          content,
-          fontFamily,
-          color,
-          positionX,
-          positionY,
-          fontSize,
-          now,
-          now,
-        ]
+        [id, pageId, content, fontFamily, color, positionX, positionY, fontSize, now, now],
       );
     });
   }
@@ -704,11 +658,11 @@ export async function createPageText(
 export async function listPageTexts(pageId: string): Promise<PageText[]> {
   if (isAsync) {
     const rows = await (adb as any).getAllAsync?.(
-      `SELECT id, page_id, content, font_family, color, position_x, position_y, font_size, created_at, updated_at
+      `SELECT id, page_id, content, font_family, color, position_x, position_y, font_size, created_at, updated_at, is_locked
          FROM page_texts
         WHERE page_id = ?
         ORDER BY created_at ASC`,
-      [pageId]
+      [pageId],
     );
     return rows ?? [];
   }
@@ -716,7 +670,7 @@ export async function listPageTexts(pageId: string): Promise<PageText[]> {
   return new Promise<PageText[]>((resolve, reject) => {
     legacyDb.readTransaction((tx: any) => {
       tx.executeSql(
-        `SELECT id, page_id, content, font_family, color, position_x, position_y, font_size, created_at, updated_at
+        `SELECT id, page_id, content, font_family, color, position_x, position_y, font_size, created_at, updated_at, is_locked
            FROM page_texts
           WHERE page_id = ?
           ORDER BY created_at ASC`,
@@ -729,7 +683,7 @@ export async function listPageTexts(pageId: string): Promise<PageText[]> {
         (_: any, err: any) => {
           reject(err);
           return true;
-        }
+        },
       );
     });
   });
@@ -744,44 +698,49 @@ export async function updatePageText(
     position_x?: number;
     position_y?: number;
     font_size?: number;
-  }
+    is_locked?: number;
+  },
 ) {
   const now = Math.floor(Date.now() / 1000);
   const fields: string[] = [];
   const values: any[] = [];
 
   if (updates.content !== undefined) {
-    fields.push("content = ?");
+    fields.push('content = ?');
     values.push(updates.content);
   }
   if (updates.font_family !== undefined) {
-    fields.push("font_family = ?");
+    fields.push('font_family = ?');
     values.push(updates.font_family);
   }
   if (updates.color !== undefined) {
-    fields.push("color = ?");
+    fields.push('color = ?');
     values.push(updates.color);
   }
   if (updates.position_x !== undefined) {
-    fields.push("position_x = ?");
+    fields.push('position_x = ?');
     values.push(updates.position_x);
   }
   if (updates.position_y !== undefined) {
-    fields.push("position_y = ?");
+    fields.push('position_y = ?');
     values.push(updates.position_y);
   }
   if (updates.font_size !== undefined) {
-    fields.push("font_size = ?");
+    fields.push('font_size = ?');
     values.push(updates.font_size);
+  }
+  if (updates.is_locked !== undefined) {
+    fields.push('is_locked = ?');
+    values.push(updates.is_locked);
   }
 
   if (fields.length === 0) return;
 
-  fields.push("updated_at = ?");
+  fields.push('updated_at = ?');
   values.push(now);
   values.push(textId);
 
-  const sql = `UPDATE page_texts SET ${fields.join(", ")} WHERE id = ?`;
+  const sql = `UPDATE page_texts SET ${fields.join(', ')} WHERE id = ?`;
 
   if (isAsync) {
     await runAsync(sql, values);
@@ -819,7 +778,7 @@ export async function createTask(title: string) {
     await runAsync(
       `INSERT INTO tasks(id, title, is_completed, created_at, updated_at)
        VALUES(?,?,?,?,?)`,
-      [id, title, 0, now, now]
+      [id, title, 0, now, now],
     );
   } else {
     await txLegacy(async (tx) => {
@@ -827,7 +786,7 @@ export async function createTask(title: string) {
         tx,
         `INSERT INTO tasks(id, title, is_completed, created_at, updated_at)
          VALUES(?,?,?,?,?)`,
-        [id, title, 0, now, now]
+        [id, title, 0, now, now],
       );
     });
   }
@@ -839,7 +798,7 @@ export async function listTasks(): Promise<Task[]> {
     const rows = await (adb as any).getAllAsync?.(
       `SELECT id, title, is_completed, created_at, updated_at
          FROM tasks
-        ORDER BY is_completed ASC, created_at ASC`
+        ORDER BY is_completed ASC, created_at ASC`,
     );
     return rows ?? [];
   }
@@ -859,7 +818,7 @@ export async function listTasks(): Promise<Task[]> {
         (_: any, err: any) => {
           reject(err);
           return true;
-        }
+        },
       );
     });
   });
@@ -870,28 +829,28 @@ export async function updateTask(
   updates: {
     title?: string;
     is_completed?: boolean;
-  }
+  },
 ) {
   const now = Math.floor(Date.now() / 1000);
   const fields: string[] = [];
   const values: any[] = [];
 
   if (updates.title !== undefined) {
-    fields.push("title = ?");
+    fields.push('title = ?');
     values.push(updates.title);
   }
   if (updates.is_completed !== undefined) {
-    fields.push("is_completed = ?");
+    fields.push('is_completed = ?');
     values.push(updates.is_completed ? 1 : 0);
   }
 
   if (fields.length === 0) return;
 
-  fields.push("updated_at = ?");
+  fields.push('updated_at = ?');
   values.push(now);
   values.push(taskId);
 
-  const sql = `UPDATE tasks SET ${fields.join(", ")} WHERE id = ?`;
+  const sql = `UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`;
 
   if (isAsync) {
     await runAsync(sql, values);
@@ -907,17 +866,18 @@ export async function toggleTaskCompletion(taskId: string, completed: boolean) {
   const now = Math.floor(Date.now() / 1000);
 
   if (isAsync) {
-    await runAsync(
-      `UPDATE tasks SET is_completed = ?, updated_at = ? WHERE id = ?`,
-      [value, now, taskId]
-    );
+    await runAsync(`UPDATE tasks SET is_completed = ?, updated_at = ? WHERE id = ?`, [
+      value,
+      now,
+      taskId,
+    ]);
   } else {
     await txLegacy(async (tx) => {
-      await execTx(
-        tx,
-        `UPDATE tasks SET is_completed = ?, updated_at = ? WHERE id = ?`,
-        [value, now, taskId]
-      );
+      await execTx(tx, `UPDATE tasks SET is_completed = ?, updated_at = ? WHERE id = ?`, [
+        value,
+        now,
+        taskId,
+      ]);
     });
   }
 }
@@ -940,7 +900,7 @@ export type PageDraw = {
   color: string;
   width: number;
   opacity: number;
-  tool: "pencil" | "pen" | "marker";
+  tool: 'pencil' | 'pen' | 'marker';
   order_index: number;
   created_at: number;
   updated_at: number;
@@ -953,8 +913,8 @@ export async function createPageDraw(
   color: string,
   width: number,
   opacity: number,
-  tool: "pencil" | "pen" | "marker",
-  orderIndex?: number // opcional, si no lo pasas se calcula
+  tool: 'pencil' | 'pen' | 'marker',
+  orderIndex?: number, // opcional, si no lo pasas se calcula
 ) {
   const id = await Crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
@@ -963,7 +923,7 @@ export async function createPageDraw(
     if (orderIndex == null) {
       const rows = await (adb as any).getAllAsync?.(
         `SELECT COALESCE(MAX(order_index), 0) + 1 AS next FROM page_draws WHERE page_id = ?`,
-        [pageId]
+        [pageId],
       );
       orderIndex = rows?.[0]?.next ?? 1;
     }
@@ -971,7 +931,7 @@ export async function createPageDraw(
     await runAsync(
       `INSERT INTO page_draws(id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at)
        VALUES(?,?,?,?,?,?,?,?,?,?)`,
-      [id, pageId, pathD, color, width, opacity, tool, orderIndex, now, now]
+      [id, pageId, pathD, color, width, opacity, tool, orderIndex, now, now],
     );
   } else {
     await txLegacy(async (tx) => {
@@ -984,7 +944,7 @@ export async function createPageDraw(
             (_: any, err: any) => {
               reject(err);
               return true;
-            }
+            },
           );
         });
       }
@@ -993,7 +953,7 @@ export async function createPageDraw(
         tx,
         `INSERT INTO page_draws(id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at)
          VALUES(?,?,?,?,?,?,?,?,?,?)`,
-        [id, pageId, pathD, color, width, opacity, tool, orderIndex, now, now]
+        [id, pageId, pathD, color, width, opacity, tool, orderIndex, now, now],
       );
     });
   }
@@ -1006,7 +966,7 @@ export async function listPageDraws(pageId: string): Promise<PageDraw[]> {
          FROM page_draws
         WHERE page_id = ?
         ORDER BY order_index ASC, created_at ASC`,
-      [pageId]
+      [pageId],
     );
     return rows ?? [];
   }
@@ -1027,7 +987,7 @@ export async function listPageDraws(pageId: string): Promise<PageDraw[]> {
         (_: any, err: any) => {
           reject(err);
           return true;
-        }
+        },
       );
     });
   });
