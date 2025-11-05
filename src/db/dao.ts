@@ -637,23 +637,51 @@ export async function createPageText(
   positionX: number,
   positionY: number,
   fontSize: number = 16,
+  rotation?: number,
+  isLocked?: number,
 ) {
   const id = await Crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
 
   if (isAsync) {
     await runAsync(
-      `INSERT INTO page_texts(id, page_id, content, font_family, color, position_x, position_y, font_size, created_at, updated_at)
-       VALUES(?,?,?,?,?,?,?,?,?,?)`,
-      [id, pageId, content, fontFamily, color, positionX, positionY, fontSize, now, now],
+      `INSERT INTO page_texts(id, page_id, content, font_family, color, position_x, position_y, font_size, rotation, is_locked, created_at, updated_at)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        id,
+        pageId,
+        content,
+        fontFamily,
+        color,
+        positionX,
+        positionY,
+        fontSize,
+        rotation ?? 0,
+        isLocked ?? 0,
+        now,
+        now,
+      ],
     );
   } else {
     await txLegacy(async (tx) => {
       await execTx(
         tx,
-        `INSERT INTO page_texts(id, page_id, content, font_family, color, position_x, position_y, font_size, created_at, updated_at)
-         VALUES(?,?,?,?,?,?,?,?,?,?)`,
-        [id, pageId, content, fontFamily, color, positionX, positionY, fontSize, now, now],
+        `INSERT INTO page_texts(id, page_id, content, font_family, color, position_x, position_y, font_size, rotation, is_locked, created_at, updated_at)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [
+          id,
+          pageId,
+          content,
+          fontFamily,
+          color,
+          positionX,
+          positionY,
+          fontSize,
+          rotation ?? 0,
+          isLocked ?? 0,
+          now,
+          now,
+        ],
       );
     });
   }
