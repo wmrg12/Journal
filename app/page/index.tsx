@@ -556,7 +556,7 @@ export default function PageView() {
         const offsetX = 20;
         const offsetY = 20;
 
-        await createPageText(
+        const { id: newId } = await createPageText(
           currentPageId,
           text.content,
           text.font_family,
@@ -564,10 +564,14 @@ export default function PageView() {
           text.position_x + offsetX,
           text.position_y + offsetY,
           text.font_size || 16,
+          text.rotation ?? 0,
+          text.is_locked ?? 0,
         );
 
         const latest = await listPageTexts(currentPageId);
-        setPageTexts((prev) => mergeById(prev, latest));
+        setPageTexts(latest);
+
+        setSelectedTextId(newId);
 
         const newText = latest[latest.length - 1];
         if (newText) {
@@ -580,7 +584,7 @@ export default function PageView() {
         setIsLoading(false);
       }
     },
-    [currentPageId, mergeById],
+    [currentPageId],
   );
 
   const pageNum = useMemo(() => Math.max(Number(pageNumber ?? 1) || 1, 1), [pageNumber]);
@@ -1153,7 +1157,7 @@ export default function PageView() {
             .sort((a, b) => {
               if (a.id === selectedTextId) return 1;
               if (b.id === selectedTextId) return -1;
-              return 0;
+              return a.created_at - b.created_at;
             })
             .map((text) => (
               <DraggableText
