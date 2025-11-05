@@ -292,6 +292,7 @@ const DraggableTextBase = ({
         {
           transform: [{ translateX: pan.x }, { translateY: pan.y }, { rotate: `${rotation}deg` }],
           opacity: isDragging ? 0.7 : 1,
+          zIndex: isSelected ? 1000 : 1,
         },
       ]}
     >
@@ -1090,21 +1091,27 @@ export default function PageView() {
 
         {/* 2) Textos arrastrables encima */}
         <View pointerEvents={drawMode ? 'none' : 'auto'}>
-          {pageTexts.map((text) => (
-            <DraggableText
-              key={text.id}
-              text={text}
-              currentPageId={currentPageId}
-              handleDeleteText={handleDeleteText}
-              getPanFor={getPanFor}
-              onPositionCommit={commitTextPosition}
-              locked={!!lockedTextIds[text.id]}
-              isSelected={selectedTextId === text.id}
-              onToggleLock={handleToggleLock}
-              onSelect={handleSelectText}
-              onEdit={handleEditTextRequest}
-            />
-          ))}
+          {pageTexts
+            .sort((a, b) => {
+              if (a.id === selectedTextId) return 1;
+              if (b.id === selectedTextId) return -1;
+              return 0;
+            })
+            .map((text) => (
+              <DraggableText
+                key={text.id}
+                text={text}
+                currentPageId={currentPageId}
+                handleDeleteText={handleDeleteText}
+                getPanFor={getPanFor}
+                onPositionCommit={commitTextPosition}
+                locked={!!lockedTextIds[text.id]}
+                isSelected={selectedTextId === text.id}
+                onToggleLock={handleToggleLock}
+                onSelect={handleSelectText}
+                onEdit={handleEditTextRequest}
+              />
+            ))}
         </View>
       </View>
 
