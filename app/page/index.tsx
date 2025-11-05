@@ -71,6 +71,7 @@ type DraggableTextProps = {
   onToggleLock: (id: string) => void;
   onSelect: (id: string) => void;
   onEdit: (t: PageText) => void;
+  onDuplicate: (t: PageText) => void;
 };
 
 const DraggableTextBase = ({
@@ -84,6 +85,7 @@ const DraggableTextBase = ({
   onToggleLock,
   onSelect,
   onEdit,
+  onDuplicate,
 }: DraggableTextProps) => {
   // pan estable por id
   const pan = useMemo(() => getPanFor(text), [getPanFor, text]);
@@ -318,6 +320,26 @@ const DraggableTextBase = ({
           >
             <MaterialIcons name={locked ? 'lock' : 'lock-open'} size={14} color="#fff" />
           </TouchableOpacity>
+
+          {/* Duplicar */}
+          <TouchableOpacity
+            onPressIn={() => {
+              toolbarButtonPressed.current = true;
+            }}
+            onPress={() => {
+              if (lockedRef.current) {
+                toolbarButtonPressed.current = false;
+                return;
+              }
+              onDuplicate(text);
+              toolbarButtonPressed.current = false;
+            }}
+            style={[S.textToolbarButton, locked && { opacity: 0.4 }]}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <MaterialIcons name="content-copy" size={14} color="#fff" />
+          </TouchableOpacity>
+
           <TouchableOpacity
             onPressIn={() => {
               toolbarButtonPressed.current = true;
@@ -524,6 +546,42 @@ export default function PageView() {
     }
     return merged;
   }, []);
+
+  const handleDuplicateText = useCallback(
+    async (text: PageText) => {
+      if (!currentPageId) return;
+
+      setIsLoading(true);
+      try {
+        const offsetX = 20;
+        const offsetY = 20;
+
+        await createPageText(
+          currentPageId,
+          text.content,
+          text.font_family,
+          text.color,
+          text.position_x + offsetX,
+          text.position_y + offsetY,
+          text.font_size || 16,
+        );
+
+        const latest = await listPageTexts(currentPageId);
+        setPageTexts((prev) => mergeById(prev, latest));
+
+        const newText = latest[latest.length - 1];
+        if (newText) {
+          setSelectedTextId(newText.id);
+        }
+      } catch (e) {
+        console.error(e);
+        Alert.alert('Error', 'No se pudo duplicar el texto.');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [currentPageId, mergeById],
+  );
 
   const pageNum = useMemo(() => Math.max(Number(pageNumber ?? 1) || 1, 1), [pageNumber]);
   const total = useMemo(() => Math.max(Number(totalPages ?? 1) || 1, 1), [totalPages]);
@@ -1110,6 +1168,7 @@ export default function PageView() {
                 onToggleLock={handleToggleLock}
                 onSelect={handleSelectText}
                 onEdit={handleEditTextRequest}
+                onDuplicate={handleDuplicateText}
               />
             ))}
         </View>
