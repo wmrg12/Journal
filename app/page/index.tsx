@@ -98,6 +98,11 @@ const DraggableTextBase = ({
   const textBoxRef = useRef<View>(null);
   const textCenterRef = useRef({ x: 0, y: 0 });
   const initialAngleRef = useRef(0);
+  const [fontSize, setFontSize] = useState(text.font_size ?? 16);
+  const fontSizeRef = useRef(fontSize);
+  const fontSizeStartRef = useRef(fontSize);
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStartYRef = useRef(0);
 
   useEffect(() => {
     lockedRef.current = locked;
@@ -106,6 +111,17 @@ const DraggableTextBase = ({
   useEffect(() => {
     rotationRef.current = rotation;
   }, [rotation]);
+
+  useEffect(() => {
+    if (typeof text.font_size === 'number') {
+      setFontSize(text.font_size);
+      fontSizeRef.current = text.font_size;
+    }
+  }, [text.font_size]);
+
+  useEffect(() => {
+    fontSizeRef.current = fontSize;
+  }, [fontSize]);
 
   // Sync si la BD movió el texto (sin animación)
   useEffect(() => {
@@ -230,6 +246,44 @@ const DraggableTextBase = ({
     }),
   ).current;
 
+  const resizePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => !lockedRef.current,
+      onMoveShouldSetPanResponder: () => !lockedRef.current,
+      onPanResponderGrant: (evt) => {
+        if (lockedRef.current) return;
+        toolbarButtonPressed.current = true;
+        setIsResizing(true);
+
+        fontSizeStartRef.current = fontSizeRef.current;
+        resizeStartYRef.current = evt.nativeEvent.pageY;
+      },
+      onPanResponderMove: (evt) => {
+        if (lockedRef.current) return;
+
+        const deltaY = resizeStartYRef.current - evt.nativeEvent.pageY; // subir = más grande
+        const nextSize = Math.max(8, Math.min(72, fontSizeStartRef.current + deltaY / 4));
+        setFontSize(nextSize);
+      },
+      onPanResponderRelease: async () => {
+        toolbarButtonPressed.current = false;
+        setIsResizing(false);
+
+        if (lockedRef.current || !currentPageId) return;
+
+        try {
+          await updatePageText(text.id, { font_size: fontSizeRef.current });
+        } catch (e) {
+          console.error('Error updating font size:', e);
+        }
+      },
+      onPanResponderTerminate: () => {
+        toolbarButtonPressed.current = false;
+        setIsResizing(false);
+      },
+    }),
+  ).current;
+
   return (
     <Animated.View
       {...panResponder.panHandlers}
@@ -241,6 +295,12 @@ const DraggableTextBase = ({
         },
       ]}
     >
+      {/* Contenedor rotar */}
+      <Animated.View
+        style={{
+          transform: [{ rotate: `${rotation}deg` }],
+        }}
+      ></Animated.View>
       {/* Toolbar tipo Canva */}
       {isSelected && (
         <View style={S.textToolbar}>
@@ -298,21 +358,41 @@ const DraggableTextBase = ({
         </View>
       )}
 
+      {/* Handle para cambiar tamaño */}
+      {isSelected && !locked && (
+        <View {...resizePanResponder.panHandlers} style={S.resizeHandle} pointerEvents="auto">
+          <View
+            style={[S.resizeHandleInner, isResizing && { backgroundColor: uiColors.primary }]}
+          />
+        </View>
+      )}
+
       {/* Recuadro del texto */}
-      <View style={[S.textBox, isSelected && S.textBoxSelected, locked && S.textBoxLocked]}>
+      <View
+        ref={textBoxRef}
+        style={[S.textBox, isSelected && S.textBoxSelected, locked && S.textBoxLocked]}
+      >
         <Text
           style={[
             S.textContent,
             {
               fontFamily: fontFamilyMap[text.font_family as TextFont] ?? text.font_family,
               color: text.color,
-              fontSize: text.font_size,
+              fontSize: fontSize,
             },
           ]}
         >
           {text.content}
         </Text>
       </View>
+      {/* Handle para cambiar tamaño fuera de la rotación */}
+      {isSelected && !locked && (
+        <View {...resizePanResponder.panHandlers} style={S.resizeHandle} pointerEvents="auto">
+          <View
+            style={[S.resizeHandleInner, isResizing && { backgroundColor: uiColors.primary }]}
+          />
+        </View>
+      )}
     </Animated.View>
   );
 };
