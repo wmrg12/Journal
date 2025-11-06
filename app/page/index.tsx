@@ -1,4 +1,11 @@
-import React, { useEffect, useMemo, useState, useCallback, useRef, memo } from 'react';
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+  memo,
+} from "react";
 import {
   View,
   Text,
@@ -12,14 +19,19 @@ import {
   Platform,
   PanResponder,
   Animated,
-} from 'react-native';
-import Svg, { Path } from 'react-native-svg';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
-import { pagePalette, uiColors, textColors, drawColors } from '@/constants/colors';
-import { textFonts, TextFont, fontFamilyMap } from '@/constants/fonts';
-import S from '../../styles/pageViewStyles';
+} from "react-native";
+import Svg, { Path } from "react-native-svg";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { MaterialIcons } from "@expo/vector-icons";
+import {
+  pagePalette,
+  uiColors,
+  textColors,
+  drawColors,
+} from "@/constants/colors";
+import { textFonts, TextFont, fontFamilyMap } from "@/constants/fonts";
+import S from "../../styles/pageViewStyles";
 import {
   createPage,
   deletePage,
@@ -33,7 +45,7 @@ import {
   PageText as BasePageText,
   listPageDraws,
   createPageDraw,
-} from '@/src/db/dao';
+} from "@/src/db/dao";
 
 type PageText = BasePageText & {
   rotation?: number;
@@ -46,7 +58,7 @@ type Params = {
   totalPages?: string;
 };
 
-type DrawTool = 'pencil' | 'pen' | 'marker';
+type DrawTool = "pencil" | "pen" | "marker" | "eraser";
 
 type Stroke = {
   id: string;
@@ -115,7 +127,7 @@ const DraggableTextBase = ({
   }, [rotation]);
 
   useEffect(() => {
-    if (typeof text.font_size === 'number') {
+    if (typeof text.font_size === "number") {
       setFontSize(text.font_size);
       fontSizeRef.current = text.font_size;
     }
@@ -192,11 +204,11 @@ const DraggableTextBase = ({
               position_y: newY,
             });
           } catch (e) {
-            console.error('Error updating text position:', e);
+            console.error("Error updating text position:", e);
           }
         }
       },
-    }),
+    })
   ).current;
 
   const rotatePanResponder = useRef(
@@ -241,11 +253,11 @@ const DraggableTextBase = ({
               rotation: rotationRef.current,
             });
           } catch (e) {
-            console.error('Error updating text rotation:', e);
+            console.error("Error updating text rotation:", e);
           }
         }
       },
-    }),
+    })
   ).current;
 
   const resizePanResponder = useRef(
@@ -264,7 +276,10 @@ const DraggableTextBase = ({
         if (lockedRef.current) return;
 
         const deltaY = resizeStartYRef.current - evt.nativeEvent.pageY; // subir = más grande
-        const nextSize = Math.max(8, Math.min(72, fontSizeStartRef.current + deltaY / 4));
+        const nextSize = Math.max(
+          8,
+          Math.min(72, fontSizeStartRef.current + deltaY / 4)
+        );
         setFontSize(nextSize);
       },
       onPanResponderRelease: async () => {
@@ -276,14 +291,14 @@ const DraggableTextBase = ({
         try {
           await updatePageText(text.id, { font_size: fontSizeRef.current });
         } catch (e) {
-          console.error('Error updating font size:', e);
+          console.error("Error updating font size:", e);
         }
       },
       onPanResponderTerminate: () => {
         toolbarButtonPressed.current = false;
         setIsResizing(false);
       },
-    }),
+    })
   ).current;
 
   return (
@@ -292,7 +307,11 @@ const DraggableTextBase = ({
       style={[
         S.textContainer,
         {
-          transform: [{ translateX: pan.x }, { translateY: pan.y }, { rotate: `${rotation}deg` }],
+          transform: [
+            { translateX: pan.x },
+            { translateY: pan.y },
+            { rotate: `${rotation}deg` },
+          ],
           opacity: isDragging ? 0.7 : 1,
           zIndex: isSelected ? 1000 : 1,
         },
@@ -318,7 +337,11 @@ const DraggableTextBase = ({
             style={S.textToolbarButton}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <MaterialIcons name={locked ? 'lock' : 'lock-open'} size={14} color="#fff" />
+            <MaterialIcons
+              name={locked ? "lock" : "lock-open"}
+              size={14}
+              color="#fff"
+            />
           </TouchableOpacity>
 
           {/* Duplicar */}
@@ -383,9 +406,16 @@ const DraggableTextBase = ({
 
       {/* Handle para cambiar tamaño */}
       {isSelected && !locked && (
-        <View {...resizePanResponder.panHandlers} style={S.resizeHandle} pointerEvents="auto">
+        <View
+          {...resizePanResponder.panHandlers}
+          style={S.resizeHandle}
+          pointerEvents="auto"
+        >
           <View
-            style={[S.resizeHandleInner, isResizing && { backgroundColor: uiColors.primary }]}
+            style={[
+              S.resizeHandleInner,
+              isResizing && { backgroundColor: uiColors.primary },
+            ]}
           />
         </View>
       )}
@@ -393,13 +423,18 @@ const DraggableTextBase = ({
       {/* Recuadro del texto */}
       <View
         ref={textBoxRef}
-        style={[S.textBox, isSelected && S.textBoxSelected, locked && S.textBoxLocked]}
+        style={[
+          S.textBox,
+          isSelected && S.textBoxSelected,
+          locked && S.textBoxLocked,
+        ]}
       >
         <Text
           style={[
             S.textContent,
             {
-              fontFamily: fontFamilyMap[text.font_family as TextFont] ?? text.font_family,
+              fontFamily:
+                fontFamilyMap[text.font_family as TextFont] ?? text.font_family,
               color: text.color,
               fontSize: fontSize,
             },
@@ -410,9 +445,16 @@ const DraggableTextBase = ({
       </View>
       {/* Handle para cambiar tamaño fuera de la rotación */}
       {isSelected && !locked && (
-        <View {...resizePanResponder.panHandlers} style={S.resizeHandle} pointerEvents="auto">
+        <View
+          {...resizePanResponder.panHandlers}
+          style={S.resizeHandle}
+          pointerEvents="auto"
+        >
           <View
-            style={[S.resizeHandleInner, isResizing && { backgroundColor: uiColors.primary }]}
+            style={[
+              S.resizeHandleInner,
+              isResizing && { backgroundColor: uiColors.primary },
+            ]}
           />
         </View>
       )}
@@ -424,15 +466,16 @@ const DraggableText = memo(DraggableTextBase);
 
 // PageView
 export default function PageView() {
-  const { journalId, color, pageNumber, totalPages } = useLocalSearchParams<Params>();
+  const { journalId, color, pageNumber, totalPages } =
+    useLocalSearchParams<Params>();
   const router = useRouter();
 
   const [bg, setBg] = useState<(typeof pagePalette)[number]>(pagePalette[0]);
   const [showDrawTools, setShowDrawTools] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const [selectedTool, setSelectedTool] = useState<DrawTool>('pencil');
-  const [selectedColor, setSelectedColor] = useState('#000000');
+  const [selectedTool, setSelectedTool] = useState<DrawTool>("pencil");
+  const [selectedColor, setSelectedColor] = useState("#000000");
   const [strokeWidth, setStrokeWidth] = useState(2);
   const [currentPageId, setCurrentPageId] = useState<string | null>(null);
 
@@ -443,83 +486,160 @@ export default function PageView() {
   const [drawMode, setDrawMode] = useState(false);
   // Convertir puntos -> path "d"
   const pointsToPath = useCallback((pts: { x: number; y: number }[]) => {
-    if (!pts.length) return '';
+    if (!pts.length) return "";
     const [p0, ...rest] = pts;
-    return `M ${p0.x} ${p0.y} ` + rest.map((p) => `L ${p.x} ${p.y}`).join(' ');
+    return `M ${p0.x} ${p0.y} ` + rest.map((p) => `L ${p.x} ${p.y}`).join(" ");
   }, []);
 
   // Presets por herramienta (usa tu slider como base 1..6)
+  const [eraserWidth, setEraserWidth] = useState(3);
   const getToolStyle = useCallback(
     (tool: DrawTool) => {
       const base = strokeWidth; // 1..6
+
       switch (tool) {
-        case 'pencil': // delgado, casi opaco
+        case "pencil": // delgado, casi opaco
           return { width: Math.max(1, base), opacity: 0.95 };
-        case 'marker': // grueso y translúcido
+        case "marker": // grueso y translúcido
           return { width: Math.max(6, base * 3), opacity: 0.5 };
-        case 'pen': // pincel con grosor variable
+        case "pen": // pincel con grosor variable
           return { width: Math.max(2, base * 2), opacity: 0.9 };
+        case "eraser": // borrador
+          return { width: Math.max(10, eraserWidth * 5), opacity: 1 };
         default:
           return { width: base, opacity: 1 };
       }
     },
-    [strokeWidth],
+    [strokeWidth, eraserWidth]
   );
 
-  // Gestos de dibujo sobre el canvas
+  // Función auxiliar para dividir trazos
+  const eraseFromStrokes = useCallback(
+    (x: number, y: number, radius: number, strokes: Stroke[]) => {
+      const newStrokes: Stroke[] = [];
+
+      strokes.forEach((stroke) => {
+        const segments: { x: number; y: number }[][] = [];
+        let currentSegment: { x: number; y: number }[] = [];
+
+        stroke.points.forEach((point) => {
+          const dx = point.x - x;
+          const dy = point.y - y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance >= radius) {
+            // Punto fuera del borrador, agregarlo al segmento actual
+            currentSegment.push(point);
+          } else {
+            // Punto dentro del borrador, guardar segmento actual si tiene puntos
+            if (currentSegment.length >= 2) {
+              segments.push(currentSegment);
+            }
+            currentSegment = [];
+          }
+        });
+
+        // Agregar último segmento si tiene puntos suficientes
+        if (currentSegment.length >= 2) {
+          segments.push(currentSegment);
+        }
+
+        // Crear nuevos trazos para cada segmento válido
+        segments.forEach((segmentPoints) => {
+          if (segmentPoints.length >= 2) {
+            newStrokes.push({
+              ...stroke,
+              id: stroke.id + "_" + Math.random().toString(36).slice(2),
+              points: segmentPoints,
+            });
+          }
+        });
+      });
+
+      return newStrokes;
+    },
+    []
+  );
+
   const onDrawStart = useCallback(
     (x: number, y: number) => {
-      const { width, opacity } = getToolStyle(selectedTool);
-      const s: Stroke = {
-        id: String(Date.now()) + Math.random().toString(36).slice(2),
-        tool: selectedTool,
-        color: selectedColor,
-        width,
-        opacity,
-        points: [{ x, y }],
-      };
-      setCurrentStroke(s);
+      if (selectedTool === "eraser") {
+        const eraserRadius = getToolStyle("eraser").width / 2;
+        setStrokes((prev) => eraseFromStrokes(x, y, eraserRadius, prev));
+      } else {
+        const { width, opacity } = getToolStyle(selectedTool);
+        const s: Stroke = {
+          id: String(Date.now()) + Math.random().toString(36).slice(2),
+          tool: selectedTool,
+          color: selectedColor,
+          width,
+          opacity,
+          points: [{ x, y }],
+        };
+        setCurrentStroke(s);
+      }
     },
-    [getToolStyle, selectedTool, selectedColor],
+    [getToolStyle, selectedTool, selectedColor, eraseFromStrokes]
   );
 
-  const onDrawMove = useCallback((x: number, y: number) => {
-    setCurrentStroke((prev) => {
-      if (!prev) return prev;
-      const last = prev.points[prev.points.length - 1];
-      const dx = x - last.x,
-        dy = y - last.y;
-      if (dx * dx + dy * dy < 1.5) return prev; // umbral para no saturar puntos
-      return { ...prev, points: [...prev.points, { x, y }] };
-    });
-  }, []);
+  const onDrawMove = useCallback(
+    (x: number, y: number) => {
+      if (selectedTool === "eraser") {
+        const eraserRadius = getToolStyle("eraser").width / 2;
+        setStrokes((prev) => eraseFromStrokes(x, y, eraserRadius, prev));
+      } else {
+        setCurrentStroke((prev) => {
+          if (!prev) return prev;
+          const last = prev.points[prev.points.length - 1];
+          const dx = x - last.x,
+            dy = y - last.y;
+          if (dx * dx + dy * dy < 1.5) return prev;
+          return { ...prev, points: [...prev.points, { x, y }] };
+        });
+      }
+    },
+    [selectedTool, getToolStyle, eraseFromStrokes]
+  );
 
   const onDrawEnd = useCallback(() => {
     setCurrentStroke((prev) => {
       if (!prev || prev.points.length < 2) return null;
+
+      // No guardar trazos del borrador
+      if (prev.tool === "eraser") return null;
+
       setStrokes((s) => [...s, prev]);
       // guardar en BD
       try {
-        if (currentPageId && typeof createPageDraw === 'function') {
+        if (currentPageId && typeof createPageDraw === "function") {
           const pathD = pointsToPath(prev.points);
           // @ts-ignore: solo si existe en tu DAO
-          createPageDraw(currentPageId, pathD, prev.color, prev.width, prev.opacity, prev.tool);
+          createPageDraw(
+            currentPageId,
+            pathD,
+            prev.color,
+            prev.width,
+            prev.opacity,
+            prev.tool
+          );
         }
       } catch (e) {
-        console.error('No se pudo guardar el trazo', e);
+        console.error("No se pudo guardar el trazo", e);
       }
       return null;
     });
   }, [currentPageId, pointsToPath]);
 
   const [showTextOptions, setShowTextOptions] = useState(false);
-  const [selectedTextColor, setSelectedTextColor] = useState<(typeof textColors)[number]>(
-    textColors[0],
-  );
+  const [selectedTextColor, setSelectedTextColor] = useState<
+    (typeof textColors)[number]
+  >(textColors[0]);
   const [selectedFont, setSelectedFont] = useState<TextFont>(textFonts[0]);
-  const [textInput, setTextInput] = useState('');
+  const [textInput, setTextInput] = useState("");
   const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
-  const [lockedTextIds, setLockedTextIds] = useState<Record<string, boolean>>({});
+  const [lockedTextIds, setLockedTextIds] = useState<Record<string, boolean>>(
+    {}
+  );
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
   // Estado para textos en la página
@@ -565,7 +685,7 @@ export default function PageView() {
           text.position_y + offsetY,
           text.font_size || 16,
           text.rotation ?? 0,
-          text.is_locked ?? 0,
+          text.is_locked ?? 0
         );
 
         const latest = await listPageTexts(currentPageId);
@@ -579,16 +699,22 @@ export default function PageView() {
         }
       } catch (e) {
         console.error(e);
-        Alert.alert('Error', 'No se pudo duplicar el texto.');
+        Alert.alert("Error", "No se pudo duplicar el texto.");
       } finally {
         setIsLoading(false);
       }
     },
-    [currentPageId],
+    [currentPageId]
   );
 
-  const pageNum = useMemo(() => Math.max(Number(pageNumber ?? 1) || 1, 1), [pageNumber]);
-  const total = useMemo(() => Math.max(Number(totalPages ?? 1) || 1, 1), [totalPages]);
+  const pageNum = useMemo(
+    () => Math.max(Number(pageNumber ?? 1) || 1, 1),
+    [pageNumber]
+  );
+  const total = useMemo(
+    () => Math.max(Number(totalPages ?? 1) || 1, 1),
+    [totalPages]
+  );
   const SEGMENTS = 6;
   const paddingH = 14;
   const dotBarRef = useRef<View>(null);
@@ -598,17 +724,29 @@ export default function PageView() {
 
   const hitTestToIndex = (pageX: number) => {
     if (!dotBarLayout.width) return;
-    const localX = Math.max(0, Math.min(pageX - dotBarLayout.x, dotBarLayout.width));
+    const localX = Math.max(
+      0,
+      Math.min(pageX - dotBarLayout.x, dotBarLayout.width)
+    );
     const prog = localX / dotBarLayout.width;
     const idx = Math.round(prog * (SEGMENTS - 1)) + 1;
     setStrokeWidth(idx);
   };
-
+  const hitTestToIndexEraser = (pageX: number) => {
+    if (!dotBarLayout.width) return;
+    const localX = Math.max(
+      0,
+      Math.min(pageX - dotBarLayout.x, dotBarLayout.width)
+    );
+    const prog = localX / dotBarLayout.width;
+    const idx = Math.round(prog * (SEGMENTS - 1)) + 1;
+    setEraserWidth(idx);
+  };
   // Cargar color desde parámetro
   useEffect(() => {
-    if (typeof color === 'string') {
+    if (typeof color === "string") {
       const found = (pagePalette as readonly string[]).find(
-        (c) => c.toLowerCase() === color.toLowerCase(),
+        (c) => c.toLowerCase() === color.toLowerCase()
       );
       setBg((found ?? pagePalette[0]) as (typeof pagePalette)[number]);
     } else {
@@ -624,14 +762,14 @@ export default function PageView() {
     (async () => {
       try {
         const dbColor = await getPageColor(String(journalId), pageNum);
-        if (mounted && typeof dbColor === 'string' && dbColor.length > 0) {
+        if (mounted && typeof dbColor === "string" && dbColor.length > 0) {
           const found = (pagePalette as readonly string[]).find(
-            (c) => c.toLowerCase() === dbColor.toLowerCase(),
+            (c) => c.toLowerCase() === dbColor.toLowerCase()
           );
           if (found) setBg(found as (typeof pagePalette)[number]);
         }
       } catch (error) {
-        console.error('Error loading page color:', error);
+        console.error("Error loading page color:", error);
       }
     })();
 
@@ -683,11 +821,11 @@ export default function PageView() {
                   opacity: d.opacity,
                   points: [],
                   _persistedPathD: d.path_d,
-                })),
+                }))
               );
             }
           } catch (e) {
-            console.error('Error loading page draws:', e);
+            console.error("Error loading page draws:", e);
             if (mounted) setStrokes([]); // fallback limpio
           }
         } else if (mounted) {
@@ -697,7 +835,7 @@ export default function PageView() {
           setLockedTextIds({});
         }
       } catch (error) {
-        console.error('Error loading page texts:', error);
+        console.error("Error loading page texts:", error);
         if (mounted) {
           setPageTexts([]);
           setStrokes([]);
@@ -723,7 +861,7 @@ export default function PageView() {
 
         if (mounted && (safeTotal !== total || pageNum > safeTotal)) {
           router.replace({
-            pathname: '/page',
+            pathname: "/page",
             params: {
               journalId,
               color: String(bg),
@@ -733,7 +871,7 @@ export default function PageView() {
           });
         }
       } catch (error) {
-        console.error('Error validating pages:', error);
+        console.error("Error validating pages:", error);
       }
     })();
 
@@ -744,24 +882,24 @@ export default function PageView() {
 
   const handleDeletePage = useCallback(() => {
     if (total <= 1 || !journalId) {
-      Alert.alert('No se puede eliminar', 'Debe existir al menos una página.');
+      Alert.alert("No se puede eliminar", "Debe existir al menos una página.");
       return;
     }
 
-    Alert.alert('Eliminar página', `¿Eliminar la página ${pageNum}?`, [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert("Eliminar página", `¿Eliminar la página ${pageNum}?`, [
+      { text: "Cancelar", style: "cancel" },
       {
-        text: 'Eliminar',
-        style: 'destructive',
+        text: "Eliminar",
+        style: "destructive",
         onPress: async () => {
           setIsLoading(true);
           try {
             const { pageNumber: target, total: newTotal } = await deletePage(
               String(journalId),
-              pageNum,
+              pageNum
             );
             router.replace({
-              pathname: '/page',
+              pathname: "/page",
               params: {
                 journalId,
                 color: String(bg),
@@ -771,7 +909,7 @@ export default function PageView() {
             });
           } catch (e) {
             console.error(e);
-            Alert.alert('Error', 'No se pudo eliminar la página.');
+            Alert.alert("Error", "No se pudo eliminar la página.");
           } finally {
             setIsLoading(false);
           }
@@ -787,10 +925,10 @@ export default function PageView() {
     try {
       const { pageNumber: newNum, total: newTotal } = await createPage(
         String(journalId),
-        String(bg),
+        String(bg)
       );
       router.replace({
-        pathname: '/page',
+        pathname: "/page",
         params: {
           journalId,
           color: String(bg),
@@ -800,7 +938,7 @@ export default function PageView() {
       });
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'No se pudo crear la página.');
+      Alert.alert("Error", "No se pudo crear la página.");
     } finally {
       setIsLoading(false);
     }
@@ -813,18 +951,20 @@ export default function PageView() {
   //commit
   const commitTextPosition = useCallback((id: string, x: number, y: number) => {
     setPageTexts((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, position_x: x, position_y: y } : t)),
+      prev.map((t) =>
+        t.id === id ? { ...t, position_x: x, position_y: y } : t
+      )
     );
   }, []);
 
   const handleConfirmText = useCallback(async () => {
     const trimmed = textInput.trim();
     if (!trimmed) {
-      Alert.alert('Error', 'Escribe algo primero');
+      Alert.alert("Error", "Escribe algo primero");
       return;
     }
     if (!currentPageId) {
-      Alert.alert('Error', 'No se pudo identificar la página');
+      Alert.alert("Error", "No se pudo identificar la página");
       return;
     }
 
@@ -842,7 +982,7 @@ export default function PageView() {
           selectedTextColor,
           posX,
           posY,
-          16,
+          16
         );
       } else {
         // editar
@@ -856,30 +996,39 @@ export default function PageView() {
       const latest = await listPageTexts(currentPageId);
       setPageTexts((prev) => mergeById(prev, latest));
 
-      setTextInput('');
+      setTextInput("");
       setEditingTextId(null);
       setShowTextOptions(false);
     } catch (e) {
       console.error(e);
       Alert.alert(
-        'Error',
-        editingTextId ? 'No se pudo actualizar el texto.' : 'No se pudo añadir el texto.',
+        "Error",
+        editingTextId
+          ? "No se pudo actualizar el texto."
+          : "No se pudo añadir el texto."
       );
     } finally {
       setIsLoading(false);
     }
-  }, [textInput, selectedTextColor, selectedFont, currentPageId, mergeById, editingTextId]);
+  }, [
+    textInput,
+    selectedTextColor,
+    selectedFont,
+    currentPageId,
+    mergeById,
+    editingTextId,
+  ]);
 
   // Eliminar texto (optimista + limpiar pan)
   const handleDeleteText = useCallback(
     async (textId: string) => {
       if (!currentPageId) return;
 
-      Alert.alert('Eliminar texto', '¿Estás seguro?', [
-        { text: 'Cancelar', style: 'cancel' },
+      Alert.alert("Eliminar texto", "¿Estás seguro?", [
+        { text: "Cancelar", style: "cancel" },
         {
-          text: 'Eliminar',
-          style: 'destructive',
+          text: "Eliminar",
+          style: "destructive",
           onPress: async () => {
             setPageTexts((prev) => prev.filter((t) => t.id !== textId));
             pansRef.current.delete(textId);
@@ -897,7 +1046,7 @@ export default function PageView() {
               setPageTexts((prev) => mergeById(prev, latest));
             } catch (e) {
               console.error(e);
-              Alert.alert('Error', 'No se pudo eliminar el texto.');
+              Alert.alert("Error", "No se pudo eliminar el texto.");
               const latest = await listPageTexts(currentPageId);
               setPageTexts(latest);
             } finally {
@@ -907,7 +1056,7 @@ export default function PageView() {
         },
       ]);
     },
-    [currentPageId, mergeById],
+    [currentPageId, mergeById]
   );
 
   const handleToggleLock = useCallback(
@@ -916,7 +1065,7 @@ export default function PageView() {
         const newLocked = !prev[id];
         if (currentPageId) {
           updatePageText(id, { is_locked: newLocked ? 1 : 0 }).catch((e) => {
-            console.error('Error updating lock state:', e);
+            console.error("Error updating lock state:", e);
             setLockedTextIds((current) => ({
               ...current,
               [id]: !newLocked,
@@ -929,7 +1078,7 @@ export default function PageView() {
         };
       });
     },
-    [currentPageId],
+    [currentPageId]
   );
 
   const handleSelectText = useCallback((id: string) => {
@@ -950,7 +1099,7 @@ export default function PageView() {
   const navigateToPage = useCallback(
     (newPageNum: number) => {
       router.replace({
-        pathname: '/page',
+        pathname: "/page",
         params: {
           journalId,
           color: String(bg),
@@ -959,66 +1108,69 @@ export default function PageView() {
         },
       });
     },
-    [journalId, bg, total, router],
+    [journalId, bg, total, router]
   );
 
   // Toolbar items
   const toolbarItems = useMemo(
     () => [
       {
-        id: 'delete',
-        icon: 'delete-outline' as const,
-        label: 'Eliminar',
+        id: "delete",
+        icon: "delete-outline" as const,
+        label: "Eliminar",
         onPress: handleDeletePage,
         disabled: isLoading,
       },
       {
-        id: 'add',
-        icon: 'add' as const,
-        label: 'Nueva',
+        id: "add",
+        icon: "add" as const,
+        label: "Nueva",
         onPress: handleAddPage,
         disabled: isLoading,
       },
       {
-        id: 'text',
-        icon: 'text-fields' as const,
-        label: 'Texto',
+        id: "text",
+        icon: "text-fields" as const,
+        label: "Texto",
         onPress: () => {
           setDrawMode(false);
           setEditingTextId(null);
-          setTextInput('');
+          setTextInput("");
           setShowTextOptions(true);
         },
 
         disabled: isLoading,
       },
       {
-        id: 'draw',
-        icon: 'edit' as const,
-        label: 'Dibujar',
+        id: "draw",
+        icon: "edit" as const,
+        label: "Dibujar",
         onPress: () => setShowDrawTools(true),
         disabled: isLoading,
       },
       {
-        id: 'undo',
-        icon: 'undo' as const,
-        label: 'Deshacer',
+        id: "undo",
+        icon: "undo" as const,
+        label: "Deshacer",
         onPress: () => {},
         disabled: true,
       },
       {
-        id: 'redo',
-        icon: 'redo' as const,
-        label: 'Rehacer',
+        id: "redo",
+        icon: "redo" as const,
+        label: "Rehacer",
         onPress: () => {},
         disabled: true,
       },
     ],
-    [handleAddPage, handleDeletePage, isLoading],
+    [handleAddPage, handleDeletePage, isLoading]
   );
 
   return (
-    <SafeAreaView style={[S.container, { backgroundColor: bg }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={[S.container, { backgroundColor: bg }]}
+      edges={["top", "left", "right"]}
+    >
       {isLoading && (
         <View style={S.loadingOverlay}>
           <ActivityIndicator size="large" color={uiColors.danger} />
@@ -1041,7 +1193,7 @@ export default function PageView() {
               <MaterialIcons
                 name="arrow-back-ios"
                 size={22}
-                color={isLoading ? '#ccc' : uiColors.danger}
+                color={isLoading ? "#ccc" : uiColors.danger}
               />
             </TouchableOpacity>
           )}
@@ -1058,7 +1210,7 @@ export default function PageView() {
               <MaterialIcons
                 name="arrow-forward-ios"
                 size={22}
-                color={isLoading ? '#ccc' : uiColors.danger}
+                color={isLoading ? "#ccc" : uiColors.danger}
               />
             </TouchableOpacity>
           )}
@@ -1071,7 +1223,7 @@ export default function PageView() {
         <TouchableOpacity
           onPress={() => {
             router.replace({
-              pathname: '/pageList',
+              pathname: "/pageList",
               params: { journalId, color: String(bg) },
             });
           }}
@@ -1082,7 +1234,11 @@ export default function PageView() {
           activeOpacity={0.6}
           disabled={isLoading}
         >
-          <MaterialIcons name="check" size={22} color={isLoading ? '#ccc' : uiColors.danger} />
+          <MaterialIcons
+            name="check"
+            size={22}
+            color={isLoading ? "#ccc" : uiColors.danger}
+          />
         </TouchableOpacity>
       </View>
 
@@ -1111,7 +1267,7 @@ export default function PageView() {
           onDrawEnd();
         }}
       >
-        <Svg style={{ position: 'absolute', inset: 0 }}>
+        <Svg style={{ position: "absolute", inset: 0 }}>
           {strokes.map((s) => (
             <Path
               key={s.id}
@@ -1140,19 +1296,19 @@ export default function PageView() {
         {/* Deseleccionar texto */}
         {!drawMode && (
           <TouchableOpacity
-            style={{ position: 'absolute', inset: 0 }}
+            style={{ position: "absolute", inset: 0 }}
             activeOpacity={1}
             onPress={() => setSelectedTextId(null)}
           />
         )}
         {/* Textos arrastrables encima del fondo */}
         <View
-          style={{ position: 'absolute', inset: 0 }}
-          pointerEvents={drawMode ? 'none' : 'box-none'}
+          style={{ position: "absolute", inset: 0 }}
+          pointerEvents={drawMode ? "none" : "box-none"}
         ></View>
 
         {/* 2) Textos arrastrables encima */}
-        <View pointerEvents={drawMode ? 'none' : 'auto'}>
+        <View pointerEvents={drawMode ? "none" : "auto"}>
           {pageTexts
             .sort((a, b) => {
               if (a.id === selectedTextId) return 1;
@@ -1194,7 +1350,8 @@ export default function PageView() {
               style={[
                 S.toolItem,
                 it.disabled && S.toolItemDisabled,
-                (it.id === 'text' && showTextOptions) || (it.id === 'draw' && showDrawTools)
+                (it.id === "text" && showTextOptions) ||
+                (it.id === "draw" && showDrawTools)
                   ? { backgroundColor: uiColors.grayO }
                   : null,
               ]}
@@ -1206,10 +1363,15 @@ export default function PageView() {
               <MaterialIcons
                 name={it.icon}
                 size={22}
-                color={it.disabled ? '#aaa' : '#333'}
+                color={it.disabled ? "#aaa" : "#333"}
                 style={S.toolItemIcon}
               />
-              <Text style={[S.toolItemLabel, it.disabled && S.toolItemLabelDisabled]}>
+              <Text
+                style={[
+                  S.toolItemLabel,
+                  it.disabled && S.toolItemLabelDisabled,
+                ]}
+              >
                 {it.label}
               </Text>
             </TouchableOpacity>
@@ -1226,7 +1388,7 @@ export default function PageView() {
         statusBarTranslucent
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={{ flex: 1 }}
         >
           <View style={S.textModalOverlay}>
@@ -1267,7 +1429,8 @@ export default function PageView() {
                       style={[
                         S.colorCircle,
                         { backgroundColor: colorOption },
-                        selectedTextColor === colorOption && S.colorCircleSelected,
+                        selectedTextColor === colorOption &&
+                          S.colorCircleSelected,
                       ]}
                       accessibilityLabel={`Color ${colorOption}`}
                       accessibilityRole="button"
@@ -1290,7 +1453,10 @@ export default function PageView() {
                     <TouchableOpacity
                       key={font}
                       onPress={() => setSelectedFont(font)}
-                      style={[S.fontButton, selectedFont === font && S.fontButtonSelected]}
+                      style={[
+                        S.fontButton,
+                        selectedFont === font && S.fontButtonSelected,
+                      ]}
                       accessibilityLabel={`Fuente ${font}`}
                       accessibilityRole="button"
                       accessibilityState={{ selected: selectedFont === font }}
@@ -1315,7 +1481,7 @@ export default function PageView() {
                 activeOpacity={0.7}
               >
                 <Text style={S.addTextButtonText}>
-                  {editingTextId ? 'Guardar cambios' : 'Añadir texto'}
+                  {editingTextId ? "Guardar cambios" : "Añadir texto"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1350,19 +1516,27 @@ export default function PageView() {
               <Text style={S.drawSectionLabel}>Herramienta</Text>
               <View style={S.toolsRow}>
                 {[
-                  { id: 'pencil', icon: 'edit', label: 'Lápiz' },
-                  { id: 'pen', icon: 'brush', label: 'Pincel' },
-                  { id: 'marker', icon: 'create', label: 'Marcador' },
+                  { id: "pencil", icon: "edit", label: "Lápiz" },
+                  { id: "pen", icon: "brush", label: "Pincel" },
+                  { id: "marker", icon: "create", label: "Marcador" },
+                  { id: "eraser", icon: "auto-fix-off", label: "Borrador" },
                 ].map((tool) => (
                   <TouchableOpacity
                     key={tool.id}
-                    style={[S.toolButtonLarge, selectedTool === tool.id && S.toolButtonActive]}
+                    style={[
+                      S.toolButtonLarge,
+                      selectedTool === tool.id && S.toolButtonActive,
+                    ]}
                     onPress={() => handleSelectTool(tool.id as any)}
                     accessibilityLabel={tool.label}
                     accessibilityRole="button"
                     accessibilityState={{ selected: selectedTool === tool.id }}
                   >
-                    <MaterialIcons name={tool.icon as any} size={22} color={uiColors.black} />
+                    <MaterialIcons
+                      name={tool.icon as any}
+                      size={22}
+                      color={uiColors.black}
+                    />
                     <Text style={S.toolLabelLarge}>{tool.label}</Text>
                   </TouchableOpacity>
                 ))}
@@ -1370,33 +1544,40 @@ export default function PageView() {
             </View>
 
             {/* Colores */}
-            <View style={S.colorSectionDraw}>
-              <Text style={S.drawSectionLabel}>Color</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyboardShouldPersistTaps="always"
-              >
-                {drawColors.map((clr) => (
-                  <TouchableOpacity
-                    key={clr}
-                    style={[
-                      S.colorCircleLarge,
-                      { backgroundColor: clr },
-                      selectedColor === clr && S.colorCircleSelected,
-                    ]}
-                    onPress={() => setSelectedColor(clr)}
-                    accessibilityLabel={`Color ${clr}`}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: selectedColor === clr }}
-                  />
-                ))}
-              </ScrollView>
-            </View>
+            {selectedTool !== "eraser" && (
+              <View style={S.colorSectionDraw}>
+                <Text style={S.drawSectionLabel}>Color</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyboardShouldPersistTaps="always"
+                >
+                  {drawColors.map((clr) => (
+                    <TouchableOpacity
+                      key={clr}
+                      style={[
+                        S.colorCircleLarge,
+                        { backgroundColor: clr },
+                        selectedColor === clr && S.colorCircleSelected,
+                      ]}
+                      onPress={() => setSelectedColor(clr)}
+                      accessibilityLabel={`Color ${clr}`}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: selectedColor === clr }}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
 
             {/* Grosor del trazo */}
+            {/* Grosor del trazo (o del borrador) */}
             <View style={S.thicknessSection}>
-              <Text style={S.drawSectionLabel}>Grosor del trazo</Text>
+              <Text style={S.drawSectionLabel}>
+                {selectedTool === "eraser"
+                  ? "Grosor del borrador"
+                  : "Grosor del trazo"}
+              </Text>
 
               <View
                 ref={dotBarRef}
@@ -1411,20 +1592,54 @@ export default function PageView() {
                 }}
                 onStartShouldSetResponder={() => true}
                 onMoveShouldSetResponder={() => true}
-                onResponderGrant={(e) => hitTestToIndex(e.nativeEvent.pageX)}
-                onResponderMove={(e) => hitTestToIndex(e.nativeEvent.pageX)}
+                onResponderGrant={(e) => {
+                  if (selectedTool === "eraser") {
+                    hitTestToIndexEraser(e.nativeEvent.pageX);
+                  } else {
+                    hitTestToIndex(e.nativeEvent.pageX);
+                  }
+                }}
+                onResponderMove={(e) => {
+                  if (selectedTool === "eraser") {
+                    hitTestToIndexEraser(e.nativeEvent.pageX);
+                  } else {
+                    hitTestToIndex(e.nativeEvent.pageX);
+                  }
+                }}
               >
                 <View style={S.dotBarTrack} />
-                <View style={[S.dotBarFill, { width: fillWidth }]} />
+                <View
+                  style={[
+                    S.dotBarFill,
+                    {
+                      width:
+                        selectedTool === "eraser"
+                          ? Math.max(
+                              0,
+                              dotBarLayout.width *
+                                ((eraserWidth - 1) / (SEGMENTS - 1))
+                            )
+                          : fillWidth,
+                    },
+                  ]}
+                />
                 {Array.from({ length: SEGMENTS }).map((_, i) => {
                   const idx = i + 1;
-                  const active = idx === strokeWidth;
-                  const passed = idx < strokeWidth;
+                  const currentWidth =
+                    selectedTool === "eraser" ? eraserWidth : strokeWidth;
+                  const active = idx === currentWidth;
+                  const passed = idx < currentWidth;
                   const size = 6 + i * 3;
                   return (
                     <TouchableOpacity
                       key={idx}
-                      onPress={() => setStrokeWidth(idx)}
+                      onPress={() => {
+                        if (selectedTool === "eraser") {
+                          setEraserWidth(idx);
+                        } else {
+                          setStrokeWidth(idx);
+                        }
+                      }}
                       activeOpacity={0.85}
                       style={S.dotTap}
                       accessibilityRole="button"
@@ -1438,7 +1653,8 @@ export default function PageView() {
                             width: size,
                             height: size,
                             borderRadius: size / 2,
-                            backgroundColor: active || passed ? uiColors.primary : '#cfcfcf',
+                            backgroundColor:
+                              active || passed ? uiColors.primary : "#cfcfcf",
                             opacity: active ? 1 : passed ? 0.45 : 1,
                             transform: [{ scale: active ? 1.1 : 1 }],
                           },
