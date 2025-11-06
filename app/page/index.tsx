@@ -13,7 +13,6 @@ import {
   PanResponder,
   Animated,
 } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -34,6 +33,8 @@ import {
   listPageDraws,
   createPageDraw,
 } from '@/src/db/dao';
+import PageToolbar from './topTb';
+import PageCanvas from './pageCanvas';
 
 type PageText = BasePageText & {
   rotation?: number;
@@ -72,6 +73,8 @@ type DraggableTextProps = {
   onSelect: (id: string) => void;
   onEdit: (t: PageText) => void;
   onDuplicate: (t: PageText) => void;
+  canvasWidth: number;
+  canvasHeight: number;
 };
 
 const DraggableTextBase = ({
@@ -86,6 +89,8 @@ const DraggableTextBase = ({
   onSelect,
   onEdit,
   onDuplicate,
+  canvasWidth,
+  canvasHeight,
 }: DraggableTextProps) => {
   // pan estable por id
   const pan = useMemo(() => getPanFor(text), [getPanFor, text]);
@@ -100,6 +105,7 @@ const DraggableTextBase = ({
   const textBoxRef = useRef<View>(null);
   const textCenterRef = useRef({ x: 0, y: 0 });
   const initialAngleRef = useRef(0);
+  const textBoxSizeRef = useRef({ width: 0, height: 0 });
   const [fontSize, setFontSize] = useState(text.font_size ?? 16);
   const fontSizeRef = useRef(fontSize);
   const fontSizeStartRef = useRef(fontSize);
@@ -163,12 +169,24 @@ const DraggableTextBase = ({
       },
       onPanResponderMove: (_, g) => {
         if (lockedRef.current) return;
+
         if (rotateMode) {
           const delta = g.dx;
           setRotation(rotationStartRef.current + delta);
         } else {
-          const nx = startRef.current.x + g.dx;
-          const ny = startRef.current.y + g.dy;
+          const rawX = startRef.current.x + g.dx;
+          const rawY = startRef.current.y + g.dy;
+
+          if (!canvasWidth || !canvasHeight) {
+            pan.setValue({ x: rawX, y: rawY });
+            return;
+          }
+          const PADDING = 5;
+          const { width: boxW, height: boxH } = textBoxSizeRef.current;
+          const maxX = Math.max(PADDING, canvasWidth - PADDING - (boxW || 0));
+          const maxY = Math.max(PADDING, canvasHeight - PADDING - (boxH || 0));
+          const nx = Math.min(Math.max(PADDING, rawX), maxX);
+          const ny = Math.min(Math.max(PADDING, rawY), maxY);
           pan.setValue({ x: nx, y: ny });
         }
       },
@@ -178,7 +196,6 @@ const DraggableTextBase = ({
           return;
         }
         setIsDragging(false);
-
         if (lockedRef.current) return;
 
         const newX = (pan.x as any)._value;
@@ -393,6 +410,9 @@ const DraggableTextBase = ({
       {/* Recuadro del texto */}
       <View
         ref={textBoxRef}
+        onLayout={(e) => {
+          textBoxSizeRef.current = e.nativeEvent.layout;
+        }}
         style={[S.textBox, isSelected && S.textBoxSelected, locked && S.textBoxLocked]}
       >
         <Text
@@ -435,6 +455,7 @@ export default function PageView() {
   const [selectedColor, setSelectedColor] = useState('#000000');
   const [strokeWidth, setStrokeWidth] = useState(2);
   const [currentPageId, setCurrentPageId] = useState<string | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
   // Dibujo
 
@@ -999,182 +1020,86 @@ export default function PageView() {
         onPress: () => setShowDrawTools(true),
         disabled: isLoading,
       },
-      {
-        id: 'undo',
-        icon: 'undo' as const,
-        label: 'Deshacer',
-        onPress: () => {},
-        disabled: true,
-      },
-      {
-        id: 'redo',
-        icon: 'redo' as const,
-        label: 'Rehacer',
-        onPress: () => {},
-        disabled: true,
-      },
     ],
     [handleAddPage, handleDeletePage, isLoading],
   );
 
+  const TOOLBAR_BG = uiColors.background;
   return (
-    <SafeAreaView style={[S.container, { backgroundColor: bg }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      style={[S.container, { backgroundColor: TOOLBAR_BG }]}
+      edges={['top', 'left', 'right']}
+    >
       {isLoading && (
         <View style={S.loadingOverlay}>
           <ActivityIndicator size="large" color={uiColors.danger} />
         </View>
       )}
 
-      {/* Header */}
-      <View style={S.header}>
-        <View style={S.leftGroup}>
-          {pageNum > 1 && (
-            <TouchableOpacity
-              onPress={() => navigateToPage(pageNum - 1)}
-              style={S.navButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              activeOpacity={0.6}
-              disabled={isLoading}
-              accessibilityLabel="Página anterior"
-              accessibilityRole="button"
-            >
-              <MaterialIcons
-                name="arrow-back-ios"
-                size={22}
-                color={isLoading ? '#ccc' : uiColors.danger}
-              />
-            </TouchableOpacity>
-          )}
-          {pageNum < total && (
-            <TouchableOpacity
-              onPress={() => navigateToPage(pageNum + 1)}
-              style={S.navButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              activeOpacity={0.6}
-              disabled={isLoading}
-              accessibilityLabel="Página siguiente"
-              accessibilityRole="button"
-            >
-              <MaterialIcons
-                name="arrow-forward-ios"
-                size={22}
-                color={isLoading ? '#ccc' : uiColors.danger}
-              />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={S.titleWrap} pointerEvents="none">
-          <Text style={S.title}>{`Pag ${pageNum}`}</Text>
-        </View>
-
-        <TouchableOpacity
-          onPress={() => {
-            router.replace({
-              pathname: '/pageList',
-              params: { journalId, color: String(bg) },
-            });
-          }}
-          style={S.checkButton}
-          accessibilityLabel="Hecho"
-          accessibilityRole="button"
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          activeOpacity={0.6}
-          disabled={isLoading}
-        >
-          <MaterialIcons name="check" size={22} color={isLoading ? '#ccc' : uiColors.danger} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Canvas con textos arrastrables */}
-      {/* Canvas con dibujo + textos */}
-      <View
-        style={S.canvas}
-        onStartShouldSetResponder={() => drawMode}
-        onMoveShouldSetResponder={() => drawMode}
-        onResponderGrant={(e) => {
-          if (!drawMode) return;
-          const { locationX, locationY } = e.nativeEvent;
-          onDrawStart(locationX, locationY);
+      {/* PageToolbar */}
+      <PageToolbar
+        pageNum={pageNum}
+        total={total}
+        isLoading={isLoading}
+        onBack={() => {
+          router.replace({
+            pathname: '/pageList',
+            params: { journalId, color: String(bg) },
+          });
         }}
-        onResponderMove={(e) => {
-          if (!drawMode) return;
-          const { locationX, locationY } = e.nativeEvent;
-          onDrawMove(locationX, locationY);
+        onDone={() => {
+          router.replace({
+            pathname: '/pageList',
+            params: { journalId, color: String(bg) },
+          });
         }}
-        onResponderRelease={() => {
-          if (!drawMode) return;
-          onDrawEnd();
-        }}
-        onResponderTerminate={() => {
-          if (!drawMode) return;
-          onDrawEnd();
-        }}
-      >
-        <Svg style={{ position: 'absolute', inset: 0 }}>
-          {strokes.map((s) => (
-            <Path
-              key={s.id}
-              d={s._persistedPathD ?? pointsToPath(s.points)}
-              stroke={s.color}
-              strokeWidth={s.width}
-              strokeOpacity={s.opacity}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          ))}
-          {currentStroke && (
-            <Path
-              d={pointsToPath(currentStroke.points)}
-              stroke={currentStroke.color}
-              strokeWidth={currentStroke.width}
-              strokeOpacity={currentStroke.opacity}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          )}
-        </Svg>
+        onPrevPage={() => navigateToPage(pageNum - 1)}
+        onNextPage={() => navigateToPage(pageNum + 1)}
+        onUndo={() => {}}
+        onRedo={() => {}}
+        canUndo={false}
+        canRedo={false}
+      />
 
-        {/* Deseleccionar texto */}
-        {!drawMode && (
-          <TouchableOpacity
-            style={{ position: 'absolute', inset: 0 }}
-            activeOpacity={1}
-            onPress={() => setSelectedTextId(null)}
-          />
-        )}
-        {/* Textos arrastrables encima del fondo */}
-        <View
-          style={{ position: 'absolute', inset: 0 }}
-          pointerEvents={drawMode ? 'none' : 'box-none'}
-        ></View>
-
-        {/* 2) Textos arrastrables encima */}
-        <View pointerEvents={drawMode ? 'none' : 'auto'}>
-          {pageTexts
-            .sort((a, b) => {
-              if (a.id === selectedTextId) return 1;
-              if (b.id === selectedTextId) return -1;
-              return a.created_at - b.created_at;
-            })
-            .map((text) => (
-              <DraggableText
-                key={text.id}
-                text={text}
-                currentPageId={currentPageId}
-                handleDeleteText={handleDeleteText}
-                getPanFor={getPanFor}
-                onPositionCommit={commitTextPosition}
-                locked={!!lockedTextIds[text.id]}
-                isSelected={selectedTextId === text.id}
-                onToggleLock={handleToggleLock}
-                onSelect={handleSelectText}
-                onEdit={handleEditTextRequest}
-                onDuplicate={handleDuplicateText}
-              />
-            ))}
+      {/* Canvas con dibujo + textos con margen */}
+      <View style={S.pageContent}>
+        <View style={[S.pageCard, { backgroundColor: bg }]}>
+          <PageCanvas
+            drawMode={drawMode}
+            strokes={strokes}
+            currentStroke={currentStroke}
+            pointsToPath={pointsToPath}
+            onDrawStart={onDrawStart}
+            onLayoutCanvas={setCanvasSize}
+            onDrawMove={onDrawMove}
+            onDrawEnd={onDrawEnd}
+            onDeselectText={() => setSelectedTextId(null)}
+          >
+            {pageTexts
+              .sort((a, b) => {
+                if (a.id === selectedTextId) return 1;
+                if (b.id === selectedTextId) return -1;
+                return a.created_at - b.created_at;
+              })
+              .map((text) => (
+                <DraggableText
+                  key={text.id}
+                  text={text}
+                  currentPageId={currentPageId}
+                  handleDeleteText={handleDeleteText}
+                  getPanFor={getPanFor}
+                  onPositionCommit={commitTextPosition}
+                  locked={!!lockedTextIds[text.id]}
+                  isSelected={selectedTextId === text.id}
+                  onToggleLock={handleToggleLock}
+                  onSelect={handleSelectText}
+                  onEdit={handleEditTextRequest}
+                  onDuplicate={handleDuplicateText}
+                  canvasWidth={canvasSize.width}
+                  canvasHeight={canvasSize.height}
+                />
+              ))}
+          </PageCanvas>
         </View>
       </View>
 
@@ -1449,11 +1374,12 @@ export default function PageView() {
                 })}
               </View>
             </View>
+
             <TouchableOpacity
               style={[S.addTextButton, { marginTop: 12 }]}
               onPress={() => {
-                setShowDrawTools(false); // cerrar modal
-                setDrawMode(true); // activar modo de dibujo
+                setShowDrawTools(false);
+                setDrawMode(true);
               }}
               activeOpacity={0.7}
             >
