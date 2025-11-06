@@ -2,9 +2,18 @@ import { StyleSheet } from 'react-native';
 import { uiColors } from '@/constants/colors';
 
 export default StyleSheet.create({
+  /* ──────────────── CONTENEDORES PRINCIPALES ──────────────── */
   container: { flex: 1 },
+  pageContent: { flex: 1 },
+  pageCard: {
+    flex: 1,
+    marginHorizontal: 10,
+    marginVertical: 0,
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
 
-  // Loading overlay
+  /* ──────────────── LOADING OVERLAY ──────────────── */
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.3)',
@@ -13,7 +22,7 @@ export default StyleSheet.create({
     zIndex: 1000,
   },
 
-  // Header
+  /* ──────────────── HEADER ──────────────── */
   header: {
     height: 48,
     alignItems: 'center',
@@ -29,10 +38,7 @@ export default StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  navButton: {
-    padding: 10,
-    marginHorizontal: 4,
-  },
+  navButton: { padding: 10, marginHorizontal: 4 },
   checkButton: {
     position: 'absolute',
     right: 16,
@@ -46,39 +52,51 @@ export default StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: uiColors.black,
-  },
+  title: { fontSize: 18, fontWeight: '600', color: uiColors.black },
 
-  // Canvas
-  canvas: {
+  /* ──────────────── TOP TOOLBAR ──────────────── */
+  topToolbar: {
+    height: 56,
+    backgroundColor: uiColors.background,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: uiColors.background,
+  },
+  topToolbarLeft: { flexDirection: 'row', alignItems: 'center' },
+  topToolbarCenter: {
     flex: 1,
-    marginBottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
   },
-
-  // Textos en canvas
-  textContainer: {
-    position: 'absolute',
+  topToolbarRight: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  topToolbarIcon: {
+    padding: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 2,
+    minWidth: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  textContent: {},
+  topToolbarPageLabelWrap: { alignItems: 'center', marginBottom: 4 },
+  topToolbarPageLabel: { fontSize: 12, color: '#555' },
+  disabledIcon: { opacity: 0.4 },
 
-  // Toolbar horizontal fijo en la parte inferior
+  /* ──────────────── CANVAS ──────────────── */
+  canvasWrapper: { flex: 1 },
+  canvas: { flex: 1, position: 'relative' },
+
+  /* ──────────────── TOOLBAR INFERIOR ──────────────── */
   toolbarWrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: uiColors.white,
+    height: 65,
+    backgroundColor: uiColors.background,
     borderTopWidth: 1,
-    borderTopColor: uiColors.bord,
-    paddingBottom: 8,
-    shadowColor: uiColors.black,
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 8,
+    borderTopColor: uiColors.background,
   },
   toolbarBar: {
     paddingVertical: 10,
@@ -96,34 +114,26 @@ export default StyleSheet.create({
     marginHorizontal: 4,
     backgroundColor: 'transparent',
   },
-  toolItemDisabled: {
-    opacity: 0.4,
-  },
-  toolItemIcon: {
-    marginBottom: 3,
-  },
+  toolItemDisabled: { opacity: 0.4 },
+  toolItemIcon: { marginBottom: 3 },
   toolItemLabel: {
     fontSize: 11,
     fontWeight: '600',
     color: uiColors.black,
   },
-  toolItemLabelDisabled: {
-    color: uiColors.gray,
-  },
-  // Texto en canvas
+  toolItemLabelDisabled: { color: uiColors.gray },
+
+  /* ──────────────── TEXTO EN CANVAS ──────────────── */
+  textContainer: { position: 'absolute' },
   textBox: {
     paddingHorizontal: 6,
     paddingVertical: 4,
     borderRadius: 4,
     backgroundColor: 'transparent',
   },
-  textBoxSelected: {
-    borderWidth: 1,
-    borderColor: uiColors.primary,
-  },
-  textBoxLocked: {
-    borderStyle: 'dashed',
-  },
+  textBoxSelected: { borderWidth: 1, borderColor: uiColors.primary },
+  textBoxLocked: { borderStyle: 'dashed' },
+  textContent: {},
   textToolbar: {
     position: 'absolute',
     top: -30,
@@ -140,9 +150,7 @@ export default StyleSheet.create({
     alignItems: 'center',
     marginRight: 6,
   },
-  textToolbarDelete: {
-    backgroundColor: uiColors.danger,
-  },
+  textToolbarDelete: { backgroundColor: uiColors.danger },
   rotateButton: {
     position: 'absolute',
     bottom: -32,
@@ -170,7 +178,6 @@ export default StyleSheet.create({
     justifyContent: 'center',
     zIndex: 10,
   },
-
   resizeHandleInner: {
     width: 14,
     height: 14,
@@ -185,18 +192,9 @@ export default StyleSheet.create({
     elevation: 3,
   },
 
-  // Modal de dibujo
-  drawModalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  drawModalBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
+  /* ──────────────── MODAL DE DIBUJO ──────────────── */
+  drawModalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  drawModalBackground: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   drawOptionsContainer: {
     backgroundColor: uiColors.white,
     borderTopLeftRadius: 35,
@@ -226,20 +224,11 @@ export default StyleSheet.create({
     alignItems: 'center',
     marginRight: 10,
   },
-  drawOptionsTitle: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: uiColors.black,
-  },
+  drawOptionsTitle: { fontSize: 16, fontWeight: '400', color: uiColors.black },
 
-  // Sección de herramientas
-  toolsSection: {
-    marginBottom: 24,
-  },
-  toolsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
+  /* ──────────────── SECCIONES DE DIBUJO ──────────────── */
+  toolsSection: { marginBottom: 24 },
+  toolsRow: { flexDirection: 'row', justifyContent: 'space-between' },
   toolButtonLarge: {
     flex: 1,
     alignItems: 'center',
@@ -260,11 +249,7 @@ export default StyleSheet.create({
     marginTop: 6,
     fontWeight: '500',
   },
-
-  // Sección de colores para dibujo
-  colorSectionDraw: {
-    marginBottom: 16,
-  },
+  colorSectionDraw: { marginBottom: 16 },
   colorCircleLarge: {
     width: 36,
     height: 36,
@@ -273,11 +258,7 @@ export default StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
-
-  // Sección de grosor
-  thicknessSection: {
-    marginBottom: 12,
-  },
+  thicknessSection: { marginBottom: 12 },
   drawSectionLabel: {
     fontSize: 13,
     fontWeight: '500',
@@ -307,30 +288,16 @@ export default StyleSheet.create({
     backgroundColor: uiColors.primary,
     borderRadius: 3,
   },
-  dotTap: {
-    width: 10,
-    height: 25,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  dotTap: { width: 10, height: 25, alignItems: 'center', justifyContent: 'center' },
   dotSelectable: {
     backgroundColor: uiColors.primary,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.06)',
   },
 
-  // Modal de texto
-  textModalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  textModalBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
+  /* ──────────────── MODAL DE TEXTO ──────────────── */
+  textModalOverlay: { flex: 1, justifyContent: 'flex-end' },
+  textModalBackground: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   textOptionsContainer: {
     backgroundColor: uiColors.white,
     borderTopLeftRadius: 35,
@@ -360,16 +327,8 @@ export default StyleSheet.create({
     alignItems: 'center',
     marginRight: 10,
   },
-  textIconLetter: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: uiColors.black,
-  },
-  textOptionsTitle: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: uiColors.black,
-  },
+  textIconLetter: { fontSize: 20, fontWeight: '600', color: uiColors.black },
+  textOptionsTitle: { fontSize: 16, fontWeight: '400', color: uiColors.black },
   textInput: {
     borderWidth: 1,
     borderColor: uiColors.bord,
@@ -383,10 +342,8 @@ export default StyleSheet.create({
     backgroundColor: uiColors.background,
   },
 
-  // Sección de colores para texto
-  colorSection: {
-    marginBottom: 20,
-  },
+  /* ──────────────── SECCIONES DE TEXTO ──────────────── */
+  colorSection: { marginBottom: 20 },
   colorCircle: {
     width: 28,
     height: 28,
@@ -395,15 +352,8 @@ export default StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  colorCircleSelected: {
-    borderColor: uiColors.black,
-    borderWidth: 2.5,
-  },
-
-  // Sección de fuentes
-  fontSection: {
-    marginBottom: 20,
-  },
+  colorCircleSelected: { borderColor: uiColors.black, borderWidth: 2.5 },
+  fontSection: { marginBottom: 20 },
   fontButton: {
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -419,17 +369,10 @@ export default StyleSheet.create({
     borderWidth: 1,
     borderColor: uiColors.gray,
   },
-  fontButtonText: {
-    fontSize: 14,
-    color: uiColors.gray,
-    fontWeight: '400',
-  },
-  fontButtonTextSelected: {
-    color: uiColors.black,
-    fontWeight: '500',
-  },
+  fontButtonText: { fontSize: 14, color: uiColors.gray, fontWeight: '400' },
+  fontButtonTextSelected: { color: uiColors.black, fontWeight: '500' },
 
-  // Botón de añadir texto
+  /* ──────────────── BOTÓN AÑADIR TEXTO ──────────────── */
   addTextButton: {
     backgroundColor: uiColors.primary,
     paddingVertical: 14,
@@ -438,9 +381,5 @@ export default StyleSheet.create({
     justifyContent: 'center',
     marginTop: 8,
   },
-  addTextButtonText: {
-    color: uiColors.white,
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  addTextButtonText: { color: uiColors.white, fontSize: 16, fontWeight: '600' },
 });
