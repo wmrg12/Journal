@@ -47,7 +47,7 @@ type Params = {
   totalPages?: string;
 };
 
-type DrawTool = 'pencil' | 'pen' | 'marker';
+type DrawTool = 'pencil' | 'pen' | 'marker' | 'eraser';
 
 type Stroke = {
   id: string;
@@ -470,9 +470,11 @@ export default function PageView() {
   }, []);
 
   // Presets por herramienta (usa tu slider como base 1..6)
+  const [eraserWidth, setEraserWidth] = useState(3);
   const getToolStyle = useCallback(
     (tool: DrawTool) => {
       const base = strokeWidth; // 1..6
+
       switch (tool) {
         case 'pencil': // delgado, casi opaco
           return { width: Math.max(1, base), opacity: 0.95 };
@@ -480,44 +482,110 @@ export default function PageView() {
           return { width: Math.max(6, base * 3), opacity: 0.5 };
         case 'pen': // pincel con grosor variable
           return { width: Math.max(2, base * 2), opacity: 0.9 };
+        case 'eraser': // borrador
+          return { width: Math.max(10, eraserWidth * 5), opacity: 1 };
         default:
           return { width: base, opacity: 1 };
       }
     },
-    [strokeWidth],
+    [strokeWidth, eraserWidth],
   );
 
-  // Gestos de dibujo sobre el canvas
+  // Función auxiliar para dividir trazos
+  const eraseFromStrokes = useCallback(
+    (x: number, y: number, radius: number, strokes: Stroke[]) => {
+      const newStrokes: Stroke[] = [];
+
+      strokes.forEach((stroke) => {
+        const segments: { x: number; y: number }[][] = [];
+        let currentSegment: { x: number; y: number }[] = [];
+
+        stroke.points.forEach((point) => {
+          const dx = point.x - x;
+          const dy = point.y - y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          if (distance >= radius) {
+            // Punto fuera del borrador, agregarlo al segmento actual
+            currentSegment.push(point);
+          } else {
+            // Punto dentro del borrador, guardar segmento actual si tiene puntos
+            if (currentSegment.length >= 2) {
+              segments.push(currentSegment);
+            }
+            currentSegment = [];
+          }
+        });
+
+        // Agregar último segmento si tiene puntos suficientes
+        if (currentSegment.length >= 2) {
+          segments.push(currentSegment);
+        }
+
+        // Crear nuevos trazos para cada segmento válido
+        segments.forEach((segmentPoints) => {
+          if (segmentPoints.length >= 2) {
+            newStrokes.push({
+              ...stroke,
+              id: stroke.id + '_' + Math.random().toString(36).slice(2),
+              points: segmentPoints,
+            });
+          }
+        });
+      });
+
+      return newStrokes;
+    },
+    [],
+  );
+
   const onDrawStart = useCallback(
     (x: number, y: number) => {
-      const { width, opacity } = getToolStyle(selectedTool);
-      const s: Stroke = {
-        id: String(Date.now()) + Math.random().toString(36).slice(2),
-        tool: selectedTool,
-        color: selectedColor,
-        width,
-        opacity,
-        points: [{ x, y }],
-      };
-      setCurrentStroke(s);
+      if (selectedTool === 'eraser') {
+        const eraserRadius = getToolStyle('eraser').width / 2;
+        setStrokes((prev) => eraseFromStrokes(x, y, eraserRadius, prev));
+      } else {
+        const { width, opacity } = getToolStyle(selectedTool);
+        const s: Stroke = {
+          id: String(Date.now()) + Math.random().toString(36).slice(2),
+          tool: selectedTool,
+          color: selectedColor,
+          width,
+          opacity,
+          points: [{ x, y }],
+        };
+        setCurrentStroke(s);
+      }
     },
-    [getToolStyle, selectedTool, selectedColor],
+    [getToolStyle, selectedTool, selectedColor, eraseFromStrokes],
   );
 
-  const onDrawMove = useCallback((x: number, y: number) => {
-    setCurrentStroke((prev) => {
-      if (!prev) return prev;
-      const last = prev.points[prev.points.length - 1];
-      const dx = x - last.x,
-        dy = y - last.y;
-      if (dx * dx + dy * dy < 1.5) return prev; // umbral para no saturar puntos
-      return { ...prev, points: [...prev.points, { x, y }] };
-    });
-  }, []);
+  const onDrawMove = useCallback(
+    (x: number, y: number) => {
+      if (selectedTool === 'eraser') {
+        const eraserRadius = getToolStyle('eraser').width / 2;
+        setStrokes((prev) => eraseFromStrokes(x, y, eraserRadius, prev));
+      } else {
+        setCurrentStroke((prev) => {
+          if (!prev) return prev;
+          const last = prev.points[prev.points.length - 1];
+          const dx = x - last.x,
+            dy = y - last.y;
+          if (dx * dx + dy * dy < 1.5) return prev;
+          return { ...prev, points: [...prev.points, { x, y }] };
+        });
+      }
+    },
+    [selectedTool, getToolStyle, eraseFromStrokes],
+  );
 
   const onDrawEnd = useCallback(() => {
     setCurrentStroke((prev) => {
       if (!prev || prev.points.length < 2) return null;
+
+      // No guardar trazos del borrador
+      if (prev.tool === 'eraser') return null;
+
       setStrokes((s) => [...s, prev]);
       // guardar en BD
       try {
@@ -624,7 +692,13 @@ export default function PageView() {
     const idx = Math.round(prog * (SEGMENTS - 1)) + 1;
     setStrokeWidth(idx);
   };
-
+  const hitTestToIndexEraser = (pageX: number) => {
+    if (!dotBarLayout.width) return;
+    const localX = Math.max(0, Math.min(pageX - dotBarLayout.x, dotBarLayout.width));
+    const prog = localX / dotBarLayout.width;
+    const idx = Math.round(prog * (SEGMENTS - 1)) + 1;
+    setEraserWidth(idx);
+  };
   // Cargar color desde parámetro
   useEffect(() => {
     if (typeof color === 'string') {
@@ -1278,6 +1352,7 @@ export default function PageView() {
                   { id: 'pencil', icon: 'edit', label: 'Lápiz' },
                   { id: 'pen', icon: 'brush', label: 'Pincel' },
                   { id: 'marker', icon: 'create', label: 'Marcador' },
+                  { id: 'eraser', icon: 'auto-fix-off', label: 'Borrador' },
                 ].map((tool) => (
                   <TouchableOpacity
                     key={tool.id}
@@ -1295,33 +1370,38 @@ export default function PageView() {
             </View>
 
             {/* Colores */}
-            <View style={S.colorSectionDraw}>
-              <Text style={S.drawSectionLabel}>Color</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyboardShouldPersistTaps="always"
-              >
-                {drawColors.map((clr) => (
-                  <TouchableOpacity
-                    key={clr}
-                    style={[
-                      S.colorCircleLarge,
-                      { backgroundColor: clr },
-                      selectedColor === clr && S.colorCircleSelected,
-                    ]}
-                    onPress={() => setSelectedColor(clr)}
-                    accessibilityLabel={`Color ${clr}`}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: selectedColor === clr }}
-                  />
-                ))}
-              </ScrollView>
-            </View>
+            {selectedTool !== 'eraser' && (
+              <View style={S.colorSectionDraw}>
+                <Text style={S.drawSectionLabel}>Color</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyboardShouldPersistTaps="always"
+                >
+                  {drawColors.map((clr) => (
+                    <TouchableOpacity
+                      key={clr}
+                      style={[
+                        S.colorCircleLarge,
+                        { backgroundColor: clr },
+                        selectedColor === clr && S.colorCircleSelected,
+                      ]}
+                      onPress={() => setSelectedColor(clr)}
+                      accessibilityLabel={`Color ${clr}`}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: selectedColor === clr }}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
 
             {/* Grosor del trazo */}
+            {/* Grosor del trazo (o del borrador) */}
             <View style={S.thicknessSection}>
-              <Text style={S.drawSectionLabel}>Grosor del trazo</Text>
+              <Text style={S.drawSectionLabel}>
+                {selectedTool === 'eraser' ? 'Grosor del borrador' : 'Grosor del trazo'}
+              </Text>
 
               <View
                 ref={dotBarRef}
@@ -1336,20 +1416,49 @@ export default function PageView() {
                 }}
                 onStartShouldSetResponder={() => true}
                 onMoveShouldSetResponder={() => true}
-                onResponderGrant={(e) => hitTestToIndex(e.nativeEvent.pageX)}
-                onResponderMove={(e) => hitTestToIndex(e.nativeEvent.pageX)}
+                onResponderGrant={(e) => {
+                  if (selectedTool === 'eraser') {
+                    hitTestToIndexEraser(e.nativeEvent.pageX);
+                  } else {
+                    hitTestToIndex(e.nativeEvent.pageX);
+                  }
+                }}
+                onResponderMove={(e) => {
+                  if (selectedTool === 'eraser') {
+                    hitTestToIndexEraser(e.nativeEvent.pageX);
+                  } else {
+                    hitTestToIndex(e.nativeEvent.pageX);
+                  }
+                }}
               >
                 <View style={S.dotBarTrack} />
-                <View style={[S.dotBarFill, { width: fillWidth }]} />
+                <View
+                  style={[
+                    S.dotBarFill,
+                    {
+                      width:
+                        selectedTool === 'eraser'
+                          ? Math.max(0, dotBarLayout.width * ((eraserWidth - 1) / (SEGMENTS - 1)))
+                          : fillWidth,
+                    },
+                  ]}
+                />
                 {Array.from({ length: SEGMENTS }).map((_, i) => {
                   const idx = i + 1;
-                  const active = idx === strokeWidth;
-                  const passed = idx < strokeWidth;
+                  const currentWidth = selectedTool === 'eraser' ? eraserWidth : strokeWidth;
+                  const active = idx === currentWidth;
+                  const passed = idx < currentWidth;
                   const size = 6 + i * 3;
                   return (
                     <TouchableOpacity
                       key={idx}
-                      onPress={() => setStrokeWidth(idx)}
+                      onPress={() => {
+                        if (selectedTool === 'eraser') {
+                          setEraserWidth(idx);
+                        } else {
+                          setStrokeWidth(idx);
+                        }
+                      }}
                       activeOpacity={0.85}
                       style={S.dotTap}
                       accessibilityRole="button"
