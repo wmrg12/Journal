@@ -95,28 +95,27 @@ export async function initDb() {
 
       await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_page_draws_page ON page_draws(page_id);`);
       
-      await execTxIgnore(tx, `DROP TABLE IF EXISTS page_shapes`);
-
+      // Tabla para formas geometricas
       await execTx(
-      tx,
-        `CREATE TABLE IF NOT EXISTS page_shapes(
-          id TEXT PRIMARY KEY NOT NULL,
-          page_id TEXT NOT NULL,
-          shape_type TEXT NOT NULL,
-          color TEXT NOT NULL,
-          position_x REAL NOT NULL,
-          position_y REAL NOT NULL,
-          width REAL NOT NULL DEFAULT 100,
-          height REAL NOT NULL DEFAULT 100,
-          rotation REAL NOT NULL DEFAULT 0,
-          is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1)),
-          created_at INTEGER NOT NULL,
-          updated_at INTEGER NOT NULL,
-          FOREIGN KEY(page_id) REFERENCES pages(id) ON DELETE CASCADE
-        );`,
-    );
+  tx,
+  `CREATE TABLE IF NOT EXISTS page_shapes(
+    id TEXT PRIMARY KEY NOT NULL,
+    page_id TEXT NOT NULL,
+    shape_type TEXT NOT NULL,
+    color TEXT NOT NULL,
+    position_x REAL NOT NULL,
+    position_y REAL NOT NULL,
+    width REAL NOT NULL DEFAULT 100,
+    height REAL NOT NULL DEFAULT 100,
+    rotation REAL NOT NULL DEFAULT 0,
+    is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1)),
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY(page_id) REFERENCES pages(id) ON DELETE CASCADE
+  );`,
+);
 
-      await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_page_shapes_page ON page_shapes(page_id);`);  
+await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_page_shapes_page ON page_shapes(page_id);`);
 
       // ---- MIGRACIONES ----
       await execTxIgnore(
@@ -238,27 +237,26 @@ export async function initDb() {
     );
     await runAsync(`CREATE INDEX IF NOT EXISTS idx_page_draws_page ON page_draws(page_id);`);
  
-    await runAsyncIgnore(`DROP TABLE IF EXISTS page_shapes`);
 
-    await runAsync(
-    `CREATE TABLE IF NOT EXISTS page_shapes(
-      id TEXT PRIMARY KEY NOT NULL,
-      page_id TEXT NOT NULL,
-      shape_type TEXT NOT NULL,
-      color TEXT NOT NULL,
-      position_x REAL NOT NULL,
-      position_y REAL NOT NULL,
-      width REAL NOT NULL DEFAULT 100,
-      height REAL NOT NULL DEFAULT 100,
-      rotation REAL NOT NULL DEFAULT 0,
-      is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1)),
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL,
-      FOREIGN KEY(page_id) REFERENCES pages(id) ON DELETE CASCADE
-    );`,
-  );
+await runAsync(
+  `CREATE TABLE IF NOT EXISTS page_shapes(
+    id TEXT PRIMARY KEY NOT NULL,
+    page_id TEXT NOT NULL,
+    shape_type TEXT NOT NULL,
+    color TEXT NOT NULL,
+    position_x REAL NOT NULL,
+    position_y REAL NOT NULL,
+    width REAL NOT NULL DEFAULT 100,
+    height REAL NOT NULL DEFAULT 100,
+    rotation REAL NOT NULL DEFAULT 0,
+    is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1)),
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY(page_id) REFERENCES pages(id) ON DELETE CASCADE
+  );`,
+);
 
-    await runAsync(`CREATE INDEX IF NOT EXISTS idx_page_shapes_page ON page_shapes(page_id);`);
+await runAsync(`CREATE INDEX IF NOT EXISTS idx_page_shapes_page ON page_shapes(page_id);`);
 
     // ---- MIGRACIONES ----
     await runAsyncIgnore(`ALTER TABLE journals ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`,);
@@ -849,7 +847,7 @@ export async function deletePageText(textId: string) {
   }
 }
 // ---------- DAO: Page forms --------
-export type ShapeType = 'circle' | 'square' | 'triangle' | 'star' | 'heart' | 'rectangle';
+export type ShapeType = 'circle' | 'square' | 'triangle' | 'star' | 'heart' | 'rectangle' | 'line' | 'arrow' | 'diamond' | 'pentagon' | 'sun' | 'bolt' |'flower' | 'mountain'; ;
 
 export type PageShape = {
   id: string;
