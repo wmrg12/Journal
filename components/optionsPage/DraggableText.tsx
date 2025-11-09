@@ -1,4 +1,3 @@
-// components/optionsPage/DraggableText.tsx
 import React, { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { View, Text, TouchableOpacity, Animated, PanResponder } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -39,9 +38,6 @@ const DraggableTextBase = ({
   canvasWidth,
   canvasHeight,
 }: DraggableTextProps) => {
-  // ============================================================================
-  // STATE & REFS
-  // ============================================================================
   const pan = useMemo(() => getPanFor(text), [getPanFor, text]);
   const [isDragging, setIsDragging] = useState(false);
   const toolbarButtonPressed = useRef(false);
@@ -69,9 +65,7 @@ const DraggableTextBase = ({
   const lastTapRef = useRef(0);
   const DOUBLE_TAP_DELAY = 300;
 
-  // ============================================================================
   // EFFECTS - SYNC
-  // ============================================================================
   useEffect(() => {
     lockedRef.current = locked;
   }, [locked]);
@@ -102,9 +96,7 @@ const DraggableTextBase = ({
     }
   }, [text.position_x, text.position_y, pan, isDragging]);
 
-  // ============================================================================
   // PAN RESPONDER - MOVER
-  // ============================================================================
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
@@ -153,15 +145,13 @@ const DraggableTextBase = ({
         const newX = (pan.x as any)._value;
         const newY = (pan.y as any)._value;
 
-        console.log('📍 Text soltado:', text.id, `(${newX}, ${newY})`);
+        console.log('Text soltado:', text.id, `(${newX}, ${newY})`);
         onPositionCommit(text.id, newX, newY);
       },
     }),
   ).current;
 
-  // ============================================================================
   // PAN RESPONDER - ROTAR
-  // ============================================================================
   const rotatePanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !lockedRef.current,
@@ -202,9 +192,7 @@ const DraggableTextBase = ({
     }),
   ).current;
 
-  // ============================================================================
-  // PAN RESPONDER - RESIZE (CAMBIAR FONT SIZE)
-  // ============================================================================
+  // PAN RESPONDER - RESIZE 
   const resizePanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !lockedRef.current,
@@ -243,12 +231,7 @@ const DraggableTextBase = ({
     }),
   ).current;
 
-  // ============================================================================
   // HANDLERS
-  // ============================================================================
-
-  // Tap simple => seleccionar
-  // Doble tap => editar (si no está bloqueado)
   const handleTap = () => {
     if (toolbarButtonPressed.current) return;
 
@@ -256,7 +239,7 @@ const DraggableTextBase = ({
     const timeSinceLastTap = now - lastTapRef.current;
 
     if (timeSinceLastTap < DOUBLE_TAP_DELAY && isSelected && !lockedRef.current) {
-      console.log('✏️ Doble tap detectado - Abriendo editor');
+      console.log(' Abriendo editor');
       onEdit(text);
     } else {
       onSelect(text.id);
@@ -265,9 +248,7 @@ const DraggableTextBase = ({
     lastTapRef.current = now;
   };
 
-  // ============================================================================
-  // RENDER
-  // ============================================================================
+  // RENDE
   return (
     <Animated.View
       {...panResponder.panHandlers}
@@ -284,7 +265,6 @@ const DraggableTextBase = ({
         },
       ]}
     >
-      {/* TAP / DOBLE TAP SOBRE EL TEXTO */}
       <TouchableOpacity activeOpacity={1} onPress={handleTap}>
         <View
           ref={textBoxRef}
@@ -314,9 +294,9 @@ const DraggableTextBase = ({
         </View>
       </TouchableOpacity>
 
-      {/* ─────────────── BOTONES FLOTANTES COMO EN SHAPES ─────────────── */}
+      {/* BOTONES FLOTANTES */}
 
-      {/* Delete → esquina superior izquierda */}
+      {/* Delete */}
       {isSelected && (
         <TouchableOpacity
           onPressIn={() => {
@@ -332,7 +312,7 @@ const DraggableTextBase = ({
         </TouchableOpacity>
       )}
 
-      {/* Lock → esquina superior derecha */}
+      {/* Lock */}
       {isSelected && (
         <TouchableOpacity
           onPressIn={() => {
@@ -356,7 +336,7 @@ const DraggableTextBase = ({
         </TouchableOpacity>
       )}
 
-      {/* Duplicate → esquina inferior izquierda */}
+      {/* Duplicate */}
       {isSelected && !locked && (
         <TouchableOpacity
           onPressIn={() => {
@@ -380,7 +360,7 @@ const DraggableTextBase = ({
         </TouchableOpacity>
       )}
 
-      {/* Rotate → esquina inferior derecha */}
+      {/* Rotate  */}
       {isSelected && !locked && (
         <View
           {...rotatePanResponder.panHandlers}
@@ -390,7 +370,7 @@ const DraggableTextBase = ({
         </View>
       )}
 
-      {/* Resize (font size) → handle inferior centrado, igual que shapeResizeHandle */}
+      {/* Resize */}
       {isSelected && !locked && (
         <View
           {...resizePanResponder.panHandlers}
