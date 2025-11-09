@@ -52,7 +52,7 @@ export default function PillTabBar({
     {/* Botones */}
     <View style={styles.rowTab}>
       {state.routes.map((route, index) => {
-          const { options } = descriptors[route.key];
+          const { } = descriptors[route.key];
           const focused = state.index === index;
 
           const onPress = () => {
