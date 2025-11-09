@@ -235,7 +235,9 @@ export default StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 15,
     borderRadius: 12,
-    backgroundColor: uiColors.grayO,
+    backgroundColor: uiColors.white,
+    borderWidth: 2,
+    borderColor: uiColors.grayO,
     marginHorizontal: 4,
   },
   toolButtonActive: {
@@ -382,4 +384,229 @@ export default StyleSheet.create({
     marginTop: 8,
   },
   addTextButtonText: { color: uiColors.white, fontSize: 16, fontWeight: '600' },
+
+  /* ──────────────── SECCIÓN DE FORMAS ──────────────── */
+
+  shapeContainer: {
+    position: 'absolute',
+  },
+
+  // Caja que contiene la forma
+  shapeBox: {
+    borderWidth: 2,
+    borderColor: 'transparent',
+    borderRadius: 5,
+    overflow: 'visible',
+    borderStyle: 'dashed', 
+  },
+
+  shapeBoxSelected: {
+    borderColor: uiColors.primary,
+    borderStyle: 'dashed',
+  },
+
+
+/* ─────────────── BOTONES ALREDEDOR DE LA FORMA ─────────────── */
+  shapeControlButton: {
+    position: 'absolute',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: uiColors.primary,
+    elevation: 2,
+  },
+
+  // Eliminar 
+  shapeDeleteButton: {
+    top: -20,
+    left: -20,
+    backgroundColor: uiColors.primary,
+  },
+
+  // Bloquear 
+  shapeLockButton: {
+    top: -20,
+    right: -20,
+  },
+
+  shapeLockButtonLocked: {
+    backgroundColor: uiColors.primary, 
+  },
+
+  // Duplicar 
+  shapeDuplicateButton: {
+    bottom: -20,
+    left: -20,
+    backgroundColor: uiColors.primary,
+  },
+
+  // Rotar 
+  shapeRotateButton: {
+    position: 'absolute',
+    bottom: -20,
+    right: -20,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: uiColors.primary,
+    elevation: 2,
+  },
+
+/* ─────────────── HANDLE DE RESIZE  ─────────────── */
+
+  shapeResizeHandle: {
+    position: 'absolute',
+    bottom: -24,
+    left: '50%',
+    transform: [{ translateX: -14 }],
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  shapeResizeHandleInner: {
+    position: 'absolute',
+    borderRadius: 4,
+    backgroundColor: uiColors.primary, 
+    borderColor: uiColors.primary,
+    width: 18,
+    height: 8,
+  },
+
+  /* ──────────────── MODAL DE FORMAS ──────────────── */
+  
+  shapeModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.35)', 
+  },
+
+  shapeModalBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+
+  shapeOptionsContainer: {
+    backgroundColor: uiColors.white,
+    borderTopLeftRadius: 35,
+    borderTopRightRadius: 35,
+    padding: 20,
+    minHeight: 320,
+    shadowColor: uiColors.black,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+
+  shapeOptionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: uiColors.bord,  
+  },
+
+  shapeIconContainer: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    backgroundColor: uiColors.grayO,
+    
+  },
+
+  shapeOptionsTitle: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: uiColors.black,
+  },
+
+  shapeToolsSection: {
+    marginBottom: 5,
+
+  },
+
+  shapeSectionLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    marginBottom: 8,
+    color: uiColors.black,
+  },
+
+  shapeToolsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+
+  shapeToolButtonLarge: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: uiColors.grayO,
+    marginRight: 8,
+    marginBottom: 8,
+    flexDirection: 'row',
+  },
+
+  shapeToolButtonActive: {
+    backgroundColor: uiColors.cards,
+    borderWidth: 2,
+    borderColor: uiColors.primary,
+  },
+
+  shapeToolLabelLarge: {
+    marginLeft: 4,
+    fontSize: 12,
+    color: uiColors.black,
+  },
+
+  shapeColorSection: {
+    marginBottom: 20,
+  },
+
+  shapeColorCircleLarge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    marginRight: 13,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+
+  shapeColorCircleSelected: {
+    borderWidth: 2.5,
+    borderColor: uiColors.black,
+  },
+
+  shapeAddButton: {
+    backgroundColor: uiColors.primary,
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+
+  shapeAddButtonText: {
+    color: uiColors.white,
+    fontWeight: '600',
+    fontSize: 16,
+  }
 });
+
+
