@@ -79,20 +79,44 @@ export async function initDb() {
       await execTx(
         tx,
         `CREATE TABLE IF NOT EXISTS page_draws(
-    id TEXT PRIMARY KEY NOT NULL,
-    page_id TEXT NOT NULL,
-    path_d TEXT NOT NULL,            -- "d" del SVG Path (M/L...), o JSON de puntos si prefieres
-    color TEXT NOT NULL,
-    width REAL NOT NULL,
-    opacity REAL NOT NULL,
-    tool TEXT NOT NULL,              -- 'pencil' | 'pen' | 'marker'
-    order_index INTEGER NOT NULL,    -- orden de pintado
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
-    FOREIGN KEY(page_id) REFERENCES pages(id) ON DELETE CASCADE
-  );`,
+          id TEXT PRIMARY KEY NOT NULL,
+          page_id TEXT NOT NULL,
+          path_d TEXT NOT NULL,            
+          color TEXT NOT NULL,
+          width REAL NOT NULL,
+          opacity REAL NOT NULL,
+          tool TEXT NOT NULL,              
+          order_index INTEGER NOT NULL,    
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY(page_id) REFERENCES pages(id) ON DELETE CASCADE
+        );`,
       );
+
       await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_page_draws_page ON page_draws(page_id);`);
+      
+      await execTxIgnore(tx, `DROP TABLE IF EXISTS page_shapes`);
+
+      await execTx(
+      tx,
+        `CREATE TABLE IF NOT EXISTS page_shapes(
+          id TEXT PRIMARY KEY NOT NULL,
+          page_id TEXT NOT NULL,
+          shape_type TEXT NOT NULL,
+          color TEXT NOT NULL,
+          position_x REAL NOT NULL,
+          position_y REAL NOT NULL,
+          width REAL NOT NULL DEFAULT 100,
+          height REAL NOT NULL DEFAULT 100,
+          rotation REAL NOT NULL DEFAULT 0,
+          is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1)),
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY(page_id) REFERENCES pages(id) ON DELETE CASCADE
+        );`,
+    );
+
+      await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_page_shapes_page ON page_shapes(page_id);`);  
 
       // ---- MIGRACIONES ----
       await execTxIgnore(
@@ -108,6 +132,17 @@ export async function initDb() {
         `ALTER TABLE page_texts ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1))`,
       );
       await execTxIgnore(tx, `ALTER TABLE page_texts ADD COLUMN rotation REAL NOT NULL DEFAULT 0`);
+      
+      // Migraciones para page_shapes 
+      await execTxIgnore(
+        tx,
+        `ALTER TABLE page_shapes ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0`,
+      );
+      await execTxIgnore(
+        tx,
+        `ALTER TABLE page_shapes ADD COLUMN rotation REAL NOT NULL DEFAULT 0`,
+      );
+
 
       // Índices
       await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_pages_journal ON pages(journal_id);`);
@@ -126,6 +161,8 @@ export async function initDb() {
 
     return;
   }
+
+  
 
   // -------- ASYNC (openDatabaseAsync) --------
   if (typeof anySQLite.openDatabaseAsync === 'function') {
@@ -200,27 +237,40 @@ export async function initDb() {
   );`,
     );
     await runAsync(`CREATE INDEX IF NOT EXISTS idx_page_draws_page ON page_draws(page_id);`);
+ 
+    await runAsyncIgnore(`DROP TABLE IF EXISTS page_shapes`);
+
+    await runAsync(
+    `CREATE TABLE IF NOT EXISTS page_shapes(
+      id TEXT PRIMARY KEY NOT NULL,
+      page_id TEXT NOT NULL,
+      shape_type TEXT NOT NULL,
+      color TEXT NOT NULL,
+      position_x REAL NOT NULL,
+      position_y REAL NOT NULL,
+      width REAL NOT NULL DEFAULT 100,
+      height REAL NOT NULL DEFAULT 100,
+      rotation REAL NOT NULL DEFAULT 0,
+      is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1)),
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY(page_id) REFERENCES pages(id) ON DELETE CASCADE
+    );`,
+  );
+
+    await runAsync(`CREATE INDEX IF NOT EXISTS idx_page_shapes_page ON page_shapes(page_id);`);
 
     // ---- MIGRACIONES ----
-    await runAsyncIgnore(
-      `ALTER TABLE journals ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`,
-    );
-    await runAsyncIgnore(
-      `ALTER TABLE pages ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`,
-    );
-    await runAsyncIgnore(
-      `ALTER TABLE page_texts ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1))`,
-    );
+    await runAsyncIgnore(`ALTER TABLE journals ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`,);
+    await runAsyncIgnore(`ALTER TABLE pages ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`,);
+    await runAsyncIgnore(`ALTER TABLE page_texts ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1))`,);
     await runAsyncIgnore(`ALTER TABLE page_texts ADD COLUMN rotation REAL NOT NULL DEFAULT 0`);
+
 
     // Indices
     await runAsync(`CREATE INDEX IF NOT EXISTS idx_pages_journal ON pages(journal_id);`);
-    await runAsync(
-      `CREATE INDEX IF NOT EXISTS idx_pages_journal_number ON pages(journal_id, page_number);`,
-    );
-    await runAsync(
-      `CREATE UNIQUE INDEX IF NOT EXISTS ux_pages_journal_number ON pages(journal_id, page_number);`,
-    );
+    await runAsync(`CREATE INDEX IF NOT EXISTS idx_pages_journal_number ON pages(journal_id, page_number);`,);
+    await runAsync(`CREATE UNIQUE INDEX IF NOT EXISTS ux_pages_journal_number ON pages(journal_id, page_number);`,);
 
     // Indice para textos
     await runAsync(`CREATE INDEX IF NOT EXISTS idx_page_texts_page ON page_texts(page_id);`);
@@ -798,6 +848,161 @@ export async function deletePageText(textId: string) {
     });
   }
 }
+// ---------- DAO: Page forms --------
+export type ShapeType = 'circle' | 'square' | 'triangle' | 'star' | 'heart' | 'rectangle';
+
+export type PageShape = {
+  id: string;
+  page_id: string;
+  shape_type: ShapeType;
+  color: string;
+  position_x: number;
+  position_y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  is_locked: number;
+  created_at: number;
+  updated_at: number;
+};
+
+export async function createPageShape(
+  pageId: string,
+  shapeType: ShapeType,
+  color: string,
+  positionX: number,
+  positionY: number,
+  width: number = 100,
+  height: number = 100,
+) {
+  const id = await Crypto.randomUUID();
+  const now = Math.floor(Date.now() / 1000);
+  
+
+  if (isAsync) {
+    await runAsync(
+      `INSERT INTO page_shapes(id, page_id, shape_type, color, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at)
+          VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [id, pageId, shapeType, color, positionX, positionY, width, height, 0, 0, now, now],
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(
+        tx,
+        `INSERT INTO page_shapes(id, page_id, shape_type, color, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at)
+          VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [id, pageId, shapeType, color, positionX, positionY, width, height, 0, 0, now, now],
+      );
+    });
+  }
+  return { id };
+}
+
+export async function listPageShapes(pageId: string): Promise<PageShape[]> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync?.(
+      `SELECT id, page_id, shape_type, color, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at
+          FROM page_shapes
+        WHERE page_id = ?
+        ORDER BY created_at ASC`,
+      [pageId],
+    );
+    return rows ?? [];
+  }
+
+  return new Promise<PageShape[]>((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT id, page_id, shape_type, color, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at
+            FROM page_shapes
+          WHERE page_id = ?
+          ORDER BY created_at ASC`,
+        [pageId],
+        (_: any, res: any) => {
+          const out: PageShape[] = [];
+          for (let i = 0; i < res.rows.length; i++) out.push(res.rows.item(i));
+          resolve(out);
+        },
+        (_: any, err: any) => {
+          reject(err);
+          return true;
+        },
+      );
+    });
+  });
+}
+
+export async function updatePageShape(
+  shapeId: string,
+  updates: {
+    color?: string;
+    position_x?: number;
+    position_y?: number;
+    width?: number;
+    height?: number;
+    rotation?: number;
+    is_locked?: number;
+  },
+) {
+  const now = Math.floor(Date.now() / 1000);
+  const fields: string[] = [];
+  const values: any[] = [];
+
+  if (updates.color !== undefined) {
+    fields.push('color = ?');
+    values.push(updates.color);
+  }
+  if (updates.position_x !== undefined) {
+    fields.push('position_x = ?');
+    values.push(updates.position_x);
+  }
+  if (updates.position_y !== undefined) {
+    fields.push('position_y = ?');
+    values.push(updates.position_y);
+  }
+  if (updates.width !== undefined) {
+    fields.push('width = ?');
+    values.push(updates.width);
+  }
+  if (updates.height !== undefined) {
+    fields.push('height = ?');
+    values.push(updates.height);
+  }
+  if (updates.rotation !== undefined) {
+    fields.push('rotation = ?');
+    values.push(updates.rotation);
+  }
+  if (updates.is_locked !== undefined) {
+    fields.push('is_locked = ?');
+    values.push(updates.is_locked);
+  }
+
+  if (fields.length === 0) return;
+
+  fields.push('updated_at = ?');
+  values.push(now);
+  values.push(shapeId);
+
+  const sql = `UPDATE page_shapes SET ${fields.join(', ')} WHERE id = ?`;
+
+  if (isAsync) {
+    await runAsync(sql, values);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, sql, values);
+    });
+  }
+}
+
+export async function deletePageShape(shapeId: string) {
+  if (isAsync) {
+    await runAsync(`DELETE FROM page_shapes WHERE id = ?`, [shapeId]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, `DELETE FROM page_shapes WHERE id = ?`, [shapeId]);
+    });
+  }
+}
 
 // ---------- DAO: Tasks ----------
 export type Task = {
@@ -815,7 +1020,7 @@ export async function createTask(title: string) {
   if (isAsync) {
     await runAsync(
       `INSERT INTO tasks(id, title, is_completed, created_at, updated_at)
-       VALUES(?,?,?,?,?)`,
+        VALUES(?,?,?,?,?)`,
       [id, title, 0, now, now],
     );
   } else {
@@ -823,7 +1028,7 @@ export async function createTask(title: string) {
       await execTx(
         tx,
         `INSERT INTO tasks(id, title, is_completed, created_at, updated_at)
-         VALUES(?,?,?,?,?)`,
+          VALUES(?,?,?,?,?)`,
         [id, title, 0, now, now],
       );
     });
@@ -835,7 +1040,7 @@ export async function listTasks(): Promise<Task[]> {
   if (isAsync) {
     const rows = await (adb as any).getAllAsync?.(
       `SELECT id, title, is_completed, created_at, updated_at
-         FROM tasks
+          FROM tasks
         ORDER BY is_completed ASC, created_at ASC`,
     );
     return rows ?? [];
@@ -845,7 +1050,7 @@ export async function listTasks(): Promise<Task[]> {
     legacyDb.readTransaction((tx: any) => {
       tx.executeSql(
         `SELECT id, title, is_completed, created_at, updated_at
-           FROM tasks
+            FROM tasks
           ORDER BY is_completed ASC, created_at ASC`,
         [],
         (_: any, res: any) => {
@@ -968,7 +1173,7 @@ export async function createPageDraw(
 
     await runAsync(
       `INSERT INTO page_draws(id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at)
-       VALUES(?,?,?,?,?,?,?,?,?,?)`,
+          VALUES(?,?,?,?,?,?,?,?,?,?)`,
       [id, pageId, pathD, color, width, opacity, tool, orderIndex, now, now],
     );
   } else {
@@ -990,7 +1195,7 @@ export async function createPageDraw(
       await execTx(
         tx,
         `INSERT INTO page_draws(id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at)
-         VALUES(?,?,?,?,?,?,?,?,?,?)`,
+            VALUES(?,?,?,?,?,?,?,?,?,?)`,
         [id, pageId, pathD, color, width, opacity, tool, orderIndex, now, now],
       );
     });
@@ -1001,7 +1206,7 @@ export async function listPageDraws(pageId: string): Promise<PageDraw[]> {
   if (isAsync) {
     const rows = await (adb as any).getAllAsync?.(
       `SELECT id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at
-         FROM page_draws
+            FROM page_draws
         WHERE page_id = ?
         ORDER BY order_index ASC, created_at ASC`,
       [pageId],
@@ -1013,7 +1218,7 @@ export async function listPageDraws(pageId: string): Promise<PageDraw[]> {
     legacyDb.readTransaction((tx: any) => {
       tx.executeSql(
         `SELECT id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at
-           FROM page_draws
+              FROM page_draws
           WHERE page_id = ?
           ORDER BY order_index ASC, created_at ASC`,
         [pageId],
@@ -1049,4 +1254,45 @@ export async function deleteAllPageDraws(pageId: string) {
       await execTx(tx, `DELETE FROM page_draws WHERE page_id = ?`, [pageId]);
     });
   }
+}
+
+// ---------- DAO: Page Snapshot / Preview ----------
+
+export type PageSnapshot = {
+  page_id: string;
+  journal_id: string;
+  page_number: number;
+  bg_color: string | null;
+  texts: PageText[];
+  shapes: PageShape[];
+  draws: PageDraw[];
+};
+
+export async function getPageSnapshot(
+  journalId: string,
+  pageNumber: number,
+): Promise<PageSnapshot | null> {
+  // 1. Obtenemos el ID de la página
+  const pageId = await getPageId(journalId, pageNumber);
+  if (!pageId) {
+    return null; // no existe esa página
+  }
+
+  const bg_color = await getPageColor(journalId, pageNumber);
+
+  const [texts, shapes, draws] = await Promise.all([
+    listPageTexts(pageId),
+    listPageShapes(pageId),
+    listPageDraws(pageId),
+  ]);
+
+  return {
+    page_id: pageId,
+    journal_id: journalId,
+    page_number: pageNumber,
+    bg_color,
+    texts,
+    shapes,
+    draws,
+  };
 }

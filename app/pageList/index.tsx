@@ -1,5 +1,13 @@
 import { uiColors } from "@/constants/colors";
-import { getPageColor, getTotalPages, createPage } from "@/src/db/dao";
+import {
+  getPageColor,
+  getTotalPages,
+  createPage,
+  getPageId,
+  listPageTexts,
+  listPageDraws,
+  listPageShapes,
+} from "@/src/db/dao";
 import styles from "@/styles/globalStyles";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
@@ -7,7 +15,13 @@ import React, { useEffect, useState, useCallback } from "react";
 import { FlatList, Text, TouchableOpacity, View } from "react-native";
 import S from "@/styles/pageListStyles";
 
-type PageItem = { number: number; color: string };
+type PageItem = {
+  number: number;
+  color: string;
+  hasText: boolean;
+  hasDraw: boolean;
+  hasShapes: boolean;
+};
 
 export default function PagesList() {
   const { journalId, journalName, journalColor } = useLocalSearchParams<{
@@ -22,12 +36,34 @@ export default function PagesList() {
     if (!journalId) return;
     const total = await getTotalPages(String(journalId));
     const list: PageItem[] = [];
+
     for (let i = 1; i <= total; i++) {
       const color =
         (await getPageColor(String(journalId), i)) ??
         (journalColor as string);
-      list.push({ number: i, color });
+
+      // Consultar contenido de la página
+      const pageId = await getPageId(String(journalId), i);
+
+      let hasText = false;
+      let hasDraw = false;
+      let hasShapes = false;
+
+      if (pageId) {
+        const [texts, draws, shapes] = await Promise.all([
+          listPageTexts(pageId),
+          listPageDraws(pageId),
+          listPageShapes(pageId),
+        ]);
+
+        hasText = texts.length > 0;
+        hasDraw = draws.length > 0;
+        hasShapes = shapes.length > 0;
+      }
+
+      list.push({ number: i, color, hasText, hasDraw, hasShapes });
     }
+
     setPages(list);
   }, [journalId, journalColor]);
 
@@ -35,7 +71,6 @@ export default function PagesList() {
     loadPages();
   }, [loadPages]);
 
-  // Cuando regresas desde /page refresca el grid
   useFocusEffect(
     useCallback(() => {
       loadPages();
@@ -89,10 +124,20 @@ export default function PagesList() {
         <View style={S.pagePreviewWrap}>
           <View
             style={[S.pagePreviewPortrait, { backgroundColor: item.color }]}
-          />
-          {/*
-          
-          */}
+          >
+            {/* Iconos de contenido en la mini página */}
+            <View style={{ position: "absolute", bottom: 4, right: 4, flexDirection: "row", gap: 4 }}>
+              {item.hasText && (
+                <Ionicons name="text-outline" size={12} color={uiColors.white} />
+              )}
+              {item.hasDraw && (
+                <Ionicons name="brush-outline" size={12} color={uiColors.white} />
+              )}
+              {item.hasShapes && (
+                <Ionicons name="shapes-outline" size={12} color={uiColors.white} />
+              )}
+            </View>
+          </View>
         </View>
 
         <View style={S.footerChip}>
@@ -110,7 +155,7 @@ export default function PagesList() {
       <View style={S.header}>
         <TouchableOpacity
           onPress={() => {
-            router.replace("/tabs/home"); 
+            router.replace("/tabs/home");
           }}
         >
           <Ionicons name="arrow-back" size={28} color={uiColors.danger} />

@@ -1,705 +1,69 @@
-import React, { useEffect, useMemo, useState, useCallback, useRef, memo } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Alert,
-  Modal,
-  TextInput,
-  ScrollView,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  PanResponder,
-  Animated,
-} from 'react-native';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { View, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
-import { pagePalette, uiColors, textColors, drawColors } from '@/constants/colors';
-import { textFonts, TextFont, fontFamilyMap } from '@/constants/fonts';
-import S from '../../styles/pageViewStyles';
+
+// Constants
+import { pagePalette, uiColors } from '@/constants/colors';
+
+// Styles
+import S from '@/styles/pageViewStyles';
+
+// Database
 import {
   createPage,
   deletePage,
   getTotalPages,
   getPageColor,
   getPageId,
-  createPageText,
   listPageTexts,
-  updatePageText,
-  deletePageText,
-  PageText as BasePageText,
   listPageDraws,
-  createPageDraw,
 } from '@/src/db/dao';
-import PageToolbar from './topTb';
-import PageCanvas from './pageCanvas';
 
-type PageText = BasePageText & {
-  rotation?: number;
-};
+// Toolbars
+import PageToolbar from '@/components/optionsPage/TolbarUp';
+import { BottomToolbar } from '@/components/optionsPage/TolbarDown';
 
-type Params = {
-  journalId?: string;
-  color?: string;
-  pageNumber?: string;
-  totalPages?: string;
-};
+// Options Page Components
+import PageCanvas from '@/components/optionsPage/PageCanvas';
+import { DrawToolsModal } from '@/components/optionsPage/DrawToolsModal';
+import { DraggableText } from '@/components/optionsPage/DraggableText';
+import { DraggableShape } from '@/components/optionsPage/DraggableShape';
+import { TextOptionsModal } from '@/components/optionsPage/TextOptionsModal';
+import { ShapeOptionsModal } from '@/components/optionsPage/ShapeOptionsModal';
 
-type DrawTool = 'pencil' | 'pen' | 'marker' | 'eraser';
+// Hooks
+import { useDrawing } from '@/hooks/usePage/usePageDrawing';
+import { usePageText } from '@/hooks/usePage/usePageTexts';
+import { usePageShapes } from '@/hooks/usePage/usePageShapes';
 
-type Stroke = {
-  id: string;
-  tool: DrawTool;
-  color: string;
-  width: number;
-  opacity: number;
-  points: { x: number; y: number }[];
-  _persistedPathD?: string;
-};
+// Types
+import { Params } from '@/types';
 
-// DraggableText
-
-type DraggableTextProps = {
-  text: PageText;
-  currentPageId: string | null;
-  handleDeleteText: (id: string) => void;
-  getPanFor: (t: PageText) => Animated.ValueXY;
-  onPositionCommit: (id: string, x: number, y: number) => void;
-  locked: boolean;
-  isSelected: boolean;
-  onToggleLock: (id: string) => void;
-  onSelect: (id: string) => void;
-  onEdit: (t: PageText) => void;
-  onDuplicate: (t: PageText) => void;
-  canvasWidth: number;
-  canvasHeight: number;
-};
-
-const DraggableTextBase = ({
-  text,
-  currentPageId,
-  handleDeleteText,
-  getPanFor,
-  onPositionCommit,
-  locked,
-  isSelected,
-  onToggleLock,
-  onSelect,
-  onEdit,
-  onDuplicate,
-  canvasWidth,
-  canvasHeight,
-}: DraggableTextProps) => {
-  // pan estable por id
-  const pan = useMemo(() => getPanFor(text), [getPanFor, text]);
-  const [isDragging, setIsDragging] = useState(false);
-  const toolbarButtonPressed = useRef(false);
-  const startRef = useRef({ x: text.position_x, y: text.position_y });
-  const [rotation, setRotation] = useState(text.rotation ?? 0);
-  const rotationStartRef = useRef(rotation);
-  const rotationRef = useRef(rotation);
-  const [rotateMode] = useState(false);
-  const lockedRef = useRef(locked);
-  const textBoxRef = useRef<View>(null);
-  const textCenterRef = useRef({ x: 0, y: 0 });
-  const initialAngleRef = useRef(0);
-  const textBoxSizeRef = useRef({ width: 0, height: 0 });
-  const [fontSize, setFontSize] = useState(text.font_size ?? 16);
-  const fontSizeRef = useRef(fontSize);
-  const fontSizeStartRef = useRef(fontSize);
-  const [isResizing, setIsResizing] = useState(false);
-  const resizeStartYRef = useRef(0);
-
-  useEffect(() => {
-    lockedRef.current = locked;
-  }, [locked]);
-
-  useEffect(() => {
-    rotationRef.current = rotation;
-  }, [rotation]);
-
-  useEffect(() => {
-    if (typeof text.font_size === 'number') {
-      setFontSize(text.font_size);
-      fontSizeRef.current = text.font_size;
-    }
-  }, [text.font_size]);
-
-  useEffect(() => {
-    fontSizeRef.current = fontSize;
-  }, [fontSize]);
-
-  // Sync si la BD movió el texto (sin animación)
-  useEffect(() => {
-    const vx = (pan.x as any)._value;
-    const vy = (pan.y as any)._value;
-    const dx = Math.abs(vx - text.position_x);
-    const dy = Math.abs(vy - text.position_y);
-    if (!isDragging && (dx > 0.5 || dy > 0.5)) {
-      pan.setValue({ x: text.position_x, y: text.position_y });
-      startRef.current = { x: text.position_x, y: text.position_y };
-    }
-  }, [text.position_x, text.position_y, pan, isDragging]);
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => !toolbarButtonPressed.current,
-      onMoveShouldSetPanResponder: (_, g) =>
-        !toolbarButtonPressed.current &&
-        !lockedRef.current &&
-        (Math.abs(g.dx) > 5 || Math.abs(g.dy) > 5),
-      onPanResponderGrant: () => {
-        if (toolbarButtonPressed.current) return;
-
-        onSelect(text.id);
-
-        if (!lockedRef.current) {
-          setIsDragging(true);
-          startRef.current = {
-            x: (pan.x as any)._value,
-            y: (pan.y as any)._value,
-          };
-          rotationStartRef.current = rotation;
-          if (!lockedRef.current && !rotateMode) {
-            setIsDragging(true);
-          }
-        }
-      },
-      onPanResponderMove: (_, g) => {
-        if (lockedRef.current) return;
-
-        if (rotateMode) {
-          const delta = g.dx;
-          setRotation(rotationStartRef.current + delta);
-        } else {
-          const rawX = startRef.current.x + g.dx;
-          const rawY = startRef.current.y + g.dy;
-
-          if (!canvasWidth || !canvasHeight) {
-            pan.setValue({ x: rawX, y: rawY });
-            return;
-          }
-          const PADDING = 5;
-          const { width: boxW, height: boxH } = textBoxSizeRef.current;
-          const maxX = Math.max(PADDING, canvasWidth - PADDING - (boxW || 0));
-          const maxY = Math.max(PADDING, canvasHeight - PADDING - (boxH || 0));
-          const nx = Math.min(Math.max(PADDING, rawX), maxX);
-          const ny = Math.min(Math.max(PADDING, rawY), maxY);
-          pan.setValue({ x: nx, y: ny });
-        }
-      },
-      onPanResponderRelease: async () => {
-        if (toolbarButtonPressed.current) {
-          toolbarButtonPressed.current = false;
-          return;
-        }
-        setIsDragging(false);
-        if (lockedRef.current) return;
-
-        const newX = (pan.x as any)._value;
-        const newY = (pan.y as any)._value;
-
-        onPositionCommit(text.id, newX, newY);
-        if (currentPageId) {
-          try {
-            await updatePageText(text.id, {
-              position_x: newX,
-              position_y: newY,
-            });
-          } catch (e) {
-            console.error('Error updating text position:', e);
-          }
-        }
-      },
-    }),
-  ).current;
-
-  const rotatePanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => !lockedRef.current,
-      onMoveShouldSetPanResponder: () => !lockedRef.current,
-
-      onPanResponderGrant: (evt) => {
-        toolbarButtonPressed.current = true;
-        rotationStartRef.current = rotationRef.current;
-
-        textBoxRef.current?.measureInWindow((x, y, width, height) => {
-          textCenterRef.current = {
-            x: x + width / 2,
-            y: y + height / 2,
-          };
-
-          const { pageX, pageY } = evt.nativeEvent;
-          const dx = pageX - textCenterRef.current.x;
-          const dy = pageY - textCenterRef.current.y;
-          initialAngleRef.current = Math.atan2(dy, dx) * (180 / Math.PI);
-        });
-      },
-
-      onPanResponderMove: (evt) => {
-        if (lockedRef.current) return;
-        const { pageX, pageY } = evt.nativeEvent;
-        const dx = pageX - textCenterRef.current.x;
-        const dy = pageY - textCenterRef.current.y;
-        const currentAngle = Math.atan2(dy, dx) * (180 / Math.PI);
-        const angleDelta = currentAngle - initialAngleRef.current;
-        setRotation(rotationStartRef.current + angleDelta);
-      },
-
-      onPanResponderRelease: async () => {
-        toolbarButtonPressed.current = false;
-        if (lockedRef.current) return;
-
-        if (currentPageId) {
-          try {
-            await updatePageText(text.id, {
-              rotation: rotationRef.current,
-            });
-          } catch (e) {
-            console.error('Error updating text rotation:', e);
-          }
-        }
-      },
-    }),
-  ).current;
-
-  const resizePanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => !lockedRef.current,
-      onMoveShouldSetPanResponder: () => !lockedRef.current,
-      onPanResponderGrant: (evt) => {
-        if (lockedRef.current) return;
-        toolbarButtonPressed.current = true;
-        setIsResizing(true);
-
-        fontSizeStartRef.current = fontSizeRef.current;
-        resizeStartYRef.current = evt.nativeEvent.pageY;
-      },
-      onPanResponderMove: (evt) => {
-        if (lockedRef.current) return;
-
-        const deltaY = resizeStartYRef.current - evt.nativeEvent.pageY; // subir = más grande
-        const nextSize = Math.max(8, Math.min(72, fontSizeStartRef.current + deltaY / 4));
-        setFontSize(nextSize);
-      },
-      onPanResponderRelease: async () => {
-        toolbarButtonPressed.current = false;
-        setIsResizing(false);
-
-        if (lockedRef.current || !currentPageId) return;
-
-        try {
-          await updatePageText(text.id, { font_size: fontSizeRef.current });
-        } catch (e) {
-          console.error('Error updating font size:', e);
-        }
-      },
-      onPanResponderTerminate: () => {
-        toolbarButtonPressed.current = false;
-        setIsResizing(false);
-      },
-    }),
-  ).current;
-
-  return (
-    <Animated.View
-      {...panResponder.panHandlers}
-      style={[
-        S.textContainer,
-        {
-          transform: [{ translateX: pan.x }, { translateY: pan.y }, { rotate: `${rotation}deg` }],
-          opacity: isDragging ? 0.7 : 1,
-          zIndex: isSelected ? 1000 : 1,
-        },
-      ]}
-    >
-      {/* Contenedor rotar */}
-      <Animated.View
-        style={{
-          transform: [{ rotate: `${rotation}deg` }],
-        }}
-      ></Animated.View>
-      {/* Toolbar tipo Canva */}
-      {isSelected && (
-        <View style={S.textToolbar}>
-          <TouchableOpacity
-            onPressIn={() => {
-              toolbarButtonPressed.current = true;
-            }}
-            onPress={() => {
-              onToggleLock(text.id);
-              toolbarButtonPressed.current = false;
-            }}
-            style={S.textToolbarButton}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialIcons name={locked ? 'lock' : 'lock-open'} size={14} color="#fff" />
-          </TouchableOpacity>
-
-          {/* Duplicar */}
-          <TouchableOpacity
-            onPressIn={() => {
-              toolbarButtonPressed.current = true;
-            }}
-            onPress={() => {
-              if (lockedRef.current) {
-                toolbarButtonPressed.current = false;
-                return;
-              }
-              onDuplicate(text);
-              toolbarButtonPressed.current = false;
-            }}
-            style={[S.textToolbarButton, locked && { opacity: 0.4 }]}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialIcons name="content-copy" size={14} color="#fff" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPressIn={() => {
-              toolbarButtonPressed.current = true;
-            }}
-            onPress={() => {
-              if (lockedRef.current) {
-                toolbarButtonPressed.current = false;
-                return;
-              }
-              onSelect(text.id);
-              onEdit(text);
-              toolbarButtonPressed.current = false;
-            }}
-            style={[S.textToolbarButton, locked && { opacity: 0.4 }]}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialIcons name="edit" size={14} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPressIn={() => {
-              toolbarButtonPressed.current = true;
-            }}
-            onPress={() => {
-              handleDeleteText(text.id);
-              toolbarButtonPressed.current = false;
-            }}
-            style={[S.textToolbarButton, S.textToolbarDelete]}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialIcons name="delete" size={14} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Rotar */}
-      {isSelected && !locked && (
-        <View {...rotatePanResponder.panHandlers} style={S.rotateButton}>
-          <MaterialIcons name="rotate-right" size={16} color="#fff" />
-        </View>
-      )}
-
-      {/* Handle para cambiar tamaño */}
-      {isSelected && !locked && (
-        <View {...resizePanResponder.panHandlers} style={S.resizeHandle} pointerEvents="auto">
-          <View
-            style={[S.resizeHandleInner, isResizing && { backgroundColor: uiColors.primary }]}
-          />
-        </View>
-      )}
-
-      {/* Recuadro del texto */}
-      <View
-        ref={textBoxRef}
-        onLayout={(e) => {
-          textBoxSizeRef.current = e.nativeEvent.layout;
-        }}
-        style={[S.textBox, isSelected && S.textBoxSelected, locked && S.textBoxLocked]}
-      >
-        <Text
-          style={[
-            S.textContent,
-            {
-              fontFamily: fontFamilyMap[text.font_family as TextFont] ?? text.font_family,
-              color: text.color,
-              fontSize: fontSize,
-            },
-          ]}
-        >
-          {text.content}
-        </Text>
-      </View>
-      {/* Handle para cambiar tamaño fuera de la rotación */}
-      {isSelected && !locked && (
-        <View {...resizePanResponder.panHandlers} style={S.resizeHandle} pointerEvents="auto">
-          <View
-            style={[S.resizeHandleInner, isResizing && { backgroundColor: uiColors.primary }]}
-          />
-        </View>
-      )}
-    </Animated.View>
-  );
-};
-
-const DraggableText = memo(DraggableTextBase);
-
-// PageView
 export default function PageView() {
+
+  // ROUTER & PARAMS
   const { journalId, color, pageNumber, totalPages } = useLocalSearchParams<Params>();
   const router = useRouter();
 
+  // STATE
   const [bg, setBg] = useState<(typeof pagePalette)[number]>(pagePalette[0]);
   const [showDrawTools, setShowDrawTools] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const [selectedTool, setSelectedTool] = useState<DrawTool>('pencil');
-  const [selectedColor, setSelectedColor] = useState('#000000');
-  const [strokeWidth, setStrokeWidth] = useState(2);
-  const [currentPageId, setCurrentPageId] = useState<string | null>(null);
-  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-
-  // Dibujo
-
-  const [strokes, setStrokes] = useState<Stroke[]>([]);
-  const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
-  const [drawMode, setDrawMode] = useState(false);
-  // Convertir puntos -> path "d"
-  const pointsToPath = useCallback((pts: { x: number; y: number }[]) => {
-    if (!pts.length) return '';
-    const [p0, ...rest] = pts;
-    return `M ${p0.x} ${p0.y} ` + rest.map((p) => `L ${p.x} ${p.y}`).join(' ');
-  }, []);
-
-  // Presets por herramienta (usa tu slider como base 1..6)
-  const [eraserWidth, setEraserWidth] = useState(3);
-  const getToolStyle = useCallback(
-    (tool: DrawTool) => {
-      const base = strokeWidth; // 1..6
-
-      switch (tool) {
-        case 'pencil': // delgado, casi opaco
-          return { width: Math.max(1, base), opacity: 0.95 };
-        case 'marker': // grueso y translúcido
-          return { width: Math.max(6, base * 3), opacity: 0.5 };
-        case 'pen': // pincel con grosor variable
-          return { width: Math.max(2, base * 2), opacity: 0.9 };
-        case 'eraser': // borrador
-          return { width: Math.max(10, eraserWidth * 5), opacity: 1 };
-        default:
-          return { width: base, opacity: 1 };
-      }
-    },
-    [strokeWidth, eraserWidth],
-  );
-
-  // Función auxiliar para dividir trazos
-  const eraseFromStrokes = useCallback(
-    (x: number, y: number, radius: number, strokes: Stroke[]) => {
-      const newStrokes: Stroke[] = [];
-
-      strokes.forEach((stroke) => {
-        const segments: { x: number; y: number }[][] = [];
-        let currentSegment: { x: number; y: number }[] = [];
-
-        stroke.points.forEach((point) => {
-          const dx = point.x - x;
-          const dy = point.y - y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-
-          if (distance >= radius) {
-            // Punto fuera del borrador, agregarlo al segmento actual
-            currentSegment.push(point);
-          } else {
-            // Punto dentro del borrador, guardar segmento actual si tiene puntos
-            if (currentSegment.length >= 2) {
-              segments.push(currentSegment);
-            }
-            currentSegment = [];
-          }
-        });
-
-        // Agregar último segmento si tiene puntos suficientes
-        if (currentSegment.length >= 2) {
-          segments.push(currentSegment);
-        }
-
-        // Crear nuevos trazos para cada segmento válido
-        segments.forEach((segmentPoints) => {
-          if (segmentPoints.length >= 2) {
-            newStrokes.push({
-              ...stroke,
-              id: stroke.id + '_' + Math.random().toString(36).slice(2),
-              points: segmentPoints,
-            });
-          }
-        });
-      });
-
-      return newStrokes;
-    },
-    [],
-  );
-
-  const onDrawStart = useCallback(
-    (x: number, y: number) => {
-      if (selectedTool === 'eraser') {
-        const eraserRadius = getToolStyle('eraser').width / 2;
-        setStrokes((prev) => eraseFromStrokes(x, y, eraserRadius, prev));
-      } else {
-        const { width, opacity } = getToolStyle(selectedTool);
-        const s: Stroke = {
-          id: String(Date.now()) + Math.random().toString(36).slice(2),
-          tool: selectedTool,
-          color: selectedColor,
-          width,
-          opacity,
-          points: [{ x, y }],
-        };
-        setCurrentStroke(s);
-      }
-    },
-    [getToolStyle, selectedTool, selectedColor, eraseFromStrokes],
-  );
-
-  const onDrawMove = useCallback(
-    (x: number, y: number) => {
-      if (selectedTool === 'eraser') {
-        const eraserRadius = getToolStyle('eraser').width / 2;
-        setStrokes((prev) => eraseFromStrokes(x, y, eraserRadius, prev));
-      } else {
-        setCurrentStroke((prev) => {
-          if (!prev) return prev;
-          const last = prev.points[prev.points.length - 1];
-          const dx = x - last.x,
-            dy = y - last.y;
-          if (dx * dx + dy * dy < 1.5) return prev;
-          return { ...prev, points: [...prev.points, { x, y }] };
-        });
-      }
-    },
-    [selectedTool, getToolStyle, eraseFromStrokes],
-  );
-
-  const onDrawEnd = useCallback(() => {
-    setCurrentStroke((prev) => {
-      if (!prev || prev.points.length < 2) return null;
-
-      // No guardar trazos del borrador
-      if (prev.tool === 'eraser') return null;
-
-      setStrokes((s) => [...s, prev]);
-      // guardar en BD
-      try {
-        if (currentPageId && typeof createPageDraw === 'function') {
-          const pathD = pointsToPath(prev.points);
-          // @ts-ignore: solo si existe en tu DAO
-          createPageDraw(currentPageId, pathD, prev.color, prev.width, prev.opacity, prev.tool);
-        }
-      } catch (e) {
-        console.error('No se pudo guardar el trazo', e);
-      }
-      return null;
-    });
-  }, [currentPageId, pointsToPath]);
-
   const [showTextOptions, setShowTextOptions] = useState(false);
-  const [selectedTextColor, setSelectedTextColor] = useState<(typeof textColors)[number]>(
-    textColors[0],
-  );
-  const [selectedFont, setSelectedFont] = useState<TextFont>(textFonts[0]);
-  const [textInput, setTextInput] = useState('');
-  const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
-  const [lockedTextIds, setLockedTextIds] = useState<Record<string, boolean>>({});
-  const [editingTextId, setEditingTextId] = useState<string | null>(null);
+  const [showShapeOptions, setShowShapeOptions] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentPageId, setCurrentPageId] = useState<string | null>(null);
 
-  // Estado para textos en la página
-  const [pageTexts, setPageTexts] = useState<PageText[]>([]);
-
-  // Mantener Animated.ValueXY por id
-  const pansRef = useRef(new Map<string, Animated.ValueXY>());
-  const getPanFor = useCallback((t: PageText) => {
-    let pan = pansRef.current.get(t.id);
-    if (!pan) {
-      pan = new Animated.ValueXY({ x: t.position_x, y: t.position_y });
-      pansRef.current.set(t.id, pan);
-    }
-    return pan;
-  }, []);
-
-  const mergeById = useCallback((prev: PageText[], latest: PageText[]) => {
-    const prevMap = new Map(prev.map((t) => [t.id, t]));
-    const merged: PageText[] = [];
-    for (const t of latest) {
-      const old = prevMap.get(t.id);
-      merged.push(old ? { ...old, ...t } : t);
-      prevMap.delete(t.id);
-    }
-    return merged;
-  }, []);
-
-  const handleDuplicateText = useCallback(
-    async (text: PageText) => {
-      if (!currentPageId) return;
-
-      setIsLoading(true);
-      try {
-        const offsetX = 20;
-        const offsetY = 20;
-
-        const { id: newId } = await createPageText(
-          currentPageId,
-          text.content,
-          text.font_family,
-          text.color,
-          text.position_x + offsetX,
-          text.position_y + offsetY,
-          text.font_size || 16,
-          text.rotation ?? 0,
-          text.is_locked ?? 0,
-        );
-
-        const latest = await listPageTexts(currentPageId);
-        setPageTexts(latest);
-
-        setSelectedTextId(newId);
-
-        const newText = latest[latest.length - 1];
-        if (newText) {
-          setSelectedTextId(newText.id);
-        }
-      } catch (e) {
-        console.error(e);
-        Alert.alert('Error', 'No se pudo duplicar el texto.');
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [currentPageId],
-  );
-
+  // MEMOIZED VALUES
   const pageNum = useMemo(() => Math.max(Number(pageNumber ?? 1) || 1, 1), [pageNumber]);
   const total = useMemo(() => Math.max(Number(totalPages ?? 1) || 1, 1), [totalPages]);
-  const SEGMENTS = 6;
-  const paddingH = 14;
-  const dotBarRef = useRef<View>(null);
-  const [dotBarLayout, setDotBarLayout] = useState({ x: 0, width: 0 });
-  const progress = (strokeWidth - 1) / (SEGMENTS - 1);
-  const fillWidth = Math.max(0, dotBarLayout.width * progress);
 
-  const hitTestToIndex = (pageX: number) => {
-    if (!dotBarLayout.width) return;
-    const localX = Math.max(0, Math.min(pageX - dotBarLayout.x, dotBarLayout.width));
-    const prog = localX / dotBarLayout.width;
-    const idx = Math.round(prog * (SEGMENTS - 1)) + 1;
-    setStrokeWidth(idx);
-  };
-  const hitTestToIndexEraser = (pageX: number) => {
-    if (!dotBarLayout.width) return;
-    const localX = Math.max(0, Math.min(pageX - dotBarLayout.x, dotBarLayout.width));
-    const prog = localX / dotBarLayout.width;
-    const idx = Math.round(prog * (SEGMENTS - 1)) + 1;
-    setEraserWidth(idx);
-  };
-  // Cargar color desde parámetro
+  // CUSTOM HOOKS
+  const drawing = useDrawing(currentPageId);
+  const textManager = usePageText(currentPageId);
+  const shapeManager = usePageShapes(currentPageId);
+
+  // EFFECTS - CARGAR COLOR DESDE PARÁMETROS
   useEffect(() => {
     if (typeof color === 'string') {
       const found = (pagePalette as readonly string[]).find(
@@ -711,7 +75,7 @@ export default function PageView() {
     }
   }, [color]);
 
-  // Cargar color desde DB
+  // EFFECTS - CARGAR COLOR DESDE BASE DE DATOS
   useEffect(() => {
     if (!journalId) return;
     let mounted = true;
@@ -719,11 +83,14 @@ export default function PageView() {
     (async () => {
       try {
         const dbColor = await getPageColor(String(journalId), pageNum);
+        
         if (mounted && typeof dbColor === 'string' && dbColor.length > 0) {
           const found = (pagePalette as readonly string[]).find(
             (c) => c.toLowerCase() === dbColor.toLowerCase(),
           );
-          if (found) setBg(found as (typeof pagePalette)[number]);
+          if (found) {
+            setBg(found as (typeof pagePalette)[number]);
+          }
         }
       } catch (error) {
         console.error('Error loading page color:', error);
@@ -735,7 +102,7 @@ export default function PageView() {
     };
   }, [journalId, pageNum]);
 
-  // Cargar ID de página y textos
+  // EFFECTS - CARGAR DATOS DE PÁGINA (ID, TEXTOS, DIBUJOS, SHAPES)
   useEffect(() => {
     if (!journalId) return;
     let mounted = true;
@@ -746,6 +113,7 @@ export default function PageView() {
 
         if (!pageId) {
           const total = await getTotalPages(String(journalId));
+          
           if (total === 0) {
             await createPage(String(journalId), String(bg));
             pageId = await getPageId(String(journalId), 1);
@@ -754,25 +122,34 @@ export default function PageView() {
 
         if (mounted && pageId) {
           setCurrentPageId(pageId);
-          // Asegura ORDER BY en listPageTexts
+          
+          // Cargar textos de la página
           const texts = await listPageTexts(pageId);
-          if (mounted) setPageTexts((prev) => mergeById(prev, texts));
+          if (mounted) {
+            textManager.setPageTexts((prev) => textManager.mergeById(prev, texts));
+            
+            const lockedState: Record<string, boolean> = {};
+            texts.forEach((text) => {
+              if (text.is_locked) {
+                lockedState[text.id] = true;
+              }
+            });
+            textManager.setLockedTextIds(lockedState);
+          }
 
-          const lockedState: Record<string, boolean> = {};
-          texts.forEach((text) => {
-            if (text.is_locked) {
-              lockedState[text.id] = true;
-            }
-          });
-          setLockedTextIds(lockedState);
+          // Cargar shapes de la página
+          if (mounted) {
+            await shapeManager.loadShapes(pageId);
+          }
 
+          // Cargar dibujos de la página
           try {
             const draws = await listPageDraws(pageId);
             if (mounted) {
-              setStrokes(
+              drawing.setStrokes(
                 draws.map((d) => ({
                   id: d.id,
-                  tool: d.tool as DrawTool,
+                  tool: d.tool as any,
                   color: d.color,
                   width: d.width,
                   opacity: d.opacity,
@@ -783,20 +160,20 @@ export default function PageView() {
             }
           } catch (e) {
             console.error('Error loading page draws:', e);
-            if (mounted) setStrokes([]); // fallback limpio
+            if (mounted) drawing.setStrokes([]);
           }
         } else if (mounted) {
           setCurrentPageId(null);
-          setPageTexts([]);
-          setStrokes([]);
-          setLockedTextIds({});
+          textManager.setPageTexts([]);
+          drawing.setStrokes([]);
+          textManager.setLockedTextIds({});
         }
       } catch (error) {
-        console.error('Error loading page texts:', error);
+        console.error('Error loading page data:', error);
         if (mounted) {
-          setPageTexts([]);
-          setStrokes([]);
-          setLockedTextIds({});
+          textManager.setPageTexts([]);
+          drawing.setStrokes([]);
+          textManager.setLockedTextIds({});
         }
       }
     })();
@@ -804,9 +181,10 @@ export default function PageView() {
     return () => {
       mounted = false;
     };
-  }, [journalId, pageNum, bg, mergeById]);
+  }, [journalId, pageNum, bg]);
 
-  // Validar total de páginas
+  
+  // EFFECTS - VALIDAR Y SINCRONIZAR TOTAL DE PÁGINAS
   useEffect(() => {
     if (!journalId) return;
     let mounted = true;
@@ -837,6 +215,9 @@ export default function PageView() {
     };
   }, [journalId, pageNum, total, bg, router]);
 
+  // CALLBACKS - GESTIÓN DE PÁGINAS
+  
+  //Eliminar la página actual
   const handleDeletePage = useCallback(() => {
     if (total <= 1 || !journalId) {
       Alert.alert('No se puede eliminar', 'Debe existir al menos una página.');
@@ -855,6 +236,7 @@ export default function PageView() {
               String(journalId),
               pageNum,
             );
+            
             router.replace({
               pathname: '/page',
               params: {
@@ -875,6 +257,7 @@ export default function PageView() {
     ]);
   }, [total, journalId, pageNum, bg, router]);
 
+  //Agregar una nueva página
   const handleAddPage = useCallback(async () => {
     if (!journalId) return;
 
@@ -884,6 +267,7 @@ export default function PageView() {
         String(journalId),
         String(bg),
       );
+      
       router.replace({
         pathname: '/page',
         params: {
@@ -901,146 +285,7 @@ export default function PageView() {
     }
   }, [journalId, bg, router]);
 
-  const handleSelectTool = useCallback((tool: DrawTool) => {
-    setSelectedTool(tool);
-  }, []);
-
-  //commit
-  const commitTextPosition = useCallback((id: string, x: number, y: number) => {
-    setPageTexts((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, position_x: x, position_y: y } : t)),
-    );
-  }, []);
-
-  const handleConfirmText = useCallback(async () => {
-    const trimmed = textInput.trim();
-    if (!trimmed) {
-      Alert.alert('Error', 'Escribe algo primero');
-      return;
-    }
-    if (!currentPageId) {
-      Alert.alert('Error', 'No se pudo identificar la página');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      if (!editingTextId) {
-        // crear
-        const posX = 100;
-        const posY = 150;
-
-        await createPageText(
-          currentPageId,
-          trimmed,
-          selectedFont,
-          selectedTextColor,
-          posX,
-          posY,
-          16,
-        );
-      } else {
-        // editar
-        await updatePageText(editingTextId, {
-          content: trimmed,
-          font_family: selectedFont,
-          color: selectedTextColor,
-        });
-      }
-
-      const latest = await listPageTexts(currentPageId);
-      setPageTexts((prev) => mergeById(prev, latest));
-
-      setTextInput('');
-      setEditingTextId(null);
-      setShowTextOptions(false);
-    } catch (e) {
-      console.error(e);
-      Alert.alert(
-        'Error',
-        editingTextId ? 'No se pudo actualizar el texto.' : 'No se pudo añadir el texto.',
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [textInput, selectedTextColor, selectedFont, currentPageId, mergeById, editingTextId]);
-
-  // Eliminar texto (optimista + limpiar pan)
-  const handleDeleteText = useCallback(
-    async (textId: string) => {
-      if (!currentPageId) return;
-
-      Alert.alert('Eliminar texto', '¿Estás seguro?', [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            setPageTexts((prev) => prev.filter((t) => t.id !== textId));
-            pansRef.current.delete(textId);
-            setLockedTextIds((prev) => {
-              const copy = { ...prev };
-              delete copy[textId];
-              return copy;
-            });
-            setSelectedTextId((prev) => (prev === textId ? null : prev));
-
-            setIsLoading(true);
-            try {
-              await deletePageText(textId);
-              const latest = await listPageTexts(currentPageId);
-              setPageTexts((prev) => mergeById(prev, latest));
-            } catch (e) {
-              console.error(e);
-              Alert.alert('Error', 'No se pudo eliminar el texto.');
-              const latest = await listPageTexts(currentPageId);
-              setPageTexts(latest);
-            } finally {
-              setIsLoading(false);
-            }
-          },
-        },
-      ]);
-    },
-    [currentPageId, mergeById],
-  );
-
-  const handleToggleLock = useCallback(
-    async (id: string) => {
-      setLockedTextIds((prev) => {
-        const newLocked = !prev[id];
-        if (currentPageId) {
-          updatePageText(id, { is_locked: newLocked ? 1 : 0 }).catch((e) => {
-            console.error('Error updating lock state:', e);
-            setLockedTextIds((current) => ({
-              ...current,
-              [id]: !newLocked,
-            }));
-          });
-        }
-        return {
-          ...prev,
-          [id]: newLocked,
-        };
-      });
-    },
-    [currentPageId],
-  );
-
-  const handleSelectText = useCallback((id: string) => {
-    setSelectedTextId(id);
-  }, []);
-
-  const handleEditTextRequest = useCallback((t: PageText) => {
-    setDrawMode(false);
-    setEditingTextId(t.id);
-    setSelectedTextId(t.id);
-    setTextInput(t.content);
-    setSelectedFont(t.font_family as TextFont);
-    setSelectedTextColor(t.color as (typeof textColors)[number]);
-
-    setShowTextOptions(true);
-  }, []);
+  //Navegar a una página específica
 
   const navigateToPage = useCallback(
     (newPageNum: number) => {
@@ -1057,7 +302,74 @@ export default function PageView() {
     [journalId, bg, total, router],
   );
 
-  // Toolbar items
+  // CALLBACKS - GESTIÓN DE HERRAMIENTAS
+
+  // Abrir modal de opciones de texto
+
+  const handleOpenTextOptions = useCallback(() => {
+    drawing.setDrawMode(false);
+    textManager.setEditingTextId(null);
+    textManager.setTextInput('');
+    setShowTextOptions(true);
+  }, [drawing, textManager]);
+
+  // Abrir modal de herramientas de dibujo
+  const handleOpenDrawTools = useCallback(() => {
+    setShowDrawTools(true);
+  }, []);
+
+  // Abrir modal de opciones de formas
+  const handleOpenShapeOptions = useCallback(() => {
+    drawing.setDrawMode(false);
+    setShowShapeOptions(true);
+  }, [drawing]);
+
+  // Confirmar texto y cerrar modal
+  const handleConfirmText = useCallback(() => {
+    textManager.handleConfirmText(() => setShowTextOptions(false));
+  }, [textManager]);
+
+  // Iniciar modo dibujo
+  const handleStartDrawing = useCallback(() => {
+    setShowDrawTools(false);
+    drawing.setDrawMode(true);
+  }, [drawing]);
+
+  //Editar texto existente
+  const handleEditText = useCallback(
+    (text: any) => {
+      drawing.setDrawMode(false);
+      textManager.handleEditTextRequest(text);
+      setShowTextOptions(true);
+    },
+    [drawing, textManager],
+  );
+
+  // Navegar de vuelta a la lista de páginas
+  const handleNavigateBack = useCallback(() => {
+    router.replace({
+      pathname: '/pageList',
+      params: { journalId, color: String(bg) },
+    });
+  }, [router, journalId, bg]);
+
+  // Cambiar color de una forma
+  const handleChangeShapeColor = useCallback(
+    async (shape: any) => {
+      const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
+      const currentIndex = colors.indexOf(shape.color);
+      const nextColor = colors[(currentIndex + 1) % colors.length];
+      
+      shapeManager.setSelectedShapeColor(nextColor);
+      
+      if (currentPageId) {
+        await shapeManager.loadShapes(currentPageId);
+      }
+    },
+    [currentPageId, shapeManager],
+  );
+
+  // MEMOIZED VALUES - CONFIGURACIÓN DE TOOLBAR
   const toolbarItems = useMemo(
     () => [
       {
@@ -1066,6 +378,7 @@ export default function PageView() {
         label: 'Eliminar',
         onPress: handleDeletePage,
         disabled: isLoading,
+        isActive: false,
       },
       {
         id: 'add',
@@ -1073,60 +386,88 @@ export default function PageView() {
         label: 'Nueva',
         onPress: handleAddPage,
         disabled: isLoading,
+        isActive: false,
       },
       {
         id: 'text',
         icon: 'text-fields' as const,
         label: 'Texto',
-        onPress: () => {
-          setDrawMode(false);
-          setEditingTextId(null);
-          setTextInput('');
-          setShowTextOptions(true);
-        },
-
+        onPress: handleOpenTextOptions,
         disabled: isLoading,
+        isActive: showTextOptions,
+      },
+      {
+        id: 'shape',
+        icon: 'category' as const,
+        label: 'Forma',
+        onPress: handleOpenShapeOptions,
+        disabled: isLoading,
+        isActive: showShapeOptions,
       },
       {
         id: 'draw',
         icon: 'edit' as const,
         label: 'Dibujar',
-        onPress: () => setShowDrawTools(true),
+        onPress: handleOpenDrawTools,
         disabled: isLoading,
+        isActive: showDrawTools,
       },
     ],
-    [handleAddPage, handleDeletePage, isLoading],
+    [
+      handleAddPage,
+      handleDeletePage,
+      handleOpenTextOptions,
+      handleOpenShapeOptions,
+      handleOpenDrawTools,
+      isLoading,
+      showTextOptions,
+      showShapeOptions,
+      showDrawTools,
+    ],
   );
 
+  // HELPERS - ORDENAMIENTO DE ELEMENTOS
+  
+  // Ordenar textos
+  const sortedPageTexts = useMemo(() => {
+    return textManager.pageTexts.sort((a, b) => {
+      if (a.id === textManager.selectedTextId) return 1;
+      if (b.id === textManager.selectedTextId) return -1;
+      return a.created_at - b.created_at;
+    });
+  }, [textManager.pageTexts, textManager.selectedTextId]);
+
+  // Ordenar shapes
+  const sortedPageShapes = useMemo(() => {
+    return shapeManager.pageShapes.sort((a, b) => {
+      if (a.id === shapeManager.selectedShapeId) return 1;
+      if (b.id === shapeManager.selectedShapeId) return -1;
+      return a.created_at - b.created_at;
+    });
+  }, [shapeManager.pageShapes, shapeManager.selectedShapeId]);
+
   const TOOLBAR_BG = uiColors.background;
+
+  // RENDER
   return (
     <SafeAreaView
       style={[S.container, { backgroundColor: TOOLBAR_BG }]}
       edges={['top', 'left', 'right']}
     >
+      {/* Overlay de carga */}
       {isLoading && (
         <View style={S.loadingOverlay}>
           <ActivityIndicator size="large" color={uiColors.danger} />
         </View>
       )}
 
-      {/* PageToolbar */}
+      {/* Toolbar superior */}
       <PageToolbar
         pageNum={pageNum}
         total={total}
         isLoading={isLoading}
-        onBack={() => {
-          router.replace({
-            pathname: '/pageList',
-            params: { journalId, color: String(bg) },
-          });
-        }}
-        onDone={() => {
-          router.replace({
-            pathname: '/pageList',
-            params: { journalId, color: String(bg) },
-          });
-        }}
+        onBack={handleNavigateBack}
+        onDone={handleNavigateBack}
         onPrevPage={() => navigateToPage(pageNum - 1)}
         onNextPage={() => navigateToPage(pageNum + 1)}
         onUndo={() => {}}
@@ -1135,368 +476,108 @@ export default function PageView() {
         canRedo={false}
       />
 
-      {/* Canvas con dibujo + textos con margen */}
+      {/* Contenido de la página */}
       <View style={S.pageContent}>
         <View style={[S.pageCard, { backgroundColor: bg }]}>
           <PageCanvas
-            drawMode={drawMode}
-            strokes={strokes}
-            currentStroke={currentStroke}
-            pointsToPath={pointsToPath}
-            onDrawStart={onDrawStart}
-            onLayoutCanvas={setCanvasSize}
-            onDrawMove={onDrawMove}
-            onDrawEnd={onDrawEnd}
-            onDeselectText={() => setSelectedTextId(null)}
+            drawMode={drawing.drawMode}
+            strokes={drawing.strokes}
+            currentStroke={drawing.currentStroke}
+            pointsToPath={drawing.pointsToPath}
+            onDrawStart={drawing.onDrawStart}
+            onDrawMove={drawing.onDrawMove}
+            onDrawEnd={drawing.onDrawEnd}
+            onDeselectText={() => {
+              textManager.setSelectedTextId(null);
+              shapeManager.setSelectedShapeId(null);
+            }}
           >
-            {pageTexts
-              .sort((a, b) => {
-                if (a.id === selectedTextId) return 1;
-                if (b.id === selectedTextId) return -1;
-                return a.created_at - b.created_at;
-              })
-              .map((text) => (
-                <DraggableText
-                  key={text.id}
-                  text={text}
-                  currentPageId={currentPageId}
-                  handleDeleteText={handleDeleteText}
-                  getPanFor={getPanFor}
-                  onPositionCommit={commitTextPosition}
-                  locked={!!lockedTextIds[text.id]}
-                  isSelected={selectedTextId === text.id}
-                  onToggleLock={handleToggleLock}
-                  onSelect={handleSelectText}
-                  onEdit={handleEditTextRequest}
-                  onDuplicate={handleDuplicateText}
-                  canvasWidth={canvasSize.width}
-                  canvasHeight={canvasSize.height}
-                />
-              ))}
+            {/* Textos arrastrables */}
+            {sortedPageTexts.map((text) => (
+              <DraggableText
+                key={text.id}
+                text={text}
+                currentPageId={currentPageId}
+                handleDeleteText={textManager.handleDeleteText}
+                getPanFor={textManager.getPanFor}
+                onPositionCommit={textManager.commitTextPosition}
+                locked={!!textManager.lockedTextIds[text.id]}
+                isSelected={textManager.selectedTextId === text.id}
+                onToggleLock={textManager.handleToggleLock}
+                onSelect={textManager.handleSelectText}
+                onEdit={handleEditText}
+                onDuplicate={textManager.handleDuplicateText}
+                canvasWidth={0}
+                canvasHeight={0}
+              />
+            ))}
+
+            {/* Shapes arrastrables */}
+            {sortedPageShapes.map((shape) => (
+              <DraggableShape
+                key={shape.id}
+                shape={shape}
+                currentPageId={currentPageId}
+                handleDeleteShape={shapeManager.handleDeleteShape}
+                getPanFor={shapeManager.getPanForShape}
+                onPositionCommit={shapeManager.commitShapePosition}
+                locked={!!shapeManager.lockedShapeIds[shape.id]}
+                isSelected={shapeManager.selectedShapeId === shape.id}
+                onToggleLock={shapeManager.handleToggleLock}
+                onSelect={(id) => shapeManager.setSelectedShapeId(id)}
+                onDuplicate={shapeManager.handleDuplicateShape}
+                onChangeColor={handleChangeShapeColor}
+              />
+            ))}
           </PageCanvas>
         </View>
       </View>
 
-      {/* Toolbar horizontal con scroll */}
-      <View pointerEvents="box-none" style={S.toolbarWrap}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={S.toolbarBar}
-        >
-          {toolbarItems.map((it) => (
-            <TouchableOpacity
-              key={it.id}
-              onPress={it.onPress}
-              activeOpacity={0.7}
-              disabled={it.disabled}
-              style={[
-                S.toolItem,
-                it.disabled && S.toolItemDisabled,
-                (it.id === 'text' && showTextOptions) || (it.id === 'draw' && showDrawTools)
-                  ? { backgroundColor: uiColors.grayO }
-                  : null,
-              ]}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityLabel={it.label}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: it.disabled }}
-            >
-              <MaterialIcons
-                name={it.icon}
-                size={22}
-                color={it.disabled ? '#aaa' : '#333'}
-                style={S.toolItemIcon}
-              />
-              <Text style={[S.toolItemLabel, it.disabled && S.toolItemLabelDisabled]}>
-                {it.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+      {/* Toolbar inferior */}
+      <BottomToolbar items={toolbarItems} />
 
-      {/* Modal opciones de texto */}
-      <Modal
+      {/* Modal de opciones de texto */}
+      <TextOptionsModal
         visible={showTextOptions}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowTextOptions(false)}
-        statusBarTranslucent
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{ flex: 1 }}
-        >
-          <View style={S.textModalOverlay}>
-            <TouchableOpacity
-              style={S.textModalBackground}
-              activeOpacity={1}
-              onPress={() => setShowTextOptions(false)}
-            />
-            <View style={S.textOptionsContainer}>
-              <View style={S.textOptionsHeader}>
-                <View style={S.textIconContainer}>
-                  <Text style={S.textIconLetter}>T</Text>
-                </View>
-                <Text style={S.textOptionsTitle}>Escribir texto</Text>
-              </View>
+        onClose={() => setShowTextOptions(false)}
+        textInput={textManager.textInput}
+        onTextChange={textManager.setTextInput}
+        selectedTextColor={textManager.selectedTextColor}
+        onColorSelect={textManager.setSelectedTextColor}
+        selectedFont={textManager.selectedFont}
+        onFontSelect={textManager.setSelectedFont}
+        onConfirm={handleConfirmText}
+        isEditing={!!textManager.editingTextId}
+      />
 
-              <TextInput
-                style={S.textInput}
-                placeholder="Escribe aquí..."
-                value={textInput}
-                onChangeText={setTextInput}
-                multiline
-                autoFocus
-                accessibilityLabel="Campo de texto"
-              />
+      {/* Modal de opciones de formas */}
+      <ShapeOptionsModal
+        visible={showShapeOptions}
+        onClose={() => setShowShapeOptions(false)}
+        selectedShapeType={shapeManager.selectedShapeType}
+        onSelectShapeType={shapeManager.setSelectedShapeType}
+        selectedShapeColor={shapeManager.selectedShapeColor}
+        onSelectShapeColor={shapeManager.setSelectedShapeColor}
+        onAddShape={async () => {
+          await shapeManager.handleAddShape();
+            setShowShapeOptions(false);
+        }}
+      />
 
-              {/* Colores texto */}
-              <View style={S.colorSection}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  keyboardShouldPersistTaps="always"
-                >
-                  {textColors.map((colorOption) => (
-                    <TouchableOpacity
-                      key={colorOption}
-                      onPress={() => setSelectedTextColor(colorOption)}
-                      style={[
-                        S.colorCircle,
-                        { backgroundColor: colorOption },
-                        selectedTextColor === colorOption && S.colorCircleSelected,
-                      ]}
-                      accessibilityLabel={`Color ${colorOption}`}
-                      accessibilityRole="button"
-                      accessibilityState={{
-                        selected: selectedTextColor === colorOption,
-                      }}
-                    />
-                  ))}
-                </ScrollView>
-              </View>
-
-              {/* Fuentes */}
-              <View style={S.fontSection}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  keyboardShouldPersistTaps="always"
-                >
-                  {textFonts.map((font) => (
-                    <TouchableOpacity
-                      key={font}
-                      onPress={() => setSelectedFont(font)}
-                      style={[S.fontButton, selectedFont === font && S.fontButtonSelected]}
-                      accessibilityLabel={`Fuente ${font}`}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: selectedFont === font }}
-                    >
-                      <Text
-                        style={[
-                          S.fontButtonText,
-                          { fontFamily: fontFamilyMap[font] ?? font },
-                          selectedFont === font && S.fontButtonTextSelected,
-                        ]}
-                      >
-                        {font}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-
-              <TouchableOpacity
-                style={S.addTextButton}
-                onPress={handleConfirmText}
-                activeOpacity={0.7}
-              >
-                <Text style={S.addTextButtonText}>
-                  {editingTextId ? 'Guardar cambios' : 'Añadir texto'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* Modal herramientas de dibujo */}
-      <Modal
+      {/* Modal de herramientas de dibujo */}
+      <DrawToolsModal
         visible={showDrawTools}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowDrawTools(false)}
-        statusBarTranslucent
-      >
-        <View style={S.drawModalOverlay}>
-          <TouchableOpacity
-            style={S.drawModalBackground}
-            activeOpacity={1}
-            onPress={() => setShowDrawTools(false)}
-          />
-          <View style={S.drawOptionsContainer}>
-            <View style={S.drawOptionsHeader}>
-              <View style={S.drawIconContainer}>
-                <MaterialIcons name="brush" size={20} color={uiColors.black} />
-              </View>
-              <Text style={S.drawOptionsTitle}>Herramientas de dibujo</Text>
-            </View>
-
-            {/* Herramientas */}
-            <View style={S.toolsSection}>
-              <Text style={S.drawSectionLabel}>Herramienta</Text>
-              <View style={S.toolsRow}>
-                {[
-                  { id: 'pencil', icon: 'edit', label: 'Lápiz' },
-                  { id: 'pen', icon: 'brush', label: 'Pincel' },
-                  { id: 'marker', icon: 'create', label: 'Marcador' },
-                  { id: 'eraser', icon: 'auto-fix-off', label: 'Borrador' },
-                ].map((tool) => (
-                  <TouchableOpacity
-                    key={tool.id}
-                    style={[S.toolButtonLarge, selectedTool === tool.id && S.toolButtonActive]}
-                    onPress={() => handleSelectTool(tool.id as any)}
-                    accessibilityLabel={tool.label}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: selectedTool === tool.id }}
-                  >
-                    <MaterialIcons name={tool.icon as any} size={22} color={uiColors.black} />
-                    <Text style={S.toolLabelLarge}>{tool.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Colores */}
-            {selectedTool !== 'eraser' && (
-              <View style={S.colorSectionDraw}>
-                <Text style={S.drawSectionLabel}>Color</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  keyboardShouldPersistTaps="always"
-                >
-                  {drawColors.map((clr) => (
-                    <TouchableOpacity
-                      key={clr}
-                      style={[
-                        S.colorCircleLarge,
-                        { backgroundColor: clr },
-                        selectedColor === clr && S.colorCircleSelected,
-                      ]}
-                      onPress={() => setSelectedColor(clr)}
-                      accessibilityLabel={`Color ${clr}`}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: selectedColor === clr }}
-                    />
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-
-            {/* Grosor del trazo */}
-            {/* Grosor del trazo (o del borrador) */}
-            <View style={S.thicknessSection}>
-              <Text style={S.drawSectionLabel}>
-                {selectedTool === 'eraser' ? 'Grosor del borrador' : 'Grosor del trazo'}
-              </Text>
-
-              <View
-                ref={dotBarRef}
-                style={S.dotBar}
-                onLayout={() => {
-                  dotBarRef.current?.measureInWindow((px, py, w) => {
-                    setDotBarLayout({
-                      x: px + paddingH,
-                      width: w - paddingH * 2,
-                    });
-                  });
-                }}
-                onStartShouldSetResponder={() => true}
-                onMoveShouldSetResponder={() => true}
-                onResponderGrant={(e) => {
-                  if (selectedTool === 'eraser') {
-                    hitTestToIndexEraser(e.nativeEvent.pageX);
-                  } else {
-                    hitTestToIndex(e.nativeEvent.pageX);
-                  }
-                }}
-                onResponderMove={(e) => {
-                  if (selectedTool === 'eraser') {
-                    hitTestToIndexEraser(e.nativeEvent.pageX);
-                  } else {
-                    hitTestToIndex(e.nativeEvent.pageX);
-                  }
-                }}
-              >
-                <View style={S.dotBarTrack} />
-                <View
-                  style={[
-                    S.dotBarFill,
-                    {
-                      width:
-                        selectedTool === 'eraser'
-                          ? Math.max(0, dotBarLayout.width * ((eraserWidth - 1) / (SEGMENTS - 1)))
-                          : fillWidth,
-                    },
-                  ]}
-                />
-                {Array.from({ length: SEGMENTS }).map((_, i) => {
-                  const idx = i + 1;
-                  const currentWidth = selectedTool === 'eraser' ? eraserWidth : strokeWidth;
-                  const active = idx === currentWidth;
-                  const passed = idx < currentWidth;
-                  const size = 6 + i * 3;
-                  return (
-                    <TouchableOpacity
-                      key={idx}
-                      onPress={() => {
-                        if (selectedTool === 'eraser') {
-                          setEraserWidth(idx);
-                        } else {
-                          setStrokeWidth(idx);
-                        }
-                      }}
-                      activeOpacity={0.85}
-                      style={S.dotTap}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Grosor ${idx}`}
-                      accessibilityState={{ selected: active }}
-                    >
-                      <View
-                        style={[
-                          S.dotSelectable,
-                          {
-                            width: size,
-                            height: size,
-                            borderRadius: size / 2,
-                            backgroundColor: active || passed ? uiColors.primary : '#cfcfcf',
-                            opacity: active ? 1 : passed ? 0.45 : 1,
-                            transform: [{ scale: active ? 1.1 : 1 }],
-                          },
-                        ]}
-                      />
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={[S.addTextButton, { marginTop: 12 }]}
-              onPress={() => {
-                setShowDrawTools(false);
-                setDrawMode(true);
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={S.addTextButtonText}>Empezar a dibujar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowDrawTools(false)}
+        selectedTool={drawing.selectedTool}
+        onToolSelect={drawing.handleSelectTool}
+        selectedColor={drawing.selectedColor}
+        onColorSelect={drawing.setSelectedColor}
+        strokeWidth={drawing.strokeWidth}
+        onStrokeWidthChange={drawing.setStrokeWidth}
+        eraserWidth={drawing.eraserWidth}
+        onEraserWidthChange={drawing.setEraserWidth}
+        onStartDrawing={handleStartDrawing}
+      />
     </SafeAreaView>
   );
 }
