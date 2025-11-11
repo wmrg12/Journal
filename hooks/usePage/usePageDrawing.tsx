@@ -1,4 +1,3 @@
-// hooks/useDrawing.ts
 import { useState, useCallback } from 'react';
 import { createPageDraw } from '@/src/db/dao';
 import { DrawTool, Stroke } from '@/types';
