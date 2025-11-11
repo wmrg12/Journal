@@ -19,6 +19,8 @@ type DraggableTextProps = {
   onSelect: (id: string) => void;
   onEdit: (t: PageText) => void;
   onDuplicate: (t: PageText) => void;
+  onRotationChange?: (id: string, rotation: number) => void;
+  onFontSizeChange?: (id: string, fontSize: number) => void;
   canvasWidth: number;
   canvasHeight: number;
 };
@@ -35,6 +37,8 @@ const DraggableTextBase = ({
   onSelect,
   onEdit,
   onDuplicate,
+  onRotationChange,
+  onFontSizeChange,
   canvasWidth,
   canvasHeight,
 }: DraggableTextProps) => {
@@ -64,6 +68,9 @@ const DraggableTextBase = ({
   // Double tap para editar
   const lastTapRef = useRef(0);
   const DOUBLE_TAP_DELAY = 300;
+
+  // Validación de posición 
+  const hasValidatedPosition = useRef(false);
 
   // EFFECTS - SYNC
   useEffect(() => {
@@ -96,42 +103,77 @@ const DraggableTextBase = ({
     }
   }, [text.position_x, text.position_y, pan, isDragging]);
 
+  // VALIDACIÓN AUTOMÁTICA
+  useEffect(() => {
+    if (
+      !hasValidatedPosition.current &&
+      canvasWidth > 0 &&
+      canvasHeight > 0 &&
+      textBoxSizeRef.current.width > 0 &&
+      textBoxSizeRef.current.height > 0
+    ) {
+      const currentX = (pan.x as any)._value;
+      const currentY = (pan.y as any)._value;
+      const { width: boxW, height: boxH } = textBoxSizeRef.current;
+
+      let validX = currentX;
+      let validY = currentY;
+
+      if (boxW > 0) {
+        validX = Math.max(0, Math.min(currentX, canvasWidth - boxW));
+      }
+      if (boxH > 0) {
+        validY = Math.max(0, Math.min(currentY, canvasHeight - boxH));
+      }
+
+      if (validX !== currentX || validY !== currentY) {
+        console.log('Corrigiendo texto fuera de límites:', text.id);
+        pan.setValue({ x: validX, y: validY });
+        
+        if (currentPageId) {
+          updatePageText(text.id, {
+            position_x: validX,
+            position_y: validY,
+          }).catch(console.error);
+        }
+      }
+
+      hasValidatedPosition.current = true;
+    }
+  }, [canvasWidth, canvasHeight, text.id, pan, currentPageId]);
+
   // PAN RESPONDER - MOVER
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, g) =>
-        !toolbarButtonPressed.current &&
-        !lockedRef.current &&
-        (Math.abs(g.dx) > 5 || Math.abs(g.dy) > 5),
+      onMoveShouldSetPanResponder: (_, g) => {
+        if (toolbarButtonPressed.current || lockedRef.current) return false;
+        if (g.numberActiveTouches !== 1) return false;
+        return Math.abs(g.dx) > 3 || Math.abs(g.dy) > 3;
+      },
       onPanResponderGrant: () => {
         if (toolbarButtonPressed.current) return;
-        onSelect(text.id);
-        if (!lockedRef.current) {
-          setIsDragging(true);
-          startRef.current = {
-            x: (pan.x as any)._value,
-            y: (pan.y as any)._value,
-          };
-          rotationStartRef.current = rotation;
-        }
+        setIsDragging(true);
+        startRef.current = {
+          x: (pan.x as any)._value,
+          y: (pan.y as any)._value,
+        };
       },
       onPanResponderMove: (_, g) => {
         if (lockedRef.current) return;
-        const rawX = startRef.current.x + g.dx;
-        const rawY = startRef.current.y + g.dy;
 
-        if (!canvasWidth || !canvasHeight) {
-          pan.setValue({ x: rawX, y: rawY });
-          return;
+        let nx = startRef.current.x + g.dx;
+        let ny = startRef.current.y + g.dy;
+
+        if (canvasWidth > 0) {
+          const { width: boxW } = textBoxSizeRef.current;
+          nx = Math.max(0, Math.min(nx, canvasWidth - (boxW || 0)));
+        }
+        if (canvasHeight > 0) {
+          const { height: boxH } = textBoxSizeRef.current;
+          ny = Math.max(0, Math.min(ny, canvasHeight - (boxH || 0)));
         }
 
-        const PADDING = 5;
-        const { width: boxW, height: boxH } = textBoxSizeRef.current;
-        const maxX = Math.max(PADDING, canvasWidth - PADDING - (boxW || 0));
-        const maxY = Math.max(PADDING, canvasHeight - PADDING - (boxH || 0));
-        const nx = Math.min(Math.max(PADDING, rawX), maxX);
-        const ny = Math.min(Math.max(PADDING, rawY), maxY);
         pan.setValue({ x: nx, y: ny });
       },
       onPanResponderRelease: async () => {
@@ -139,14 +181,24 @@ const DraggableTextBase = ({
           toolbarButtonPressed.current = false;
           return;
         }
+
         setIsDragging(false);
         if (lockedRef.current) return;
 
         const newX = (pan.x as any)._value;
         const newY = (pan.y as any)._value;
-
-        console.log('Text soltado:', text.id, `(${newX}, ${newY})`);
         onPositionCommit(text.id, newX, newY);
+
+        if (currentPageId) {
+          try {
+            await updatePageText(text.id, {
+              position_x: newX,
+              position_y: newY,
+            });
+          } catch (e) {
+            console.error('Error updating text position:', e);
+          }
+        }
       },
     }),
   ).current;
@@ -185,6 +237,7 @@ const DraggableTextBase = ({
         if (lockedRef.current || !currentPageId) return;
         try {
           await updatePageText(text.id, { rotation: rotationRef.current });
+          onRotationChange?.(text.id, rotationRef.current);
         } catch (e) {
           console.error('Error updating text rotation:', e);
         }
@@ -206,11 +259,41 @@ const DraggableTextBase = ({
       },
       onPanResponderMove: (evt) => {
         if (lockedRef.current) return;
+        
         const deltaY = resizeStartYRef.current - evt.nativeEvent.pageY;
-        const nextSize = Math.max(
-          8,
-          Math.min(72, fontSizeStartRef.current + deltaY / 4),
-        );
+        let nextSize = Math.max(8, fontSizeStartRef.current + deltaY / 4);
+        
+        if (canvasWidth > 0 && canvasHeight > 0) {
+          const currentX = (pan.x as any)._value;
+          const currentY = (pan.y as any)._value;
+          
+          // Estimar nuevas dimensiones 
+          const charWidth = nextSize * 0.6;
+          const lineHeight = nextSize * 1.5;
+          const maxCharsPerLine = 30;
+          const lines = Math.ceil(text.content.length / maxCharsPerLine);
+          
+          const newWidth = Math.min(text.content.length * charWidth, maxCharsPerLine * charWidth);
+          const newHeight = lines * lineHeight;
+          
+          // Limitar tamaño derecha
+          if (currentX + newWidth > canvasWidth) {
+            const maxAllowedWidth = canvasWidth - currentX;
+            const maxSizeByWidth = (maxAllowedWidth / (Math.min(text.content.length, maxCharsPerLine) * 0.6));
+            nextSize = Math.min(nextSize, maxSizeByWidth);
+          }
+          
+          // Limitar tamaño abajo
+          if (currentY + newHeight > canvasHeight) {
+            const maxAllowedHeight = canvasHeight - currentY;
+            const maxSizeByHeight = (maxAllowedHeight / (lines * 1.5));
+            nextSize = Math.min(nextSize, maxSizeByHeight);
+          }
+        }
+        
+        // límites de tamaño 
+        nextSize = Math.max(8, Math.min(72, nextSize));
+        
         setFontSize(nextSize);
         fontSizeRef.current = nextSize;
       },
@@ -220,6 +303,7 @@ const DraggableTextBase = ({
         if (lockedRef.current || !currentPageId) return;
         try {
           await updatePageText(text.id, { font_size: fontSizeRef.current });
+          onFontSizeChange?.(text.id, fontSizeRef.current);
         } catch (e) {
           console.error('Error updating font size:', e);
         }
@@ -239,7 +323,7 @@ const DraggableTextBase = ({
     const timeSinceLastTap = now - lastTapRef.current;
 
     if (timeSinceLastTap < DOUBLE_TAP_DELAY && isSelected && !lockedRef.current) {
-      console.log(' Abriendo editor');
+      console.log('Abriendo editor');
       onEdit(text);
     } else {
       onSelect(text.id);
@@ -248,7 +332,7 @@ const DraggableTextBase = ({
     lastTapRef.current = now;
   };
 
-  // RENDE
+  // RENDER
   return (
     <Animated.View
       {...panResponder.panHandlers}
@@ -296,7 +380,6 @@ const DraggableTextBase = ({
 
       {/* BOTONES FLOTANTES */}
 
-      {/* Delete */}
       {isSelected && (
         <TouchableOpacity
           onPressIn={() => {
@@ -312,7 +395,6 @@ const DraggableTextBase = ({
         </TouchableOpacity>
       )}
 
-      {/* Lock */}
       {isSelected && (
         <TouchableOpacity
           onPressIn={() => {
@@ -331,12 +413,10 @@ const DraggableTextBase = ({
           <MaterialIcons
             name={locked ? 'lock' : 'lock-open'}
             size={16}
-            color="#fff"
-          />
+            color="#fff" />
         </TouchableOpacity>
       )}
 
-      {/* Duplicate */}
       {isSelected && !locked && (
         <TouchableOpacity
           onPressIn={() => {
@@ -360,7 +440,6 @@ const DraggableTextBase = ({
         </TouchableOpacity>
       )}
 
-      {/* Rotate  */}
       {isSelected && !locked && (
         <View
           {...rotatePanResponder.panHandlers}
@@ -370,7 +449,6 @@ const DraggableTextBase = ({
         </View>
       )}
 
-      {/* Resize */}
       {isSelected && !locked && (
         <View
           {...resizePanResponder.panHandlers}
