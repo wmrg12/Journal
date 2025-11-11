@@ -1,13 +1,13 @@
 // components/BottomToolbar.tsx
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { uiColors } from '@/constants/colors';
 import S from '../../styles/pageViewStyles';
 
 type ToolbarItem = {
   id: string;
-  icon: keyof typeof MaterialIcons.glyphMap;
+  icon: keyof typeof MaterialIcons.glyphMap | keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
   disabled?: boolean;
@@ -43,7 +43,7 @@ export const BottomToolbar: React.FC<BottomToolbarProps> = ({ items }) => {
             accessibilityState={{ disabled: item.disabled }}
           >
             <MaterialIcons
-              name={item.icon}
+              name={item.icon as keyof typeof MaterialIcons.glyphMap}
               size={22}
               color={item.disabled ? '#aaa' : '#333'}
               style={S.toolItemIcon}

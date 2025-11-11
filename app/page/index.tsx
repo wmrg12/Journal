@@ -41,7 +41,6 @@ import { usePageShapes } from '@/hooks/usePage/usePageShapes';
 import { Params } from '@/types';
 
 export default function PageView() {
-
   // ROUTER & PARAMS
   const { journalId, color, pageNumber, totalPages } = useLocalSearchParams<Params>();
   const router = useRouter();
@@ -69,7 +68,7 @@ export default function PageView() {
     const { width, height } = event.nativeEvent.layout;
     // Solo actualizar si las dimensiones son válidas y diferentes
     if (width > 0 && height > 0) {
-      setCanvasSize(prev => {
+      setCanvasSize((prev) => {
         if (prev.width !== width || prev.height !== height) {
           console.log(' Canvas size updated:', { width, height });
           return { width, height };
@@ -99,7 +98,7 @@ export default function PageView() {
     (async () => {
       try {
         const dbColor = await getPageColor(String(journalId), pageNum);
-        
+
         if (mounted && typeof dbColor === 'string' && dbColor.length > 0) {
           const found = (pagePalette as readonly string[]).find(
             (c) => c.toLowerCase() === dbColor.toLowerCase(),
@@ -129,7 +128,7 @@ export default function PageView() {
 
         if (!pageId) {
           const total = await getTotalPages(String(journalId));
-          
+
           if (total === 0) {
             await createPage(String(journalId), String(bg));
             pageId = await getPageId(String(journalId), 1);
@@ -138,12 +137,12 @@ export default function PageView() {
 
         if (mounted && pageId) {
           setCurrentPageId(pageId);
-          
+
           // Cargar textos de la página
           const texts = await listPageTexts(pageId);
           if (mounted) {
             textManager.setPageTexts((prev) => textManager.mergeById(prev, texts));
-            
+
             const lockedState: Record<string, boolean> = {};
             texts.forEach((text) => {
               if (text.is_locked) {
@@ -197,9 +196,8 @@ export default function PageView() {
     return () => {
       mounted = false;
     };
-  }, [journalId, pageNum, bg]);
+  }, [journalId, pageNum, bg, textManager, shapeManager, drawing]);
 
-  
   // EFFECTS - VALIDAR Y SINCRONIZAR TOTAL DE PÁGINAS
   useEffect(() => {
     if (!journalId) return;
@@ -232,7 +230,7 @@ export default function PageView() {
   }, [journalId, pageNum, total, bg, router]);
 
   // CALLBACKS - GESTIÓN DE PÁGINAS
-  
+
   //Eliminar la página actual
   const handleDeletePage = useCallback(() => {
     if (total <= 1 || !journalId) {
@@ -252,7 +250,7 @@ export default function PageView() {
               String(journalId),
               pageNum,
             );
-            
+
             router.replace({
               pathname: '/page',
               params: {
@@ -283,7 +281,7 @@ export default function PageView() {
         String(journalId),
         String(bg),
       );
-      
+
       router.replace({
         pathname: '/page',
         params: {
@@ -373,15 +371,20 @@ export default function PageView() {
       const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
       const currentIndex = colors.indexOf(shape.color);
       const nextColor = colors[(currentIndex + 1) % colors.length];
-      
+
       shapeManager.setSelectedShapeColor(nextColor);
-      
+
       if (currentPageId) {
         await shapeManager.loadShapes(currentPageId);
       }
     },
     [currentPageId, shapeManager],
   );
+
+  // CALLBACKS - GESTIÓN DE AUDIO
+  const handleOpenAudioSelector = useCallback(() => {
+    Alert.alert('Audio', 'Aquí se abrirá el selector o grabador de audio.');
+  }, []);
 
   // MEMOIZED VALUES - CONFIGURACIÓN DE TOOLBAR
   const toolbarItems = useMemo(
@@ -426,6 +429,14 @@ export default function PageView() {
         disabled: isLoading,
         isActive: showDrawTools,
       },
+      {
+        id: 'audio',
+        icon: 'volume-up' as const,
+        label: 'Audio',
+        onPress: () => handleOpenAudioSelector(),
+        disabled: isLoading,
+        isActive: false,
+      },
     ],
     [
       handleAddPage,
@@ -433,6 +444,7 @@ export default function PageView() {
       handleOpenTextOptions,
       handleOpenShapeOptions,
       handleOpenDrawTools,
+      handleOpenAudioSelector,
       isLoading,
       showTextOptions,
       showShapeOptions,
@@ -441,7 +453,7 @@ export default function PageView() {
   );
 
   // HELPERS - ORDENAMIENTO DE ELEMENTOS
-  
+
   // Ordenar textos
   const sortedPageTexts = useMemo(() => {
     return textManager.pageTexts.sort((a, b) => {
@@ -492,10 +504,7 @@ export default function PageView() {
 
       {/* Contenido de la página */}
       <View style={S.pageContent}>
-        <View 
-          style={[S.pageCard, { backgroundColor: bg }]}
-          onLayout={handleCanvasLayout}
-        >
+        <View style={[S.pageCard, { backgroundColor: bg }]} onLayout={handleCanvasLayout}>
           <PageCanvas
             drawMode={drawing.drawMode}
             strokes={drawing.strokes}
@@ -524,8 +533,8 @@ export default function PageView() {
                 onSelect={textManager.handleSelectText}
                 onEdit={handleEditText}
                 onDuplicate={textManager.handleDuplicateText}
-                onRotationChange={textManager.handleRotationChange}  
-                onFontSizeChange={textManager.handleFontSizeChange} 
+                onRotationChange={textManager.handleRotationChange}
+                onFontSizeChange={textManager.handleFontSizeChange}
                 canvasWidth={canvasSize.width}
                 canvasHeight={canvasSize.height}
               />
