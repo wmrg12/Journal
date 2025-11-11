@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { View, ActivityIndicator, Alert } from 'react-native';
+import { View, ActivityIndicator, Alert, LayoutChangeEvent } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -53,6 +53,7 @@ export default function PageView() {
   const [showShapeOptions, setShowShapeOptions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPageId, setCurrentPageId] = useState<string | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
   // MEMOIZED VALUES
   const pageNum = useMemo(() => Math.max(Number(pageNumber ?? 1) || 1, 1), [pageNumber]);
@@ -60,8 +61,23 @@ export default function PageView() {
 
   // CUSTOM HOOKS
   const drawing = useDrawing(currentPageId);
-  const textManager = usePageText(currentPageId);
-  const shapeManager = usePageShapes(currentPageId);
+  const textManager = usePageText(currentPageId, canvasSize.width, canvasSize.height);
+  const shapeManager = usePageShapes(currentPageId, canvasSize.width, canvasSize.height);
+
+  // HANDLER PARA MEDIR EL CANVAS REAL
+  const handleCanvasLayout = useCallback((event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    // Solo actualizar si las dimensiones son válidas y diferentes
+    if (width > 0 && height > 0) {
+      setCanvasSize(prev => {
+        if (prev.width !== width || prev.height !== height) {
+          console.log(' Canvas size updated:', { width, height });
+          return { width, height };
+        }
+        return prev;
+      });
+    }
+  }, []);
 
   // EFFECTS - CARGAR COLOR DESDE PARÁMETROS
   useEffect(() => {
@@ -286,7 +302,6 @@ export default function PageView() {
   }, [journalId, bg, router]);
 
   //Navegar a una página específica
-
   const navigateToPage = useCallback(
     (newPageNum: number) => {
       router.replace({
@@ -305,7 +320,6 @@ export default function PageView() {
   // CALLBACKS - GESTIÓN DE HERRAMIENTAS
 
   // Abrir modal de opciones de texto
-
   const handleOpenTextOptions = useCallback(() => {
     drawing.setDrawMode(false);
     textManager.setEditingTextId(null);
@@ -478,7 +492,10 @@ export default function PageView() {
 
       {/* Contenido de la página */}
       <View style={S.pageContent}>
-        <View style={[S.pageCard, { backgroundColor: bg }]}>
+        <View 
+          style={[S.pageCard, { backgroundColor: bg }]}
+          onLayout={handleCanvasLayout}
+        >
           <PageCanvas
             drawMode={drawing.drawMode}
             strokes={drawing.strokes}
@@ -507,8 +524,10 @@ export default function PageView() {
                 onSelect={textManager.handleSelectText}
                 onEdit={handleEditText}
                 onDuplicate={textManager.handleDuplicateText}
-                canvasWidth={0}
-                canvasHeight={0}
+                onRotationChange={textManager.handleRotationChange}  
+                onFontSizeChange={textManager.handleFontSizeChange} 
+                canvasWidth={canvasSize.width}
+                canvasHeight={canvasSize.height}
               />
             ))}
 
@@ -527,6 +546,8 @@ export default function PageView() {
                 onSelect={(id) => shapeManager.setSelectedShapeId(id)}
                 onDuplicate={shapeManager.handleDuplicateShape}
                 onChangeColor={handleChangeShapeColor}
+                canvasWidth={canvasSize.width}
+                canvasHeight={canvasSize.height}
               />
             ))}
           </PageCanvas>
@@ -560,7 +581,7 @@ export default function PageView() {
         onSelectShapeColor={shapeManager.setSelectedShapeColor}
         onAddShape={async () => {
           await shapeManager.handleAddShape();
-            setShowShapeOptions(false);
+          setShowShapeOptions(false);
         }}
       />
 

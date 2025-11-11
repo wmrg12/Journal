@@ -1,4 +1,3 @@
-// hooks/usePageText.ts
 import { useState, useCallback, useRef } from 'react';
 import { Animated, Alert } from 'react-native';
 import { textColors } from '@/constants/colors';
@@ -11,7 +10,12 @@ import {
 } from '@/src/db/dao';
 import { PageText } from '@/types';
 
-export const usePageText = (currentPageId: string | null) => {
+// Agregar parámetros de canvas
+export const usePageText = (
+  currentPageId: string | null,
+  canvasWidth: number = 0,
+  canvasHeight: number = 0
+) => {
   const [pageTexts, setPageTexts] = useState<PageText[]>([]);
   const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
   const [lockedTextIds, setLockedTextIds] = useState<Record<string, boolean>>({});
@@ -44,10 +48,50 @@ export const usePageText = (currentPageId: string | null) => {
     return merged;
   }, []);
 
-  const commitTextPosition = useCallback((id: string, x: number, y: number) => {
+  // Función para estimar dimensiones del texto
+  const estimateTextDimensions = useCallback((text: PageText) => {
+    const fontSize = text.font_size ?? 16;
+    const charWidth = fontSize * 0.6; // Aproximación de ancho por carácter
+    const lineHeight = fontSize * 1.5;
+    const maxCharsPerLine = 30;
+    const contentLength = text.content.length;
+    const lines = Math.ceil(contentLength / maxCharsPerLine);
+    
+    const width = Math.min(contentLength * charWidth, maxCharsPerLine * charWidth);
+    const height = lines * lineHeight;
+    
+    return { width, height };
+  }, []);
+
+  //Función para validar límites del canvas
+  const clampToCanvas = useCallback(
+    (x: number, y: number, textWidth: number, textHeight: number) => {
+      let clampedX = x;
+      let clampedY = y;
+
+      if (canvasWidth > 0) {
+        clampedX = Math.max(0, Math.min(x, canvasWidth - textWidth));
+      }
+
+      if (canvasHeight > 0) {
+        clampedY = Math.max(0, Math.min(y, canvasHeight - textHeight));
+      }
+
+      return { x: clampedX, y: clampedY };
+    },
+    [canvasWidth, canvasHeight]
+  );
+
+  const commitTextPosition = useCallback(async (id: string, x: number, y: number) => {
     setPageTexts((prev) =>
       prev.map((t) => (t.id === id ? { ...t, position_x: x, position_y: y } : t)),
     );
+    
+    try {
+      await updatePageText(id, { position_x: x, position_y: y });
+    } catch (e) {
+      console.error('Error saving text position:', e);
+    }
   }, []);
 
   const handleToggleLock = useCallback(
@@ -120,6 +164,7 @@ export const usePageText = (currentPageId: string | null) => {
     [currentPageId, mergeById],
   );
 
+  // Duplicación con validación de límites
   const handleDuplicateText = useCallback(
     async (text: PageText) => {
       if (!currentPageId) return;
@@ -128,16 +173,71 @@ export const usePageText = (currentPageId: string | null) => {
         const offsetX = 20;
         const offsetY = 20;
 
+        const currentText = pageTexts.find(t => t.id === text.id) || text;
+
+        // Estimar dimensiones del texto
+        const { width: textWidth, height: textHeight } = estimateTextDimensions(currentText);
+
+        // Calcular posición candidata
+        let newX = currentText.position_x + offsetX;
+        let newY = currentText.position_y + offsetY;
+
+        if (canvasWidth > 0 && canvasHeight > 0) {
+          // Verificar si la posición con offset se sale del canvas
+          if (
+            newX + textWidth > canvasWidth ||
+            newY + textHeight > canvasHeight
+          ) {
+            const alternatives = [
+              { x: currentText.position_x - offsetX, y: currentText.position_y + offsetY }, // Izquierda-abajo
+              { x: currentText.position_x + offsetX, y: currentText.position_y - offsetY }, // Derecha-arriba
+              { x: currentText.position_x - offsetX, y: currentText.position_y - offsetY }, // Izquierda-arriba
+              { x: currentText.position_x, y: currentText.position_y + offsetY },           // Centro-abajo
+              { x: currentText.position_x + offsetX, y: currentText.position_y },           // Derecha-centro
+              { x: currentText.position_x - offsetX, y: currentText.position_y },           // Izquierda-centro
+              { x: currentText.position_x, y: currentText.position_y - offsetY },           // Centro-arriba
+            ];
+
+            // Buscar la primera posición válida
+            let foundValid = false;
+            for (const alt of alternatives) {
+              if (
+                alt.x >= 0 &&
+                alt.y >= 0 &&
+                alt.x + textWidth <= canvasWidth &&
+                alt.y + textHeight <= canvasHeight
+              ) {
+                newX = alt.x;
+                newY = alt.y;
+                foundValid = true;
+                console.log(' Encontró posición alternativa válida:', { x: newX, y: newY });
+                break;
+              }
+            }
+
+            if (!foundValid) {
+              newX = Math.max(0, (canvasWidth - textWidth) / 2);
+              newY = Math.max(0, (canvasHeight - textHeight) / 2);
+              console.log(' Ninguna alternativa válida, centrando:', { x: newX, y: newY });
+            }
+          }
+
+          // Aplicar límites 
+          const clamped = clampToCanvas(newX, newY, textWidth, textHeight);
+          newX = clamped.x;
+          newY = clamped.y;
+        }
+
         const { id: newId } = await createPageText(
           currentPageId,
-          text.content,
-          text.font_family,
-          text.color,
-          text.position_x + offsetX,
-          text.position_y + offsetY,
-          text.font_size || 16,
-          text.rotation ?? 0,
-          text.is_locked ?? 0,
+          currentText.content,
+          currentText.font_family,
+          currentText.color,
+          newX,  
+          newY,  
+          currentText.font_size || 16, 
+          currentText.rotation ?? 0,    
+          currentText.is_locked ?? 0,
         );
 
         const latest = await listPageTexts(currentPageId);
@@ -148,7 +248,7 @@ export const usePageText = (currentPageId: string | null) => {
         Alert.alert('Error', 'No se pudo duplicar el texto.');
       }
     },
-    [currentPageId],
+    [currentPageId, pageTexts, canvasWidth, canvasHeight, estimateTextDimensions, clampToCanvas],
   );
 
   const handleConfirmText = useCallback(
@@ -165,8 +265,23 @@ export const usePageText = (currentPageId: string | null) => {
 
       try {
         if (!editingTextId) {
-          const posX = 100;
-          const posY = 150;
+          // Crear nuevo texto
+          let posX = 100;
+          let posY = 150;
+          if (canvasWidth > 0 && canvasHeight > 0) {
+            const fontSize = 16;
+            const estimatedWidth = trimmed.length * fontSize * 0.6;
+            const estimatedHeight = fontSize * 1.5;
+
+            posX = Math.max(0, (canvasWidth - estimatedWidth) / 2);
+            posY = Math.max(0, (canvasHeight - estimatedHeight) / 2);
+
+            // Aplicar límites
+            const clamped = clampToCanvas(posX, posY, estimatedWidth, estimatedHeight);
+            posX = clamped.x;
+            posY = clamped.y;
+          }
+
           await createPageText(
             currentPageId,
             trimmed,
@@ -176,16 +291,28 @@ export const usePageText = (currentPageId: string | null) => {
             posY,
             16,
           );
+          
+          const latest = await listPageTexts(currentPageId);
+          setPageTexts((prev) => mergeById(prev, latest));
         } else {
+          // Editar texto existente
+          const currentText = pageTexts.find(t => t.id === editingTextId);
           await updatePageText(editingTextId, {
             content: trimmed,
             font_family: selectedFont,
             color: selectedTextColor,
+            position_x: currentText?.position_x, 
+            position_y: currentText?.position_y,
           });
+          
+          // Actualizar solo localmente sin recargar desde DB
+          setPageTexts(prev => prev.map(t => 
+            t.id === editingTextId 
+              ? { ...t, content: trimmed, font_family: selectedFont, color: selectedTextColor }
+              : t
+          ));
         }
 
-        const latest = await listPageTexts(currentPageId);
-        setPageTexts((prev) => mergeById(prev, latest));
         setTextInput('');
         setEditingTextId(null);
         onSuccess?.();
@@ -197,8 +324,31 @@ export const usePageText = (currentPageId: string | null) => {
         );
       }
     },
-    [textInput, selectedTextColor, selectedFont, currentPageId, mergeById, editingTextId],
+    [
+      textInput, 
+      selectedTextColor, 
+      selectedFont, 
+      currentPageId, 
+      mergeById, 
+      editingTextId, 
+      pageTexts,
+      canvasWidth,
+      canvasHeight,
+      clampToCanvas,
+    ],
   );
+
+  const handleRotationChange = useCallback((id: string, rotation: number) => {
+    setPageTexts(prev => prev.map(t => 
+      t.id === id ? { ...t, rotation } : t
+    ));
+  }, []);
+
+  const handleFontSizeChange = useCallback((id: string, font_size: number) => {
+    setPageTexts(prev => prev.map(t => 
+      t.id === id ? { ...t, font_size } : t
+    ));
+  }, []);
 
   return {
     pageTexts,
@@ -224,5 +374,7 @@ export const usePageText = (currentPageId: string | null) => {
     handleDeleteText,
     handleDuplicateText,
     handleConfirmText,
+    handleRotationChange,
+    handleFontSizeChange,
   };
 };
