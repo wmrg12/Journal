@@ -18,6 +18,8 @@ type DraggableShapeProps = {
   onSelect: (id: string) => void;
   onDuplicate: (s: PageShape) => void;
   onChangeColor: (s: PageShape) => void;
+  canvasWidth: number;
+  canvasHeight: number;
 };
 
 const DraggableShapeBase = ({
@@ -31,6 +33,8 @@ const DraggableShapeBase = ({
   onToggleLock,
   onSelect,
   onDuplicate,
+  canvasWidth,
+  canvasHeight,
 }: DraggableShapeProps) => {
   const pan = getPanFor(shape);
 
@@ -45,7 +49,7 @@ const DraggableShapeBase = ({
   const rotationRef = useRef(rotation);
 
   // Tamaño
-  const [width, setWidth] = useState(shape.width ?? 100);
+  const [width, setWidth] = useState(shape.width ?? 200);
   const [height, setHeight] = useState(shape.height ?? 100);
   const sizeStartRef = useRef({ width, height });
   const sizeRef = useRef({ width, height });
@@ -56,9 +60,17 @@ const DraggableShapeBase = ({
   const initialAngleRef = useRef(0);
 
   const [isResizing, setIsResizing] = useState(false);
-
+  const resizeStartPosRef = useRef({ x: 0, y: 0 });
+  
   // Para pinch
   const pinchInitialDistanceRef = useRef(0);
+
+  //  Validación de posición
+  const hasValidatedPosition = useRef(false);
+
+  useEffect(() => {
+    sizeRef.current = { width, height };
+  }, [width, height]);
 
   // Sync de props -> refs/estado
   useEffect(() => {
@@ -94,7 +106,36 @@ const DraggableShapeBase = ({
     }
   }, [shape.position_x, shape.position_y, pan, isDragging]);
 
-  // PanResponder para mover (drag con un dedo)
+  // VALIDACIÓN AUTOMÁTICA 
+  useEffect(() => {
+    if (
+      !hasValidatedPosition.current &&
+      canvasWidth > 0 &&
+      canvasHeight > 0 &&
+      width > 0 &&
+      height > 0
+    ) {
+      const currentX = (pan.x as any)._value;
+      const currentY = (pan.y as any)._value;
+      let validX = Math.max(0, Math.min(currentX, canvasWidth - width));
+      let validY = Math.max(0, Math.min(currentY, canvasHeight - height));
+      if (validX !== currentX || validY !== currentY) {
+        console.log(' Corrigiendo shape fuera de límites:', shape.id);
+        pan.setValue({ x: validX, y: validY });
+
+        if (currentPageId) {
+          updatePageShape(shape.id, {
+            position_x: validX,
+            position_y: validY,
+          }).catch(console.error);
+        }
+      }
+
+      hasValidatedPosition.current = true;
+    }
+  }, [canvasWidth, canvasHeight, shape.id, width, height, pan, currentPageId]);
+
+  // PanResponder para mover (drag con un dedo) 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
@@ -115,8 +156,18 @@ const DraggableShapeBase = ({
       onPanResponderMove: (_, g) => {
         if (lockedRef.current) return;
 
-        const nx = startRef.current.x + g.dx;
-        const ny = startRef.current.y + g.dy;
+        // Calcular nueva posición
+        let nx = startRef.current.x + g.dx;
+        let ny = startRef.current.y + g.dy;
+
+        // APLICAR LÍMITES DEL CANVAS
+        if (canvasWidth > 0) {
+          nx = Math.max(0, Math.min(nx, canvasWidth - sizeRef.current.width));
+        }
+        if (canvasHeight > 0) {
+          ny = Math.max(0, Math.min(ny, canvasHeight - sizeRef.current.height));
+        }
+
         pan.setValue({ x: nx, y: ny });
       },
       onPanResponderRelease: async () => {
@@ -146,7 +197,7 @@ const DraggableShapeBase = ({
     }),
   ).current;
 
-  // PanResponder para rotar (un dedo en el botón de rotación)
+  // PanResponder para rotar 
   const rotatePanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !lockedRef.current,
@@ -195,7 +246,7 @@ const DraggableShapeBase = ({
     }),
   ).current;
 
-  // PanResponder para redimensionar con drag en la esquina
+  // PanResponder para redimensionar con drag 
   const resizePanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !lockedRef.current,
@@ -208,17 +259,32 @@ const DraggableShapeBase = ({
           width: sizeRef.current.width,
           height: sizeRef.current.height,
         };
-        // usamos pageX/pageY inicial por si quieres redimensionar al arrastrar desde la esquina
       },
       onPanResponderMove: (evt, g) => {
         if (lockedRef.current) return;
 
-        // Aquí usamos el delta del gesto
         const deltaX = g.dx;
         const deltaY = g.dy;
 
-        const newWidth = Math.max(30, sizeStartRef.current.width + deltaX);
-        const newHeight = Math.max(30, sizeStartRef.current.height + deltaY);
+        let newWidth = Math.max(60, sizeStartRef.current.width + deltaX);
+        let newHeight = Math.max(60, sizeStartRef.current.height + deltaY);
+
+        // VALIDAR LÍMITES DEL CANVAS
+        if (canvasWidth > 0) {
+          const currentX = (pan.x as any)._value;
+          const maxWidth = canvasWidth - currentX;
+          newWidth = Math.min(newWidth, maxWidth);
+        }
+
+        if (canvasHeight > 0) {
+          const currentY = (pan.y as any)._value;
+          const maxHeight = canvasHeight - currentY;
+          newHeight = Math.min(newHeight, maxHeight);
+        }
+
+        // Aplicar límites mínimos
+        newWidth = Math.max(60, newWidth);
+        newHeight = Math.max(60, newHeight);
 
         setWidth(newWidth);
         setHeight(newHeight);
@@ -241,13 +307,10 @@ const DraggableShapeBase = ({
     }),
   ).current;
 
-  // PanResponder para redimensionar con PINCH (dos dedos estirando la figura)
+  // PanResponder para redimensionar con pinch
   const pinchPanResponder = useRef(
     PanResponder.create({
-      // No tomamos el gesto de entrada, esperamos movimiento
       onStartShouldSetPanResponder: () => false,
-
-      // Solo activamos el pinch si hay 2 dedos activos y no está bloqueado
       onMoveShouldSetPanResponder: (_, g) =>
         !lockedRef.current && g.numberActiveTouches >= 2,
 
@@ -257,7 +320,6 @@ const DraggableShapeBase = ({
         toolbarButtonPressed.current = true;
         setIsResizing(true);
 
-        // Guardamos tamaño inicial
         sizeStartRef.current = {
           width: sizeRef.current.width,
           height: sizeRef.current.height,
@@ -289,8 +351,25 @@ const DraggableShapeBase = ({
 
         const scale = currentDistance / initialDistance;
 
-        const newWidth = Math.max(30, sizeStartRef.current.width * scale);
-        const newHeight = Math.max(30, sizeStartRef.current.height * scale);
+        let newWidth = Math.max(30, sizeStartRef.current.width * scale);
+        let newHeight = Math.max(30, sizeStartRef.current.height * scale);
+
+        // VALIDAR LÍMITES DEL CANVAS
+        if (canvasWidth > 0) {
+          const currentX = (pan.x as any)._value;
+          const maxWidth = canvasWidth - currentX;
+          newWidth = Math.min(newWidth, maxWidth);
+        }
+
+        if (canvasHeight > 0) {
+          const currentY = (pan.y as any)._value;
+          const maxHeight = canvasHeight - currentY;
+          newHeight = Math.min(newHeight, maxHeight);
+        }
+
+        // Aplicar límites mínimos
+        newWidth = Math.max(30, newWidth);
+        newHeight = Math.max(30, newHeight);
 
         setWidth(newWidth);
         setHeight(newHeight);
@@ -536,7 +615,6 @@ const DraggableShapeBase = ({
         },
       ]}
     >
-      {/* TAP para seleccionar */}
       <TouchableOpacity
         activeOpacity={1}
         onPress={() => {
@@ -545,7 +623,6 @@ const DraggableShapeBase = ({
           }
         }}
       >
-        {/* Contenedor de la forma + PINCH */}
         <View
           ref={shapeBoxRef}
           {...pinchPanResponder.panHandlers}
@@ -564,7 +641,6 @@ const DraggableShapeBase = ({
         </View>
       </TouchableOpacity>
 
-      {/* Botón ELIMINAR */}
       {isSelected && (
         <TouchableOpacity
           onPressIn={() => {
@@ -580,7 +656,6 @@ const DraggableShapeBase = ({
         </TouchableOpacity>
       )}
 
-      {/* Botón BLOQUEAR */}
       {isSelected && (
         <TouchableOpacity
           onPressIn={() => {
@@ -604,7 +679,6 @@ const DraggableShapeBase = ({
         </TouchableOpacity>
       )}
 
-      {/* Botón DUPLICAR */}
       {isSelected && !locked && (
         <TouchableOpacity
           onPressIn={() => {
@@ -628,7 +702,6 @@ const DraggableShapeBase = ({
         </TouchableOpacity>
       )}
 
-      {/* Botón ROTAR */}
       {isSelected && !locked && (
         <View
           {...rotatePanResponder.panHandlers}
@@ -638,7 +711,6 @@ const DraggableShapeBase = ({
         </View>
       )}
 
-      {/* Handle para redimensionar  */}
       {isSelected && !locked && (
         <View
           {...resizePanResponder.panHandlers}
