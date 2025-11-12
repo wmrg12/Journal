@@ -156,7 +156,8 @@ export default function TasksScreen({ onClose }: TasksScreenProps) {
   );
 
   return (
-    <View style={stylest.container}>
+    <View style={[stylest.container, { paddingTop: insets.top - 20 }]}>
+
       {/* Header */}
       <View style={stylest.header}>
         <View>
@@ -246,6 +247,6 @@ export default function TasksScreen({ onClose }: TasksScreenProps) {
           </Pressable>
         </Pressable>
       </Modal>
-    </View>
+      </View>
   );
 }
