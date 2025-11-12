@@ -6,6 +6,7 @@ export type PageText = BasePageText & {
 };
 
 export type DrawTool = 'pencil' | 'pen' | 'marker' | 'eraser';
+export type PersistableDrawTool = 'pencil' | 'pen' | 'marker'; 
 
 export type Stroke = {
   id: string;
@@ -15,6 +16,8 @@ export type Stroke = {
   opacity: number;
   points: { x: number; y: number }[];
   _persistedPathD?: string;
+  _needsSave?: boolean; // Agregamos esta propiedad opcional
+  _isFragment?: boolean;
 };
 
 export type CanvasSize = {
