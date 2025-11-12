@@ -31,6 +31,7 @@ import { DraggableText } from '@/components/optionsPage/DraggableText';
 import { DraggableShape } from '@/components/optionsPage/DraggableShape';
 import { TextOptionsModal } from '@/components/optionsPage/TextOptionsModal';
 import { ShapeOptionsModal } from '@/components/optionsPage/ShapeOptionsModal';
+import { AudioSelector } from '@/components/optionsPage/AudioSelector';
 
 // Hooks
 import { useDrawing } from '@/hooks/usePage/usePageDrawing';
@@ -50,6 +51,7 @@ export default function PageView() {
   const [showDrawTools, setShowDrawTools] = useState(false);
   const [showTextOptions, setShowTextOptions] = useState(false);
   const [showShapeOptions, setShowShapeOptions] = useState(false);
+  const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPageId, setCurrentPageId] = useState<string | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
@@ -383,8 +385,11 @@ export default function PageView() {
 
   // CALLBACKS - GESTIÓN DE AUDIO
   const handleOpenAudioSelector = useCallback(() => {
-    Alert.alert('Audio', 'Aquí se abrirá el selector o grabador de audio.');
+    setIsAudioModalOpen(true);
   }, []);
+  const handleAudioSelected = (audioUri: string, audioType: 'recording' | 'file') => {
+    console.log('Audio seleccionado:', audioUri, audioType);
+  };
 
   // MEMOIZED VALUES - CONFIGURACIÓN DE TOOLBAR
   const toolbarItems = useMemo(
@@ -607,6 +612,13 @@ export default function PageView() {
         eraserWidth={drawing.eraserWidth}
         onEraserWidthChange={drawing.setEraserWidth}
         onStartDrawing={handleStartDrawing}
+      />
+
+      {/* Modal de selector de audio */}
+      <AudioSelector
+        visible={isAudioModalOpen}
+        onClose={() => setIsAudioModalOpen(false)}
+        onAudioSelected={handleAudioSelected}
       />
     </SafeAreaView>
   );
