@@ -24,10 +24,10 @@ export const stylest = StyleSheet.create({
     letterSpacing: -0.5,
   },
   subtitle: {
-    marginTop: 4,
+    marginTop: 20,
     fontSize: 15,
     color: uiColors.gray,
-    marginBottom: 14,
+    marginBottom: 8,
     fontWeight: "600",
   },
   addBtn: {
@@ -52,20 +52,20 @@ export const stylest = StyleSheet.create({
   },
 
   scrollContent: {
-    paddingBottom: 24, 
+    paddingBottom: 25, 
   },
 
-  listBlock: { marginBottom: 20 },
+  listBlock: { marginBottom: 1 },
   completedBlock: {
     marginTop: 6,
-    paddingTop: 18,
+    paddingTop: 15,
     borderTopWidth: 1,
-    borderTopColor: uiColors.white,
+    borderTopColor: "transparent",
   },
   sectionTitle: {
     fontSize: 15,
     color: uiColors.gray,
-    marginBottom: 14,
+    marginBottom: 25,
     fontWeight: "600",
   },
   separator: { height: 12 },
@@ -73,7 +73,7 @@ export const stylest = StyleSheet.create({
     textAlign: "center",
     color: uiColors.gray,
     fontSize: 16,
-    marginTop: 15,
+    marginTop: 14,
     marginVertical: 30,
   },
 
@@ -81,7 +81,7 @@ export const stylest = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: uiColors.cards,
+    backgroundColor: uiColors.primary,
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 14,
