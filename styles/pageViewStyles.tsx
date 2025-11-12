@@ -397,7 +397,7 @@ export default StyleSheet.create({
     borderColor: 'transparent',
     borderRadius: 5,
     overflow: 'visible',
-    borderStyle: 'dashed', 
+    borderStyle: 'dashed',
   },
 
   shapeBoxSelected: {
@@ -405,8 +405,7 @@ export default StyleSheet.create({
     borderStyle: 'dashed',
   },
 
-
-/* ─────────────── BOTONES ALREDEDOR DE LA FORMA ─────────────── */
+  /* ─────────────── BOTONES ALREDEDOR DE LA FORMA ─────────────── */
   shapeControlButton: {
     position: 'absolute',
     width: 26,
@@ -418,31 +417,31 @@ export default StyleSheet.create({
     elevation: 2,
   },
 
-  // Eliminar 
+  // Eliminar
   shapeDeleteButton: {
     top: -20,
     left: -20,
     backgroundColor: uiColors.primary,
   },
 
-  // Bloquear 
+  // Bloquear
   shapeLockButton: {
     top: -20,
     right: -20,
   },
 
   shapeLockButtonLocked: {
-    backgroundColor: uiColors.primary, 
+    backgroundColor: uiColors.primary,
   },
 
-  // Duplicar 
+  // Duplicar
   shapeDuplicateButton: {
     bottom: -20,
     left: -20,
     backgroundColor: uiColors.primary,
   },
 
-  // Rotar 
+  // Rotar
   shapeRotateButton: {
     position: 'absolute',
     bottom: -20,
@@ -456,7 +455,7 @@ export default StyleSheet.create({
     elevation: 2,
   },
 
-/* ─────────────── HANDLE DE RESIZE  ─────────────── */
+  /* ─────────────── HANDLE DE RESIZE  ─────────────── */
 
   shapeResizeHandle: {
     position: 'absolute',
@@ -472,18 +471,17 @@ export default StyleSheet.create({
   shapeResizeHandleInner: {
     position: 'absolute',
     borderRadius: 4,
-    backgroundColor: uiColors.primary, 
+    backgroundColor: uiColors.primary,
     borderColor: uiColors.primary,
     width: 18,
     height: 8,
   },
 
   /* ──────────────── MODAL DE FORMAS ──────────────── */
-  
+
   shapeModalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.35)', 
   },
 
   shapeModalBackground: {
@@ -513,7 +511,7 @@ export default StyleSheet.create({
     marginBottom: 20,
     paddingBottom: 15,
     borderBottomWidth: 1,
-    borderBottomColor: uiColors.bord,  
+    borderBottomColor: uiColors.bord,
   },
 
   shapeIconContainer: {
@@ -524,7 +522,6 @@ export default StyleSheet.create({
     alignItems: 'center',
     marginRight: 10,
     backgroundColor: uiColors.grayO,
-    
   },
 
   shapeOptionsTitle: {
@@ -535,7 +532,6 @@ export default StyleSheet.create({
 
   shapeToolsSection: {
     marginBottom: 5,
-
   },
 
   shapeSectionLabel: {
@@ -606,7 +602,117 @@ export default StyleSheet.create({
     color: uiColors.white,
     fontWeight: '600',
     fontSize: 16,
-  }
+  },
+
+  /* ──────────────── MODAL DE AUDIO ──────────────── */
+  audioModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  audioModalBackground: {
+    flex: 1,
+  },
+  audioOptionsContainer: {
+    backgroundColor: uiColors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    paddingBottom: 30,
+    maxHeight: '50%',
+  },
+  audioOptionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingBottom: 16,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  audioOptionsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    flex: 1,
+  },
+  sectionLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: 10,
+    marginTop: -6,
+  },
+  optionsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  optionButton: {
+    flex: 1,
+    minHeight: 85,
+    maxHeight: 100,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 12,
+  },
+  optionIconContainer: {
+    marginBottom: 8,
+  },
+  optionLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#374151',
+    textAlign: 'center',
+  },
+  startButton: {
+    backgroundColor: uiColors.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  startButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  recordingContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingBottom: 0,
+  },
+  recordingIconContainer: {
+    width: 100,
+    height: 100,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  recordingTime: {
+    fontSize: 25,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    fontVariant: ['tabular-nums'],
+    marginBottom: 20,
+  },
+  stopButton: {
+    backgroundColor: uiColors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 38,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  stopButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
 });
-
-
