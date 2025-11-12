@@ -13,7 +13,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: -90,
+    marginTop: 40,
   },
 
   message: {
@@ -24,10 +24,10 @@ const styles = StyleSheet.create({
 
   fab: {
     position: "absolute",
-    bottom: 98,
-    right: 18,
+    bottom: -280,
+    right: 20,
     backgroundColor: uiColors.primary,
-    borderRadius: 30,
+    borderRadius: 40,
     width: 56,
     height: 56,
     justifyContent: "center",
@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
   },
 
   // --- Barra de Filtros / Tabs / Home ---
-  searchButton: { padding: 6, marginLeft: 12 },
+  searchButton: { padding: 6, marginLeft: 10 },
 
   tabsWrapper: {
     flexDirection: "row",
