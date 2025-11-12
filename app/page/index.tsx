@@ -24,8 +24,10 @@ import {
 import PageToolbar from '@/components/optionsPage/TolbarUp';
 import { BottomToolbar } from '@/components/optionsPage/TolbarDown';
 
-// Options Page Components
-import PageCanvas from '@/components/optionsPage/PageCanvas';
+// Canvas Skia
+import SkiaCanvas from '@/components/optionsPage/PageCanvas';
+
+// Modals
 import { DrawToolsModal } from '@/components/optionsPage/DrawToolsModal';
 import { DraggableText } from '@/components/optionsPage/DraggableText';
 import { DraggableShape } from '@/components/optionsPage/DraggableShape';
@@ -33,7 +35,7 @@ import { TextOptionsModal } from '@/components/optionsPage/TextOptionsModal';
 import { ShapeOptionsModal } from '@/components/optionsPage/ShapeOptionsModal';
 
 // Hooks
-import { useDrawing } from '@/hooks/usePage/usePageDrawing';
+import { useSkiaDrawing } from '@/hooks/usePage/usePageDrawing';
 import { usePageText } from '@/hooks/usePage/usePageTexts';
 import { usePageShapes } from '@/hooks/usePage/usePageShapes';
 
@@ -41,7 +43,6 @@ import { usePageShapes } from '@/hooks/usePage/usePageShapes';
 import { Params } from '@/types';
 
 export default function PageView() {
-
   // ROUTER & PARAMS
   const { journalId, color, pageNumber, totalPages } = useLocalSearchParams<Params>();
   const router = useRouter();
@@ -60,24 +61,44 @@ export default function PageView() {
   const total = useMemo(() => Math.max(Number(totalPages ?? 1) || 1, 1), [totalPages]);
 
   // CUSTOM HOOKS
-  const drawing = useDrawing(currentPageId);
+  const drawing = useSkiaDrawing(currentPageId);
   const textManager = usePageText(currentPageId, canvasSize.width, canvasSize.height);
   const shapeManager = usePageShapes(currentPageId, canvasSize.width, canvasSize.height);
 
-  // HANDLER PARA MEDIR EL CANVAS REAL
+  // HANDLER PARA MEDIR EL CANVAS
   const handleCanvasLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
-    // Solo actualizar si las dimensiones son válidas y diferentes
     if (width > 0 && height > 0) {
-      setCanvasSize(prev => {
+      setCanvasSize((prev) => {
         if (prev.width !== width || prev.height !== height) {
-          console.log(' Canvas size updated:', { width, height });
           return { width, height };
         }
         return prev;
       });
     }
   }, []);
+
+  // Helper para convertir path SVG a puntos
+  const parsePathDToPoints = (pathD: string): { x: number; y: number }[] => {
+    if (!pathD) return [];
+
+    const points: { x: number; y: number }[] = [];
+    const commands = pathD.trim().split(/\s+/);
+
+    for (let i = 0; i < commands.length; i++) {
+      const cmd = commands[i];
+      if (cmd === 'M' || cmd === 'L') {
+        const x = parseFloat(commands[i + 1]);
+        const y = parseFloat(commands[i + 2]);
+        if (!isNaN(x) && !isNaN(y)) {
+          points.push({ x, y });
+        }
+        i += 2;
+      }
+    }
+
+    return points;
+  };
 
   // EFFECTS - CARGAR COLOR DESDE PARÁMETROS
   useEffect(() => {
@@ -99,7 +120,7 @@ export default function PageView() {
     (async () => {
       try {
         const dbColor = await getPageColor(String(journalId), pageNum);
-        
+
         if (mounted && typeof dbColor === 'string' && dbColor.length > 0) {
           const found = (pagePalette as readonly string[]).find(
             (c) => c.toLowerCase() === dbColor.toLowerCase(),
@@ -118,7 +139,7 @@ export default function PageView() {
     };
   }, [journalId, pageNum]);
 
-  // EFFECTS - CARGAR DATOS DE PÁGINA (ID, TEXTOS, DIBUJOS, SHAPES)
+  // EFFECTS - CARGAR DATOS DE PÁGINA
   useEffect(() => {
     if (!journalId) return;
     let mounted = true;
@@ -129,7 +150,7 @@ export default function PageView() {
 
         if (!pageId) {
           const total = await getTotalPages(String(journalId));
-          
+
           if (total === 0) {
             await createPage(String(journalId), String(bg));
             pageId = await getPageId(String(journalId), 1);
@@ -138,12 +159,12 @@ export default function PageView() {
 
         if (mounted && pageId) {
           setCurrentPageId(pageId);
-          
-          // Cargar textos de la página
+
+          // Cargar textos
           const texts = await listPageTexts(pageId);
           if (mounted) {
             textManager.setPageTexts((prev) => textManager.mergeById(prev, texts));
-            
+
             const lockedState: Record<string, boolean> = {};
             texts.forEach((text) => {
               if (text.is_locked) {
@@ -153,12 +174,12 @@ export default function PageView() {
             textManager.setLockedTextIds(lockedState);
           }
 
-          // Cargar shapes de la página
+          // Cargar shapes
           if (mounted) {
             await shapeManager.loadShapes(pageId);
           }
 
-          // Cargar dibujos de la página
+          // Cargar dibujos
           try {
             const draws = await listPageDraws(pageId);
             if (mounted) {
@@ -169,7 +190,7 @@ export default function PageView() {
                   color: d.color,
                   width: d.width,
                   opacity: d.opacity,
-                  points: [],
+                  points: parsePathDToPoints(d.path_d),
                   _persistedPathD: d.path_d,
                 })),
               );
@@ -199,8 +220,15 @@ export default function PageView() {
     };
   }, [journalId, pageNum, bg]);
 
-  
-  // EFFECTS - VALIDAR Y SINCRONIZAR TOTAL DE PÁGINAS
+  // EFFECTS - LIMPIAR TRAZOS DE BORRADOR AL DESMONTAR
+  useEffect(() => {
+    return () => {
+      // Limpiar trazos de borrador antes de salir
+      drawing.clearEraserStrokes();
+    };
+  }, []);
+
+  // EFFECTS - VALIDAR TOTAL DE PÁGINAS
   useEffect(() => {
     if (!journalId) return;
     let mounted = true;
@@ -232,8 +260,7 @@ export default function PageView() {
   }, [journalId, pageNum, total, bg, router]);
 
   // CALLBACKS - GESTIÓN DE PÁGINAS
-  
-  //Eliminar la página actual
+
   const handleDeletePage = useCallback(() => {
     if (total <= 1 || !journalId) {
       Alert.alert('No se puede eliminar', 'Debe existir al menos una página.');
@@ -252,7 +279,7 @@ export default function PageView() {
               String(journalId),
               pageNum,
             );
-            
+
             router.replace({
               pathname: '/page',
               params: {
@@ -273,7 +300,6 @@ export default function PageView() {
     ]);
   }, [total, journalId, pageNum, bg, router]);
 
-  //Agregar una nueva página
   const handleAddPage = useCallback(async () => {
     if (!journalId) return;
 
@@ -283,7 +309,7 @@ export default function PageView() {
         String(journalId),
         String(bg),
       );
-      
+
       router.replace({
         pathname: '/page',
         params: {
@@ -301,9 +327,11 @@ export default function PageView() {
     }
   }, [journalId, bg, router]);
 
-  //Navegar a una página específica
   const navigateToPage = useCallback(
-    (newPageNum: number) => {
+    async (newPageNum: number) => {
+      // Esperar a que se guarden los trazos pendientes
+      await drawing.waitForPendingSaves();
+      
       router.replace({
         pathname: '/page',
         params: {
@@ -314,12 +342,11 @@ export default function PageView() {
         },
       });
     },
-    [journalId, bg, total, router],
+    [journalId, bg, total, router, drawing],
   );
 
   // CALLBACKS - GESTIÓN DE HERRAMIENTAS
 
-  // Abrir modal de opciones de texto
   const handleOpenTextOptions = useCallback(() => {
     drawing.setDrawMode(false);
     textManager.setEditingTextId(null);
@@ -327,29 +354,24 @@ export default function PageView() {
     setShowTextOptions(true);
   }, [drawing, textManager]);
 
-  // Abrir modal de herramientas de dibujo
   const handleOpenDrawTools = useCallback(() => {
     setShowDrawTools(true);
   }, []);
 
-  // Abrir modal de opciones de formas
   const handleOpenShapeOptions = useCallback(() => {
     drawing.setDrawMode(false);
     setShowShapeOptions(true);
   }, [drawing]);
 
-  // Confirmar texto y cerrar modal
   const handleConfirmText = useCallback(() => {
     textManager.handleConfirmText(() => setShowTextOptions(false));
   }, [textManager]);
 
-  // Iniciar modo dibujo
   const handleStartDrawing = useCallback(() => {
     setShowDrawTools(false);
     drawing.setDrawMode(true);
   }, [drawing]);
 
-  //Editar texto existente
   const handleEditText = useCallback(
     (text: any) => {
       drawing.setDrawMode(false);
@@ -359,23 +381,24 @@ export default function PageView() {
     [drawing, textManager],
   );
 
-  // Navegar de vuelta a la lista de páginas
-  const handleNavigateBack = useCallback(() => {
+  const handleNavigateBack = useCallback(async () => {
+    // Esperar a que se guarden los trazos pendientes
+    await drawing.waitForPendingSaves();
+    
     router.replace({
       pathname: '/pageList',
       params: { journalId, color: String(bg) },
     });
-  }, [router, journalId, bg]);
+  }, [router, journalId, bg, drawing]);
 
-  // Cambiar color de una forma
   const handleChangeShapeColor = useCallback(
     async (shape: any) => {
       const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
       const currentIndex = colors.indexOf(shape.color);
       const nextColor = colors[(currentIndex + 1) % colors.length];
-      
+
       shapeManager.setSelectedShapeColor(nextColor);
-      
+
       if (currentPageId) {
         await shapeManager.loadShapes(currentPageId);
       }
@@ -383,7 +406,7 @@ export default function PageView() {
     [currentPageId, shapeManager],
   );
 
-  // MEMOIZED VALUES - CONFIGURACIÓN DE TOOLBAR
+  // MEMOIZED VALUES - TOOLBAR
   const toolbarItems = useMemo(
     () => [
       {
@@ -440,9 +463,7 @@ export default function PageView() {
     ],
   );
 
-  // HELPERS - ORDENAMIENTO DE ELEMENTOS
-  
-  // Ordenar textos
+  // ORDENAMIENTO
   const sortedPageTexts = useMemo(() => {
     return textManager.pageTexts.sort((a, b) => {
       if (a.id === textManager.selectedTextId) return 1;
@@ -451,7 +472,6 @@ export default function PageView() {
     });
   }, [textManager.pageTexts, textManager.selectedTextId]);
 
-  // Ordenar shapes
   const sortedPageShapes = useMemo(() => {
     return shapeManager.pageShapes.sort((a, b) => {
       if (a.id === shapeManager.selectedShapeId) return 1;
@@ -492,19 +512,21 @@ export default function PageView() {
 
       {/* Contenido de la página */}
       <View style={S.pageContent}>
-        <View 
+        <View
           style={[S.pageCard, { backgroundColor: bg }]}
           onLayout={handleCanvasLayout}
         >
-          <PageCanvas
-            drawMode={drawing.drawMode}
+          <SkiaCanvas
+            width={canvasSize.width}
+            height={canvasSize.height}
             strokes={drawing.strokes}
             currentStroke={drawing.currentStroke}
             pointsToPath={drawing.pointsToPath}
+            drawMode={drawing.drawMode}
             onDrawStart={drawing.onDrawStart}
             onDrawMove={drawing.onDrawMove}
             onDrawEnd={drawing.onDrawEnd}
-            onDeselectText={() => {
+            onDeselect={() => {
               textManager.setSelectedTextId(null);
               shapeManager.setSelectedShapeId(null);
             }}
@@ -524,8 +546,8 @@ export default function PageView() {
                 onSelect={textManager.handleSelectText}
                 onEdit={handleEditText}
                 onDuplicate={textManager.handleDuplicateText}
-                onRotationChange={textManager.handleRotationChange}  
-                onFontSizeChange={textManager.handleFontSizeChange} 
+                onRotationChange={textManager.handleRotationChange}
+                onFontSizeChange={textManager.handleFontSizeChange}
                 canvasWidth={canvasSize.width}
                 canvasHeight={canvasSize.height}
               />
@@ -550,7 +572,7 @@ export default function PageView() {
                 canvasHeight={canvasSize.height}
               />
             ))}
-          </PageCanvas>
+          </SkiaCanvas>
         </View>
       </View>
 
