@@ -1133,11 +1133,14 @@ export async function deleteTask(taskId: string) {
   }
 }
 
-// DAO dibujos
+// Al final del archivo dao.ts, después de deleteTask
+
+// ========== DAO: Page Draws (Dibujos) ==========
+
 export type PageDraw = {
   id: string;
   page_id: string;
-  path_d: string; // cadena "d" de SVG (recomendado)
+  path_d: string; // Cadena SVG path
   color: string;
   width: number;
   opacity: number;
@@ -1147,7 +1150,7 @@ export type PageDraw = {
   updated_at: number;
 };
 
-//crear trazo
+// Crear un trazo de dibujo
 export async function createPageDraw(
   pageId: string,
   pathD: string,
@@ -1155,12 +1158,13 @@ export async function createPageDraw(
   width: number,
   opacity: number,
   tool: 'pencil' | 'pen' | 'marker',
-  orderIndex?: number, // opcional, si no lo pasas se calcula
+  orderIndex?: number,
 ) {
   const id = await Crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
 
   if (isAsync) {
+    // Si no se proporciona orderIndex, calcularlo
     if (orderIndex == null) {
       const rows = await (adb as any).getAllAsync?.(
         `SELECT COALESCE(MAX(order_index), 0) + 1 AS next FROM page_draws WHERE page_id = ?`,
@@ -1171,7 +1175,7 @@ export async function createPageDraw(
 
     await runAsync(
       `INSERT INTO page_draws(id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at)
-          VALUES(?,?,?,?,?,?,?,?,?,?)`,
+       VALUES(?,?,?,?,?,?,?,?,?,?)`,
       [id, pageId, pathD, color, width, opacity, tool, orderIndex, now, now],
     );
   } else {
@@ -1193,20 +1197,23 @@ export async function createPageDraw(
       await execTx(
         tx,
         `INSERT INTO page_draws(id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at)
-            VALUES(?,?,?,?,?,?,?,?,?,?)`,
+         VALUES(?,?,?,?,?,?,?,?,?,?)`,
         [id, pageId, pathD, color, width, opacity, tool, orderIndex, now, now],
       );
     });
   }
+  
   return { id, order_index: orderIndex! };
 }
+
+// Listar todos los dibujos de una página
 export async function listPageDraws(pageId: string): Promise<PageDraw[]> {
   if (isAsync) {
     const rows = await (adb as any).getAllAsync?.(
       `SELECT id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at
-            FROM page_draws
-        WHERE page_id = ?
-        ORDER BY order_index ASC, created_at ASC`,
+       FROM page_draws
+       WHERE page_id = ?
+       ORDER BY order_index ASC, created_at ASC`,
       [pageId],
     );
     return rows ?? [];
@@ -1216,9 +1223,9 @@ export async function listPageDraws(pageId: string): Promise<PageDraw[]> {
     legacyDb.readTransaction((tx: any) => {
       tx.executeSql(
         `SELECT id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at
-              FROM page_draws
-          WHERE page_id = ?
-          ORDER BY order_index ASC, created_at ASC`,
+         FROM page_draws
+         WHERE page_id = ?
+         ORDER BY order_index ASC, created_at ASC`,
         [pageId],
         (_: any, res: any) => {
           const out: PageDraw[] = [];
@@ -1233,7 +1240,8 @@ export async function listPageDraws(pageId: string): Promise<PageDraw[]> {
     });
   });
 }
-// borrar
+
+// Eliminar un trazo específico
 export async function deletePageDraw(drawId: string) {
   if (isAsync) {
     await runAsync(`DELETE FROM page_draws WHERE id = ?`, [drawId]);
@@ -1244,15 +1252,6 @@ export async function deletePageDraw(drawId: string) {
   }
 }
 
-export async function deleteAllPageDraws(pageId: string) {
-  if (isAsync) {
-    await runAsync(`DELETE FROM page_draws WHERE page_id = ?`, [pageId]);
-  } else {
-    await txLegacy(async (tx) => {
-      await execTx(tx, `DELETE FROM page_draws WHERE page_id = ?`, [pageId]);
-    });
-  }
-}
 
 // ---------- DAO: Page Snapshot / Preview ----------
 
