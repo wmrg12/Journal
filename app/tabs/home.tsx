@@ -145,6 +145,7 @@ export default function Home() {
 
   return (
     <View style={styles.container}>
+      <View style={{ marginTop: 35 }}>
       <HeaderDiarios
         active={tab}
         onChangeTab={(t) => setTab(t)}
@@ -168,6 +169,7 @@ export default function Home() {
       >
         <Ionicons name="add" size={28} color={uiColors.white} />
       </TouchableOpacity>
+      </View>
     </View>
   );
 }
