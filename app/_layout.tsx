@@ -6,6 +6,7 @@ import { initDb } from '../src/db/dao';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 
+
 SplashScreen.preventAutoHideAsync();
 
 const tokenCache = {
