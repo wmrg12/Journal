@@ -8,7 +8,7 @@ export const uiColors = {
   gray: "#555555",       // texto gris
   brown: "#8B5E3C",      // icono
   rgba: "rgba(233, 106, 83, 0.33)",  // filtro
-  cards: "#efc8b5ff",   
+  cards: "#c1b1b181",   
   bord: "#E0E0E0",
   grayLight: "rgba(255, 255, 255, 0.4)",
   grayO: "#dfdfdfff",  
