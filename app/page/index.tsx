@@ -406,7 +406,12 @@ export default function PageView() {
     [currentPageId, shapeManager],
   );
 
-  // MEMOIZED VALUES - TOOLBAR
+  // CALLBACKS - GESTIÓN DE AUDIO
+  const handleOpenAudioSelector = useCallback(() => {
+    Alert.alert('Audio', 'Aquí se abrirá el selector o grabador de audio.');
+  }, []);
+
+  // MEMOIZED VALUES - CONFIGURACIÓN DE TOOLBAR
   const toolbarItems = useMemo(
     () => [
       {
@@ -449,6 +454,14 @@ export default function PageView() {
         disabled: isLoading,
         isActive: showDrawTools,
       },
+      {
+        id: 'audio',
+        icon: 'volume-up' as const,
+        label: 'Audio',
+        onPress: () => handleOpenAudioSelector(),
+        disabled: isLoading,
+        isActive: false,
+      },
     ],
     [
       handleAddPage,
@@ -456,6 +469,7 @@ export default function PageView() {
       handleOpenTextOptions,
       handleOpenShapeOptions,
       handleOpenDrawTools,
+      handleOpenAudioSelector,
       isLoading,
       showTextOptions,
       showShapeOptions,
