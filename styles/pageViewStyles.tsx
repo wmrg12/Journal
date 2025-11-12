@@ -226,6 +226,73 @@ export default StyleSheet.create({
   },
   drawOptionsTitle: { fontSize: 16, fontWeight: '400', color: uiColors.black },
 
+sizeButtonsRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  marginTop: 12,
+  gap: 6,
+},
+sizeButton: {
+  flex: 1,
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  backgroundColor: uiColors.white,
+  borderRadius: 8,
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderWidth: 1.5,
+  borderColor: '#e0e0e0',
+},
+sizeButtonActive: {
+  backgroundColor: uiColors.primary,
+  borderColor: uiColors.primary,
+},
+sizeButtonText: {
+  fontSize: 13,
+  fontWeight: '600',
+  color: '#666',
+},
+sizeButtonTextActive: {
+  color: '#fff',
+},
+
+// Vista previa del trazo/borrador
+previewContainer: {
+  marginTop: 16,
+  padding: 16,
+  backgroundColor: '#f9f9f9',
+  borderRadius: 12,
+  alignItems: 'center',
+},
+previewLabel: {
+  fontSize: 13,
+  fontWeight: '600',
+  color: '#666',
+  marginBottom: 12,
+},
+previewBox: {
+  width: '100%',
+  height: 60,
+  backgroundColor: '#fff',
+  borderRadius: 8,
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderWidth: 1,
+  borderColor: '#e0e0e0',
+  marginBottom: 8,
+},
+eraserPreview: {
+  // Estilos dinámicos aplicados inline
+},
+strokePreview: {
+  // Estilos dinámicos aplicados inline
+},
+previewSize: {
+  fontSize: 12,
+  fontWeight: '500',
+  color: '#999',
+},
+
   /* ──────────────── SECCIONES DE DIBUJO ──────────────── */
   toolsSection: { marginBottom: 24 },
   toolsRow: { flexDirection: 'row', justifyContent: 'space-between' },
@@ -295,6 +362,16 @@ export default StyleSheet.create({
     backgroundColor: uiColors.primary,
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.06)',
+  },
+
+  containerD: {
+    flex: 1,
+    position: 'relative',
+  },
+  canvasD: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
 
   /* ──────────────── MODAL DE TEXTO ──────────────── */
@@ -390,8 +467,7 @@ export default StyleSheet.create({
   shapeContainer: {
     position: 'absolute',
   },
-
-  // Caja que contiene la forma
+  
   shapeBox: {
     borderWidth: 2,
     borderColor: 'transparent',
