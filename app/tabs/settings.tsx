@@ -27,6 +27,7 @@ export default function Settings() {
 
   return (
     <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <View style={{ marginTop: 35  }}>
       <Text style={{ fontSize: 22, fontWeight: "600", marginBottom: 20 }}>
         Configuración
       </Text>
@@ -48,6 +49,7 @@ export default function Settings() {
           <Text style={{ color: "#fff", fontWeight: "bold" }}>Cerrar sesion</Text>
         )}
       </TouchableOpacity>
+      </View>
     </View>
   );
 }
