@@ -17,10 +17,9 @@ const styles = StyleSheet.create({
   },
 
   message: {
-    marginTop: 12,
-    fontSize: 16,
+    fontSize: 19,
     fontWeight: "600",
-    color: uiColors.black,
+    color: uiColors.danger,
   },
 
   fab: {
@@ -91,14 +90,14 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
 
-  // Franja izquierda (encuadernación)
+  // Franja izquierda 
   bookBinding: {
     position: "absolute",
     left: 0,
     top: 0,
     bottom: 0,
     width: 22,
-    backgroundColor: "rgba(255,255,255,0.28)", // más claro que la tapa
+    backgroundColor: "rgba(255,255,255,0.28)", 
     borderTopLeftRadius: 10,
     borderBottomLeftRadius: 10,
   },

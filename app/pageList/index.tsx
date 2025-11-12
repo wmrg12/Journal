@@ -158,7 +158,10 @@ export default function PagesList() {
             router.replace("/tabs/home");
           }}
         >
-          <Ionicons name="arrow-back" size={28} color={uiColors.danger} />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="arrow-back" size={28} color={uiColors.danger} />
+                <Text style={[styles.message, { marginLeft: 18 }]}>Mis paginas</Text>
+          </View>
         </TouchableOpacity>
         <Text style={S.headerTitle}>{journalName}</Text>
       </View>
@@ -173,7 +176,6 @@ export default function PagesList() {
         ListEmptyComponent={
           <View style={styles.content}>
             <Ionicons name="book-outline" size={80} color={uiColors.brown} />
-            <Text style={styles.message}>No hay paginas aun</Text>
           </View>
         }
         showsVerticalScrollIndicator={false}

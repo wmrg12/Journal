@@ -20,8 +20,9 @@ type DrawToolsModalProps = {
   onStartDrawing: () => void;
 };
 
-const SEGMENTS = 6;
-const paddingH = 14;
+// Configuración de grosores
+const STROKE_SIZES = [1, 2, 3, 4, 5, 6]; 
+const ERASER_SIZES = [10, 15, 20, 30, 40, 50]; 
 
 export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
   visible,
@@ -39,21 +40,77 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
   const dotBarRef = useRef<View>(null);
   const [dotBarLayout, setDotBarLayout] = useState({ x: 0, width: 0 });
 
-  const currentWidth = selectedTool === 'eraser' ? eraserWidth : strokeWidth;
-  const progress = (currentWidth - 1) / (SEGMENTS - 1);
+  // 
+  const isEraser = selectedTool === 'eraser';
+  const sizes = isEraser ? ERASER_SIZES : STROKE_SIZES;
+  const currentValue = isEraser ? eraserWidth : strokeWidth;
+  
+  // 
+  const currentIndex = sizes.findIndex(s => s === currentValue);
+  const safeIndex = currentIndex >= 0 ? currentIndex : 0;
+
+  //
+  const progress = safeIndex / (sizes.length - 1);
   const fillWidth = Math.max(0, dotBarLayout.width * progress);
 
   const hitTestToIndex = (pageX: number) => {
     if (!dotBarLayout.width) return;
     const localX = Math.max(0, Math.min(pageX - dotBarLayout.x, dotBarLayout.width));
     const prog = localX / dotBarLayout.width;
-    const idx = Math.round(prog * (SEGMENTS - 1)) + 1;
+    const idx = Math.round(prog * (sizes.length - 1));
     
-    if (selectedTool === 'eraser') {
-      onEraserWidthChange(idx);
+    const newSize = sizes[idx];
+    if (isEraser) {
+      onEraserWidthChange(newSize);
     } else {
-      onStrokeWidthChange(idx);
+      onStrokeWidthChange(newSize);
     }
+  };
+
+  // Vista previa del trazo/borrador
+  const renderPreview = () => {
+    if (isEraser) {
+      return (
+        <View style={S.previewContainer}>
+          <Text style={S.previewLabel}>Vista previa del borrador</Text>
+          <View style={S.previewBox}>
+            <View
+              style={[
+                S.eraserPreview,
+                {
+                  width: eraserWidth,
+                  height: eraserWidth,
+                  borderRadius: eraserWidth / 2,
+                  backgroundColor: '#FF5252',
+                  opacity: 0.4,
+                },
+              ]}
+            />
+          </View>
+          <Text style={S.previewSize}>{eraserWidth}px</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={S.previewContainer}>
+        <Text style={S.previewLabel}>Vista previa del trazo</Text>
+        <View style={S.previewBox}>
+          <View
+            style={[
+              S.strokePreview,
+              {
+                width: 60,
+                height: strokeWidth,
+                backgroundColor: selectedColor,
+                borderRadius: strokeWidth / 2,
+              },
+            ]}
+          />
+        </View>
+        <Text style={S.previewSize}>{strokeWidth}px</Text>
+      </View>
+    );
   };
 
   return (
@@ -78,6 +135,7 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
             <Text style={S.drawOptionsTitle}>Herramientas de dibujo</Text>
           </View>
 
+          {/* Selección de herramienta */}
           <View style={S.toolsSection}>
             <Text style={S.drawSectionLabel}>Herramienta</Text>
             <View style={S.toolsRow}>
@@ -101,15 +159,21 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
                   <MaterialIcons
                     name={tool.icon as any}
                     size={22}
-                    color={uiColors.black}
+                    color={selectedTool === tool.id ? uiColors.primary : uiColors.black}
                   />
-                  <Text style={S.toolLabelLarge}>{tool.label}</Text>
+                  <Text style={[
+                    S.toolLabelLarge,
+                    selectedTool === tool.id && { color: uiColors.primary, fontWeight: '600' }
+                  ]}>
+                    {tool.label}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
           </View>
 
-          {selectedTool !== 'eraser' && (
+          {/* Selector de color */}
+          {!isEraser && (
             <View style={S.colorSectionDraw}>
               <Text style={S.drawSectionLabel}>Color</Text>
               <ScrollView
@@ -135,16 +199,19 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
             </View>
           )}
 
+          {/* Control de grosor mejorado */}
           <View style={S.thicknessSection}>
             <Text style={S.drawSectionLabel}>
-              {selectedTool === 'eraser' ? 'Grosor del borrador' : 'Grosor del trazo'}
+              {isEraser ? 'Tamaño del borrador' : 'Grosor del trazo'}
             </Text>
 
+            {/* Barra deslizable con puntos */}
             <View
               ref={dotBarRef}
               style={S.dotBar}
               onLayout={() => {
                 dotBarRef.current?.measureInWindow((px, py, w) => {
+                  const paddingH = 14;
                   setDotBarLayout({
                     x: px + paddingH,
                     width: w - paddingH * 2,
@@ -156,40 +223,43 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
               onResponderGrant={(e) => hitTestToIndex(e.nativeEvent.pageX)}
               onResponderMove={(e) => hitTestToIndex(e.nativeEvent.pageX)}
             >
+              {/* Línea de fondo */}
               <View style={S.dotBarTrack} />
+              {/* Línea de progreso */}
               <View style={[S.dotBarFill, { width: fillWidth }]} />
-              {Array.from({ length: SEGMENTS }).map((_, i) => {
-                const idx = i + 1;
-                const active = idx === currentWidth;
-                const passed = idx < currentWidth;
-                const size = 6 + i * 3;
+              
+              {/* Puntos de selección */}
+              {sizes.map((size, i) => {
+                const active = i === safeIndex;
+                const passed = i < safeIndex;
+                const dotSize = 8 + i * 2;
+                
                 return (
                   <TouchableOpacity
-                    key={idx}
+                    key={i}
                     onPress={() => {
-                      if (selectedTool === 'eraser') {
-                        onEraserWidthChange(idx);
+                      if (isEraser) {
+                        onEraserWidthChange(size);
                       } else {
-                        onStrokeWidthChange(idx);
+                        onStrokeWidthChange(size);
                       }
                     }}
                     activeOpacity={0.85}
                     style={S.dotTap}
                     accessibilityRole="button"
-                    accessibilityLabel={`Grosor ${idx}`}
+                    accessibilityLabel={`${isEraser ? 'Tamaño' : 'Grosor'} ${size}`}
                     accessibilityState={{ selected: active }}
                   >
                     <View
                       style={[
                         S.dotSelectable,
                         {
-                          width: size,
-                          height: size,
-                          borderRadius: size / 2,
-                          backgroundColor:
-                            active || passed ? uiColors.primary : '#cfcfcf',
-                          opacity: active ? 1 : passed ? 0.45 : 1,
-                          transform: [{ scale: active ? 1.1 : 1 }],
+                          width: dotSize,
+                          height: dotSize,
+                          borderRadius: dotSize / 2,
+                          backgroundColor: active || passed ? uiColors.primary : '#cfcfcf',
+                          opacity: active ? 1 : passed ? 0.5 : 1,
+                          transform: [{ scale: active ? 1.2 : 1 }],
                         },
                       ]}
                     />
@@ -197,10 +267,41 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
                 );
               })}
             </View>
+
+            {/* Botones de tamaño predefinido */}
+            <View style={S.sizeButtonsRow}>
+              {sizes.map((size, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={[
+                    S.sizeButton,
+                    currentValue === size && S.sizeButtonActive,
+                  ]}
+                  onPress={() => {
+                    if (isEraser) {
+                      onEraserWidthChange(size);
+                    } else {
+                      onStrokeWidthChange(size);
+                    }
+                  }}
+                >
+                  <Text style={[
+                    S.sizeButtonText,
+                    currentValue === size && S.sizeButtonTextActive,
+                  ]}>
+                    {size}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
+          {/* Vista previa */}
+          {renderPreview()}
+
+          {/* Botón de acción */}
           <TouchableOpacity
-            style={[S.addTextButton, { marginTop: 12 }]}
+            style={[S.addTextButton, { marginTop: 16 }]}
             onPress={onStartDrawing}
             activeOpacity={0.7}
           >
