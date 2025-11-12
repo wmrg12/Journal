@@ -77,11 +77,13 @@ export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={publishableKey!} tokenCache={tokenCache}>
       <Stack>
-        <Stack.Screen name="login/index" options={{ title: 'Iniciar Sesion' }} />
-        <Stack.Screen name="createPage/index" options={{ title: 'Crear pagina' }} />
+        <Stack.Screen name="login/index" options={{ headerShown: false }} />
+        <Stack.Screen name="createPage/index" options={{ headerShown: false }} />
         <Stack.Screen name="page/index" options={{ headerShown: false }} />
         <Stack.Screen name="pageList/index" options={{ headerShown: false }} />
-        <Stack.Screen name="editCover/index" options={{ title: 'Editar portada' }} />
+        <Stack.Screen name="editCover/index" options={{ headerShown: false }} />
+        <Stack.Screen name="tabs" options={{ headerShown: false }} />
+        <Stack.Screen name="createDiary/index" options={{ headerShown: false }} />
       </Stack>
     </ClerkProvider>
   );
