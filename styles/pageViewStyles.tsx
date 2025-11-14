@@ -791,4 +791,46 @@ previewSize: {
     fontWeight: '600',
     color: '#FFFFFF',
   },
+
+  imageContainer: {
+        position: 'absolute',
+        borderWidth: 2,
+        borderRadius: 8,
+    },
+    actions: {
+        position: 'absolute',
+        flexDirection: 'row',
+        top: -20,
+        right: 0,
+    },
+    button: {
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        padding: 4,
+        marginLeft: 4,
+        borderRadius: 4,
+    },
+    // en pageViewStyles (S)
+/*imageContainer: {
+  position: 'absolute',
+  borderWidth: 2,
+  borderRadius: 8,
+  overflow: 'visible',
+},
+actions: {
+  position: 'absolute',
+  top: -10,
+  left: -10,
+  flexDirection: 'row',
+  gap: 8,
+},
+button: {
+  width: 32,
+  height: 32,
+  borderRadius: 16,
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: 'rgba(0,0,0,0.6)',
+  marginHorizontal: 4,
+},
+*/
 });

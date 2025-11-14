@@ -10,7 +10,7 @@ export async function initDb() {
 
   // -------- LEGACY (openDatabase) --------
   if (typeof anySQLite.openDatabase === 'function') {
-    legacyDb = anySQLite.openDatabase('journal.db');
+    legacyDb = anySQLite.openDatabase('journali.db');
     isAsync = false;
 
     // PRAGMA FK
@@ -165,7 +165,7 @@ await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_page_shapes_page ON page_shapes
 
   // -------- ASYNC (openDatabaseAsync) --------
   if (typeof anySQLite.openDatabaseAsync === 'function') {
-    adb = await anySQLite.openDatabaseAsync('journal.db');
+    adb = await anySQLite.openDatabaseAsync('journali.db');
     isAsync = true;
 
     await (adb as any).execAsync?.('PRAGMA foreign_keys = ON;');
