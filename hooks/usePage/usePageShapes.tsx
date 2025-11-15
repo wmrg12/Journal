@@ -1,13 +1,13 @@
-import { useState, useCallback, useRef } from 'react';
-import { Alert, Animated } from 'react-native';
 import {
     createPageShape,
-    listPageShapes,
-    updatePageShape,
     deletePageShape,
+    listPageShapes,
     PageShape,
     ShapeType,
+    updatePageShape,
 } from '@/src/db/dao';
+import { useCallback, useRef, useState } from 'react';
+import { Alert, Animated } from 'react-native';
 
 export const usePageShapes = (
     currentPageId: string | null,
@@ -147,13 +147,18 @@ export const usePageShapes = (
 
             const offsetX = 20;
             const offsetY = 20;
+            
+            // Asegurar que width y height son números
+            const shapeWidth = Number(shape.width) || 100;
+            const shapeHeight = Number(shape.height) || 100;
+            
             let newX = shape.position_x + offsetX;
             let newY = shape.position_y + offsetY;
 
             if (canvasWidth > 0 && canvasHeight > 0) {
                 if (
-                    newX + shape.width > canvasWidth ||
-                    newY + shape.height > canvasHeight
+                    newX + shapeWidth > canvasWidth ||
+                    newY + shapeHeight > canvasHeight
                 ) {
                     const alternatives = [
                         { x: shape.position_x - offsetX, y: shape.position_y + offsetY }, // Izquierda-abajo
@@ -168,8 +173,8 @@ export const usePageShapes = (
                         if (
                             alt.x >= 0 &&
                             alt.y >= 0 &&
-                            alt.x + shape.width <= canvasWidth &&
-                            alt.y + shape.height <= canvasHeight
+                            alt.x + shapeWidth <= canvasWidth &&
+                            alt.y + shapeHeight <= canvasHeight
                         ) {
                             newX = alt.x;
                             newY = alt.y;
@@ -179,13 +184,13 @@ export const usePageShapes = (
                     }
 
                     if (!foundValid) {
-                        newX = (canvasWidth - shape.width) / 2;
-                        newY = (canvasHeight - shape.height) / 2;
+                        newX = (canvasWidth - shapeWidth) / 2;
+                        newY = (canvasHeight - shapeHeight) / 2;
                     }
                 }
 
                 // Aplicar límites finales 
-                const clamped = clampToCanvas(newX, newY, shape.width, shape.height);
+                const clamped = clampToCanvas(newX, newY, shapeWidth, shapeHeight);
                 newX = clamped.x;
                 newY = clamped.y;
             }
@@ -196,8 +201,8 @@ export const usePageShapes = (
                 shape.color,
                 newX,  
                 newY,  
-                shape.width,
-                shape.height,
+                shapeWidth,
+                shapeHeight,
             );
 
             await loadShapes(currentPageId);
