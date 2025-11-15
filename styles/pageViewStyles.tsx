@@ -1,7 +1,11 @@
-import { StyleSheet } from 'react-native';
 import { uiColors } from '@/constants/colors';
+import { Dimensions, StyleSheet } from 'react-native';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const STICKER_SIZE = (SCREEN_WIDTH - 80) / 4;
 
 export default StyleSheet.create({
+
   /* ──────────────── CONTENEDORES PRINCIPALES ──────────────── */
   container: { flex: 1 },
   pageContent: { flex: 1 },
@@ -397,6 +401,130 @@ previewSize: {
     borderBottomWidth: 1,
     borderBottomColor: uiColors.bord,
   },
+  /* ──────────────── STICKER PICKER MODAL ──────────────── */
+  stickerModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  
+  },
+  stickerModalBackground: { flex: 1 },
+  stickerModalContainer: {
+    backgroundColor: uiColors.white,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    paddingTop: 20,
+    paddingHorizontal: 16,
+    paddingBottom: 30,
+    maxHeight: '60%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  stickerModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  stickerModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 12,
+    color: '#333',
+  },
+  stickerModalGridContainer: { paddingBottom: 10 },
+  stickerModalGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  stickerModalItem: { width: STICKER_SIZE, marginBottom: 20 },
+  stickerModalBox: {
+    width: STICKER_SIZE,
+    height: STICKER_SIZE,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  stickerModalImage: { width: '75%', height: '75%' },
+  stickerModalLabel: { fontSize: 12, color: '#666', marginTop: 6, textAlign: 'center' },
+
+  /* ──────────────── STICKER CONTROLS (Draggable) ──────────────── */
+  stickerContainer: { position: 'absolute' },
+  stickerImage: { width: '100%', height: '100%' },
+  stickerSelectionBorder: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    right: -2,
+    bottom: -2,
+    borderWidth: 2,
+    borderColor: uiColors.primary,
+    borderStyle: 'dashed',
+    borderRadius: 4,
+  },
+  stickerControlButton: {
+    position: 'absolute',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: uiColors.primary,
+    elevation: 2,
+  },
+  stickerDeleteButton: { top: -20, left: -20 },
+  stickerDuplicateButton: { top: -20, right: -20 },
+  stickerLockButton: { bottom: -20, left: -20 },
+  stickerLockButtonLocked: { backgroundColor: uiColors.primary },
+  stickerResizeHandle: {
+    position: 'absolute',
+    bottom: -20,
+    right: -20,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: uiColors.primary,
+    elevation: 2,
+  },
+  stickerRotateHandle: {
+    position: 'absolute',
+    bottom: -24,
+    left: '50%',
+    transform: [{ translateX: -14 }],
+    width: 28,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stickerRotateHandleInner: {
+    position: 'absolute',
+    borderRadius: 4,
+    backgroundColor: uiColors.primary,
+    borderColor: uiColors.primary,
+    width: 18,
+    height: 8,
+  },
+  stickerLockedIndicator: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 8,
+    padding: 4,
+  },
+  stickerIconText: { fontSize: 16, fontWeight: '600', textAlign: 'center' },
   textIconContainer: {
     width: 30,
     height: 30,
@@ -680,6 +808,21 @@ previewSize: {
     fontSize: 16,
   },
 
+  // modal color formas
+
+  shapeOptionsContainerColor: {
+    backgroundColor: uiColors.white,
+    borderTopLeftRadius: 35,
+    borderTopRightRadius: 35,
+    padding: 20,
+    minHeight: 200,
+    shadowColor: uiColors.black,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+
   /* ──────────────── MODAL DE AUDIO ──────────────── */
   audioModalOverlay: {
     flex: 1,
@@ -790,5 +933,145 @@ previewSize: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+
+ /* ──────────────── MODAL STICKERS ──────────────── */
+
+  stickerOptionsContainer: {
+    backgroundColor: uiColors.white,
+    borderTopLeftRadius: 35,
+    borderTopRightRadius: 35,
+    padding: 20,
+    maxHeight: '80%',
+    shadowColor: uiColors.black,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+
+  stickerIconContainer: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    backgroundColor: uiColors.grayO,
+  },
+
+  stickerOptionsTitle: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: uiColors.black,
+  },
+
+  stickerToolsSection: {
+    marginBottom: 20,
+  },
+
+  stickerSectionLabel: {
+    fontSize: 15,
+    fontWeight: '500',
+    marginBottom: 8,
+    color: uiColors.black,
+  },
+
+  stickerCategoriesScroll: {
+    marginHorizontal: -4,
+  },
+
+  stickerToolsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 4,
+  },
+
+  stickerToolButtonLarge: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: uiColors.grayO,
+    marginRight: 8,
+    flexDirection: 'row',
+    backgroundColor: uiColors.white,
+  },
+
+  stickerToolButtonActive: {
+    backgroundColor: uiColors.cards,
+    borderWidth: 2,
+    borderColor: uiColors.primary,
+  },
+
+  stickerCategoryIcon: {
+    fontSize: 20,
+    marginRight: 4,
+  },
+
+  stickerToolLabelLarge: {
+    fontSize: 12,
+    color: uiColors.black,
+    fontWeight: '500',
+  },
+
+  stickerStickersSection: {
+    flex: 1,
+  },
+
+  stickerStickersContainer: {
+    flex: 1,
+  },
+
+  stickerStickersGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingVertical: 8,
+  },
+
+  stickerItem: {
+    width: STICKER_SIZE,
+    height: STICKER_SIZE,
+    padding: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  stickerImageContainer: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 12,
+    backgroundColor: uiColors.grayO,
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+
+  stickerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 8,
+    justifyContent: 'flex-start',
+  },
+  stickerButton: {
+    width: '25%', // 4 columnas
+    aspectRatio: 1,
+    padding: 4,
+  },
+  stickerWrapper: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    padding: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  stickerImg: {
+    width: '100%',
+    height: '100%',
   },
 });
