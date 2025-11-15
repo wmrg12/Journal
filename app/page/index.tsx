@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { View, ActivityIndicator, Alert, LayoutChangeEvent } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, BackHandler, LayoutChangeEvent, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Constants
@@ -13,32 +13,37 @@ import S from '@/styles/pageViewStyles';
 import {
   createPage,
   deletePage,
-  getTotalPages,
   getPageColor,
   getPageId,
-  listPageTexts,
+  getTotalPages,
   listPageDraws,
+  listPageTexts,
+  updatePageShape
 } from '@/src/db/dao';
 
 // Toolbars
-import PageToolbar from '@/components/optionsPage/TolbarUp';
 import { BottomToolbar } from '@/components/optionsPage/TolbarDown';
+import PageToolbar from '@/components/optionsPage/TolbarUp';
 
 // Canvas Skia
 import SkiaCanvas from '@/components/optionsPage/PageCanvas';
 
 // Modals
-import { DrawToolsModal } from '@/components/optionsPage/DrawToolsModal';
-import { DraggableText } from '@/components/optionsPage/DraggableText';
-import { DraggableShape } from '@/components/optionsPage/DraggableShape';
-import { TextOptionsModal } from '@/components/optionsPage/TextOptionsModal';
-import { ShapeOptionsModal } from '@/components/optionsPage/ShapeOptionsModal';
 import { AudioSelector } from '@/components/optionsPage/AudioSelector';
+import { DraggableShape } from '@/components/optionsPage/DraggableShape';
+import { PageStickerComponent } from '@/components/optionsPage/DraggableSticker';
+import { DraggableText } from '@/components/optionsPage/DraggableText';
+import { DrawToolsModal } from '@/components/optionsPage/DrawToolsModal';
+import { ShapeColorEditModal } from '@/components/optionsPage/ShapeColorEditModal';
+import { ShapeOptionsModal } from '@/components/optionsPage/ShapeOptionsModal';
+import { StickerPickerModal } from '@/components/optionsPage/StickerOptionsModal';
+import { TextOptionsModal } from '@/components/optionsPage/TextOptionsModal';
 
 // Hooks
 import { useSkiaDrawing } from '@/hooks/usePage/usePageDrawing';
-import { usePageText } from '@/hooks/usePage/usePageTexts';
 import { usePageShapes } from '@/hooks/usePage/usePageShapes';
+import { usePageStickers } from '@/hooks/usePage/usePageStickers';
+import { usePageText } from '@/hooks/usePage/usePageTexts';
 
 // Types
 import { Params } from '@/types';
@@ -53,10 +58,14 @@ export default function PageView() {
   const [showDrawTools, setShowDrawTools] = useState(false);
   const [showTextOptions, setShowTextOptions] = useState(false);
   const [showShapeOptions, setShowShapeOptions] = useState(false);
+  const [showStickerPicker, setShowStickerPicker] = useState(false);
   const [isAudioModalOpen, setIsAudioModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPageId, setCurrentPageId] = useState<string | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+
+  const [showShapeColorModal, setShowShapeColorModal] = useState(false);
+  const [selectedShapeForColor, setSelectedShapeForColor] = useState<any>(null);
 
   // MEMOIZED VALUES
   const pageNum = useMemo(() => Math.max(Number(pageNumber ?? 1) || 1, 1), [pageNumber]);
@@ -66,6 +75,7 @@ export default function PageView() {
   const drawing = useSkiaDrawing(currentPageId);
   const textManager = usePageText(currentPageId, canvasSize.width, canvasSize.height);
   const shapeManager = usePageShapes(currentPageId, canvasSize.width, canvasSize.height);
+  const stickerManager = usePageStickers(currentPageId);
 
   // HANDLER PARA MEDIR EL CANVAS
   const handleCanvasLayout = useCallback((event: LayoutChangeEvent) => {
@@ -201,6 +211,9 @@ export default function PageView() {
             console.error('Error loading page draws:', e);
             if (mounted) drawing.setStrokes([]);
           }
+
+          // Cargar stickers — el hook `usePageStickers` ya carga stickers cuando `pageId` cambia,
+          // por lo que no llamamos a `refresh()` aquí para evitar carreras con `setCurrentPageId`.
         } else if (mounted) {
           setCurrentPageId(null);
           textManager.setPageTexts([]);
@@ -225,7 +238,6 @@ export default function PageView() {
   // EFFECTS - LIMPIAR TRAZOS DE BORRADOR AL DESMONTAR
   useEffect(() => {
     return () => {
-      // Limpiar trazos de borrador antes de salir
       drawing.clearEraserStrokes();
     };
   }, []);
@@ -331,9 +343,8 @@ export default function PageView() {
 
   const navigateToPage = useCallback(
     async (newPageNum: number) => {
-      // Esperar a que se guarden los trazos pendientes
       await drawing.waitForPendingSaves();
-      
+
       router.replace({
         pathname: '/page',
         params: {
@@ -365,6 +376,38 @@ export default function PageView() {
     setShowShapeOptions(true);
   }, [drawing]);
 
+  const handleDoublePresShape = useCallback((shape: any) => {
+    drawing.setDrawMode(false);
+    setSelectedShapeForColor(shape);
+    setShowShapeColorModal(true);
+  }, [drawing]);
+
+  const handleSaveShapeColor = useCallback(
+    async (color: string) => {
+      if (!selectedShapeForColor || !currentPageId) return;
+
+      try {
+        await updatePageShape(selectedShapeForColor.id, { color });
+
+        // Recargar shapes para sincronizar desde BD
+        if (currentPageId) {
+          await shapeManager.loadShapes(currentPageId);
+        }
+
+        setShowShapeColorModal(false);
+        setSelectedShapeForColor(null);
+      } catch (error) {
+        console.error('Error updating shape color:', error);
+      }
+    },
+    [selectedShapeForColor, currentPageId, shapeManager],
+  );
+
+  const handleOpenStickerPicker = useCallback(() => {
+    drawing.setDrawMode(false);
+    setShowStickerPicker(true);
+  }, [drawing]);
+
   const handleConfirmText = useCallback(() => {
     textManager.handleConfirmText(() => setShowTextOptions(false));
   }, [textManager]);
@@ -384,34 +427,42 @@ export default function PageView() {
   );
 
   const handleNavigateBack = useCallback(async () => {
-    // Esperar a que se guarden los trazos pendientes
     await drawing.waitForPendingSaves();
-    
+
     router.replace({
       pathname: '/pageList',
       params: { journalId, color: String(bg) },
     });
   }, [router, journalId, bg, drawing]);
 
-  const handleChangeShapeColor = useCallback(
-    async (shape: any) => {
-      const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
-      const currentIndex = colors.indexOf(shape.color);
-      const nextColor = colors[(currentIndex + 1) % colors.length];
+  // Capturar el botón back del dispositivo para evitar repetición de pantallas
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // Ejecutar la navegación sin esperar (se ejecutará en background)
+      handleNavigateBack();
+      return true; // true = manejamos el evento, no dejar el default
+    });
 
-      shapeManager.setSelectedShapeColor(nextColor);
+    return () => backHandler.remove();
+  }, [handleNavigateBack]);
 
-      if (currentPageId) {
-        await shapeManager.loadShapes(currentPageId);
-      }
+  // CALLBACKS - GESTIÓN DE SHAPES
+  const handleSelectSticker = useCallback(
+    async (stickerId: string, category: string) => {
+      // Agregar sticker en el centro del canvas. Si canvas no tiene tamaño aún, usar posición por defecto.
+      const centerX = canvasSize.width > 0 ? canvasSize.width / 2 - 40 : 100;
+      const centerY = canvasSize.height > 0 ? canvasSize.height / 2 - 40 : 100;
+
+      await stickerManager.addSticker(stickerId, category, Number(centerX), Number(centerY), 80, 80);
     },
-    [currentPageId, shapeManager],
+    [stickerManager, canvasSize],
   );
 
   // CALLBACKS - GESTIÓN DE AUDIO
   const handleOpenAudioSelector = useCallback(() => {
     setIsAudioModalOpen(true);
   }, []);
+
   const handleAudioSelected = (audioUri: string, audioType: 'recording' | 'file') => {
     console.log('Audio seleccionado:', audioUri, audioType);
   };
@@ -452,6 +503,14 @@ export default function PageView() {
         isActive: showShapeOptions,
       },
       {
+        id: 'sticker',
+        icon: 'mood' as const,
+        label: 'Sticker',
+        onPress: handleOpenStickerPicker,
+        disabled: isLoading,
+        isActive: showStickerPicker,
+      },
+      {
         id: 'draw',
         icon: 'edit' as const,
         label: 'Dibujar',
@@ -473,11 +532,13 @@ export default function PageView() {
       handleDeletePage,
       handleOpenTextOptions,
       handleOpenShapeOptions,
+      handleOpenStickerPicker,
       handleOpenDrawTools,
       handleOpenAudioSelector,
       isLoading,
       showTextOptions,
       showShapeOptions,
+      showStickerPicker,
       showDrawTools,
     ],
   );
@@ -498,6 +559,14 @@ export default function PageView() {
       return a.created_at - b.created_at;
     });
   }, [shapeManager.pageShapes, shapeManager.selectedShapeId]);
+
+  const sortedPageStickers = useMemo(() => {
+    return stickerManager.stickers.sort((a, b) => {
+      if (a.id === stickerManager.selectedStickerId) return 1;
+      if (b.id === stickerManager.selectedStickerId) return -1;
+      return a.created_at - b.created_at;
+    });
+  }, [stickerManager.stickers, stickerManager.selectedStickerId]);
 
   const TOOLBAR_BG = uiColors.background;
 
@@ -531,10 +600,7 @@ export default function PageView() {
 
       {/* Contenido de la página */}
       <View style={S.pageContent}>
-        <View
-          style={[S.pageCard, { backgroundColor: bg }]}
-          onLayout={handleCanvasLayout}
-        >
+        <View style={[S.pageCard, { backgroundColor: bg }]} onLayout={handleCanvasLayout}>
           <SkiaCanvas
             width={canvasSize.width}
             height={canvasSize.height}
@@ -548,6 +614,7 @@ export default function PageView() {
             onDeselect={() => {
               textManager.setSelectedTextId(null);
               shapeManager.setSelectedShapeId(null);
+              stickerManager.setSelectedStickerId(null);
             }}
           >
             {/* Textos arrastrables */}
@@ -586,9 +653,24 @@ export default function PageView() {
                 onToggleLock={shapeManager.handleToggleLock}
                 onSelect={(id) => shapeManager.setSelectedShapeId(id)}
                 onDuplicate={shapeManager.handleDuplicateShape}
-                onChangeColor={handleChangeShapeColor}
+                onDoublePress={handleDoublePresShape}
                 canvasWidth={canvasSize.width}
                 canvasHeight={canvasSize.height}
+              />
+            ))}
+
+            {/* Stickers arrastrables */}
+            {sortedPageStickers.map((sticker) => (
+              <PageStickerComponent
+                key={sticker.id}
+                sticker={sticker}
+                isSelected={stickerManager.selectedStickerId === sticker.id}
+                onSelect={() => stickerManager.setSelectedStickerId(sticker.id)}
+                onUpdate={(updates) => stickerManager.updateSticker(sticker.id, updates)}
+                onDelete={() => stickerManager.removeSticker(sticker.id)}
+                onDuplicate={() => stickerManager.duplicateSticker(sticker.id)}
+                onToggleLock={() => stickerManager.toggleLock(sticker.id, !sticker.is_locked)}
+                scale={1}
               />
             ))}
           </SkiaCanvas>
@@ -626,6 +708,14 @@ export default function PageView() {
         }}
       />
 
+      {/* Modal para editar color de una forma existente (doble tap) */}
+      <ShapeColorEditModal
+        visible={showShapeColorModal}
+        onClose={() => setShowShapeColorModal(false)}
+        initialColor={selectedShapeForColor?.color ?? shapeManager.selectedShapeColor}
+        onSaveColor={handleSaveShapeColor}
+      />
+
       {/* Modal de herramientas de dibujo */}
       <DrawToolsModal
         visible={showDrawTools}
@@ -639,6 +729,13 @@ export default function PageView() {
         eraserWidth={drawing.eraserWidth}
         onEraserWidthChange={drawing.setEraserWidth}
         onStartDrawing={handleStartDrawing}
+      />
+
+      {/* Modal de selector de stickers */}
+      <StickerPickerModal
+        visible={showStickerPicker}
+        onClose={() => setShowStickerPicker(false)}
+        onSelectSticker={handleSelectSticker}
       />
 
       {/* Modal de selector de audio */}
