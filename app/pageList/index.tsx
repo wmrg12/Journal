@@ -1,19 +1,19 @@
 import { uiColors } from "@/constants/colors";
 import {
-  getPageColor,
-  getTotalPages,
   createPage,
+  getPageColor,
   getPageId,
-  listPageTexts,
+  getTotalPages,
   listPageDraws,
   listPageShapes,
+  listPageTexts,
 } from "@/src/db/dao";
 import styles from "@/styles/globalStyles";
-import { Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
-import React, { useEffect, useState, useCallback } from "react";
-import { FlatList, Text, TouchableOpacity, View } from "react-native";
 import S from "@/styles/pageListStyles";
+import { Ionicons } from "@expo/vector-icons";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { BackHandler, FlatList, Keyboard, Text, TouchableOpacity, View } from "react-native";
 
 type PageItem = {
   number: number;
@@ -73,6 +73,8 @@ export default function PagesList() {
 
   useFocusEffect(
     useCallback(() => {
+      // Ocultar el teclado al enfocar la pantalla para evitar desplazamientos
+      Keyboard.dismiss();
       loadPages();
     }, [loadPages])
   );
@@ -125,6 +127,10 @@ export default function PagesList() {
           <View
             style={[S.pagePreviewPortrait, { backgroundColor: item.color }]}
           >
+            {/* Badge con número de página */}
+            <View style={S.pageNumberBadge}>
+              <Text style={S.pageNumberText}>{item.number}</Text>
+            </View>
             {/* Iconos de contenido en la mini página */}
             <View style={{ position: "absolute", bottom: 4, right: 4, flexDirection: "row", gap: 4 }}>
               {item.hasText && (
@@ -149,6 +155,16 @@ export default function PagesList() {
       </TouchableOpacity>
     </View>
   );
+
+  // Capturar el botón back del dispositivo para ir a tabs/home
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      router.replace('/tabs/home');
+      return true; // true = manejamos el evento
+    });
+
+    return () => backHandler.remove();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -179,6 +195,11 @@ export default function PagesList() {
           </View>
         }
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        scrollEnabled={true}
+        removeClippedSubviews={false}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
       />
 
       <TouchableOpacity style={S.fab} onPress={handleCreatePage}>
