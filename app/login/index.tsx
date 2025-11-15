@@ -1,9 +1,9 @@
-import { View, Text, Image, TouchableOpacity, ActivityIndicator, Dimensions } from "react-native";
-import React from "react";
 import styles from "@/styles/loginStyles";
-import * as WebBrowser from "expo-web-browser";
-import { useOAuth, useAuth } from "@clerk/clerk-expo";
+import { useAuth, useOAuth } from "@clerk/clerk-expo";
 import * as Linking from "expo-linking";
+import * as WebBrowser from "expo-web-browser";
+import React from "react";
+import { ActivityIndicator, Dimensions, Image, Keyboard, Text, TouchableOpacity, View } from "react-native";
 import login1 from "../../assets/images/login1.png";
 import login2 from "../../assets/images/login2.png";
 import login3 from "../../assets/images/login3.png";
@@ -31,6 +31,7 @@ export default function LoginScreen() {
   // Frecuencia de sesiones
   React.useEffect(() => {
     if (isSignedIn) {
+      Keyboard.dismiss();
       const homeUrl = Linking.createURL("/tabs/home", { scheme: "myapp" });
       Linking.openURL(homeUrl);
     }
@@ -47,6 +48,7 @@ export default function LoginScreen() {
       const { createdSessionId, setActive, signIn, signUp } = await startOAuthFlow({ redirectUrl });
 
       if (createdSessionId) {
+        Keyboard.dismiss();
         await setActive?.({ session: createdSessionId });
         const homeUrl = Linking.createURL("/tabs/home", { scheme: "myapp" });
         Linking.openURL(homeUrl);
@@ -54,6 +56,7 @@ export default function LoginScreen() {
       }
 
       if (signIn || signUp) {
+        Keyboard.dismiss();
         const homeUrl = Linking.createURL("/tabs/home", { scheme: "myapp" });
         Linking.openURL(homeUrl);
         return;
