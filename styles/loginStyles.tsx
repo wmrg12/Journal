@@ -1,7 +1,16 @@
-import { StyleSheet, Dimensions } from "react-native";
 import { uiColors } from "@/constants/colors";
+import { Dimensions, StyleSheet } from "react-native";
 
-const { height } = Dimensions.get("window");
+const { height, width } = Dimensions.get("window");
+
+// Helpers responsivos
+const isSmallPhone = width < 375;
+const isMediumPhone = width >= 375 && width < 412;
+const getResponsiveValue = (small: number, medium: number, large: number): number => {
+  if (isSmallPhone) return small;
+  if (isMediumPhone) return medium;
+  return large;
+};
 
 export default StyleSheet.create({
  
@@ -15,37 +24,37 @@ export default StyleSheet.create({
     flex: 2, 
   },
   image: {
-    height: height / 4, 
+    height: height / 3, 
     resizeMode: "cover",
   },
   imageVertical: {
-  width: undefined,     
-  height: 350,         
-  aspectRatio: 1 / 1.5,
-  resizeMode: "contain", 
-  position: "absolute",
-  left: -20,  
-  top: 0,   
-  marginTop: 110,
+    width: undefined,
+    height: getResponsiveValue(300, 320, 350),
+    aspectRatio: 1 / 1.5,
+    resizeMode: "contain",
+    position: "absolute",
+    left: getResponsiveValue(-20, -25, -20),
+    top: 0,
+    marginTop: getResponsiveValue(200, 100, 110),
   },
   imageVertical2: {
-  width: undefined,     
-  height: 280,         
-  aspectRatio: 1 / 1.5,
-  resizeMode: "contain", 
-  position: "absolute",
-  left: 100,  
-  top: 0,   
-  marginTop: 190,
+    width: undefined,
+    height: getResponsiveValue(300, 250, 280),
+    aspectRatio: 1 / 1.5,
+    resizeMode: "contain",
+    position: "absolute",
+    left: getResponsiveValue(80, 85, 100),
+    top: 0,
+    marginTop: getResponsiveValue(210, 170, 190),
   },
   card: {
     flex: 1,
     backgroundColor: "white",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    padding: 70,
-    paddingVertical: 40,   
-    paddingHorizontal: 45,
+    borderTopLeftRadius: getResponsiveValue(30, 35, 40),
+    borderTopRightRadius: getResponsiveValue(30, 35, 40),
+    padding: getResponsiveValue(40, 55, 70),
+    paddingVertical: getResponsiveValue(30, 35, 40),
+    paddingHorizontal: getResponsiveValue(30, 38, 45),
     shadowColor: uiColors.black,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
@@ -54,7 +63,7 @@ export default StyleSheet.create({
     justifyContent: "center",
   },
   title: {
-    fontSize: 40,
+    fontSize: getResponsiveValue(40, 34, 40),
     fontWeight: "bold",
     color: uiColors.primary,
     textAlign: "left",
@@ -62,22 +71,22 @@ export default StyleSheet.create({
     alignSelf: "flex-start",
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: getResponsiveValue(13, 12, 13),
     color: uiColors.gray,
     textAlign: "left",
-    marginTop: 10, 
+    marginTop: 10,
     marginBottom: 25,
   },
   button: {
     backgroundColor: uiColors.primary,
-    paddingVertical: 15,
+    paddingVertical: getResponsiveValue(12, 14, 15),
     borderRadius: 8,
     alignItems: "center",
   },
   buttonText: {
     color: "white",
     fontWeight: "bold",
-    fontSize: 16,
+    fontSize: getResponsiveValue(17, 15, 16),
   },
 
 });
