@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect, useMemo, memo } from 'react';
-import { View, Text, TouchableOpacity, Animated, PanResponder } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
 import { uiColors } from '@/constants/colors';
 import { TextFont, fontFamilyMap } from '@/constants/fonts';
 import { updatePageText } from '@/src/db/dao';
 import S from '@/styles/pageViewStyles';
 import { PageText } from '@/types';
+import { MaterialIcons } from '@expo/vector-icons';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, PanResponder, Text, TouchableOpacity, View } from 'react-native';
 
 type DraggableTextProps = {
   text: PageText;
@@ -260,7 +260,7 @@ const DraggableTextBase = ({
       onPanResponderMove: (evt) => {
         if (lockedRef.current) return;
         
-        const deltaY = resizeStartYRef.current - evt.nativeEvent.pageY;
+        const deltaY = evt.nativeEvent.pageY - resizeStartYRef.current;
         let nextSize = Math.max(8, fontSizeStartRef.current + deltaY / 4);
         
         if (canvasWidth > 0 && canvasHeight > 0) {
@@ -357,7 +357,7 @@ const DraggableTextBase = ({
           }}
           style={[
             S.textBox,
-            isSelected && S.textBoxSelected,
+            isSelected && { borderWidth: 2, borderColor: uiColors.primary, borderStyle: 'dashed' },
             locked && S.textBoxLocked,
           ]}
         >
