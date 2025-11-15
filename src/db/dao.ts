@@ -97,12 +97,34 @@ export async function initDb() {
       
       // Tabla para formas geometricas
       await execTx(
+        tx,
+          `CREATE TABLE IF NOT EXISTS page_shapes(
+          id TEXT PRIMARY KEY NOT NULL,
+          page_id TEXT NOT NULL,
+          shape_type TEXT NOT NULL,
+          color TEXT NOT NULL,
+          position_x REAL NOT NULL,
+          position_y REAL NOT NULL,
+          width REAL NOT NULL DEFAULT 100,
+          height REAL NOT NULL DEFAULT 100,
+          rotation REAL NOT NULL DEFAULT 0,
+          is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1)),
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY(page_id) REFERENCES pages(id) ON DELETE CASCADE
+        );`,
+        );
+
+      await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_page_shapes_page ON page_shapes(page_id);`);
+
+      // Tabla para stickers 
+await execTx(
   tx,
-  `CREATE TABLE IF NOT EXISTS page_shapes(
+  `CREATE TABLE IF NOT EXISTS page_stickers(
     id TEXT PRIMARY KEY NOT NULL,
     page_id TEXT NOT NULL,
-    shape_type TEXT NOT NULL,
-    color TEXT NOT NULL,
+    sticker_url TEXT NOT NULL,
+    sticker_category TEXT NOT NULL,
     position_x REAL NOT NULL,
     position_y REAL NOT NULL,
     width REAL NOT NULL DEFAULT 100,
@@ -115,7 +137,10 @@ export async function initDb() {
   );`,
 );
 
-await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_page_shapes_page ON page_shapes(page_id);`);
+await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_page_stickers_page ON page_stickers(page_id);`);
+
+
+await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_page_stickers_page ON page_stickers(page_id);`);
 
       // ---- MIGRACIONES ----
       await execTxIgnore(
@@ -237,7 +262,7 @@ await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_page_shapes_page ON page_shapes
     );
     await runAsync(`CREATE INDEX IF NOT EXISTS idx_page_draws_page ON page_draws(page_id);`);
  
-
+// Tabla de formas geometricas
 await runAsync(
   `CREATE TABLE IF NOT EXISTS page_shapes(
     id TEXT PRIMARY KEY NOT NULL,
@@ -257,6 +282,29 @@ await runAsync(
 );
 
 await runAsync(`CREATE INDEX IF NOT EXISTS idx_page_shapes_page ON page_shapes(page_id);`);
+
+// tablas de stickers
+
+await runAsync(
+  `CREATE TABLE IF NOT EXISTS page_stickers(
+    id TEXT PRIMARY KEY NOT NULL,
+    page_id TEXT NOT NULL,
+    sticker_url TEXT NOT NULL,
+    sticker_category TEXT NOT NULL,
+    position_x REAL NOT NULL,
+    position_y REAL NOT NULL,
+    width REAL NOT NULL DEFAULT 100,
+    height REAL NOT NULL DEFAULT 100,
+    rotation REAL NOT NULL DEFAULT 0,
+    is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1)),
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY(page_id) REFERENCES pages(id) ON DELETE CASCADE
+  );`,
+);
+
+await runAsync(`CREATE INDEX IF NOT EXISTS idx_page_stickers_page ON page_stickers(page_id);`);
+
 
     // ---- MIGRACIONES ----
     await runAsyncIgnore(`ALTER TABLE journals ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`,);
@@ -1133,8 +1181,6 @@ export async function deleteTask(taskId: string) {
   }
 }
 
-// Al final del archivo dao.ts, después de deleteTask
-
 // ========== DAO: Page Draws (Dibujos) ==========
 
 export type PageDraw = {
@@ -1252,6 +1298,318 @@ export async function deletePageDraw(drawId: string) {
   }
 }
 
+export type PageSticker = {
+  id: string;
+  page_id: string;
+  sticker_url: string;
+  sticker_category: string;
+  position_x: number;
+  position_y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  is_locked: number;
+  created_at: number;
+  updated_at: number;
+};
+
+// ----------- DAO: Page Stickers ------------
+
+/**
+ * Crear un nuevo sticker en una página
+ */
+export async function createPageSticker(
+  pageId: string,
+  stickerUrl: string,
+  stickerCategory: string,
+  positionX: number,
+  positionY: number,
+  width: number = 100,
+  height: number = 100,
+) {
+  const id = await Crypto.randomUUID();
+  const now = Math.floor(Date.now() / 1000);
+
+  if (isAsync) {
+    await runAsync(
+      `INSERT INTO page_stickers(id, page_id, sticker_url, sticker_category, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [id, pageId, stickerUrl, stickerCategory, positionX, positionY, width, height, 0, 0, now, now],
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(
+        tx,
+        `INSERT INTO page_stickers(id, page_id, sticker_url, sticker_category, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [id, pageId, stickerUrl, stickerCategory, positionX, positionY, width, height, 0, 0, now, now],
+      );
+    });
+  }
+  return { id };
+}
+
+/**
+ * Listar todos los stickers de una página
+ */
+export async function listPageStickers(pageId: string): Promise<PageSticker[]> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync?.(
+      `SELECT id, page_id, sticker_url, sticker_category, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at
+       FROM page_stickers
+       WHERE page_id = ?
+       ORDER BY created_at ASC`,
+      [pageId],
+    );
+    return rows ?? [];
+  }
+
+  return new Promise<PageSticker[]>((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT id, page_id, sticker_url, sticker_category, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at
+         FROM page_stickers
+         WHERE page_id = ?
+         ORDER BY created_at ASC`,
+        [pageId],
+        (_: any, res: any) => {
+          const out: PageSticker[] = [];
+          for (let i = 0; i < res.rows.length; i++) out.push(res.rows.item(i));
+          resolve(out);
+        },
+        (_: any, err: any) => {
+          reject(err);
+          return true;
+        },
+      );
+    });
+  });
+}
+
+/**
+ * Actualizar un sticker (posición, tamaño, rotación, bloqueo)
+ */
+export async function updatePageSticker(
+  stickerId: string,
+  updates: {
+    position_x?: number;
+    position_y?: number;
+    width?: number;
+    height?: number;
+    rotation?: number;
+    is_locked?: number;
+  },
+) {
+  const now = Math.floor(Date.now() / 1000);
+  const fields: string[] = [];
+  const values: any[] = [];
+
+  if (updates.position_x !== undefined) {
+    fields.push('position_x = ?');
+    values.push(updates.position_x);
+  }
+  if (updates.position_y !== undefined) {
+    fields.push('position_y = ?');
+    values.push(updates.position_y);
+  }
+  if (updates.width !== undefined) {
+    fields.push('width = ?');
+    values.push(updates.width);
+  }
+  if (updates.height !== undefined) {
+    fields.push('height = ?');
+    values.push(updates.height);
+  }
+  if (updates.rotation !== undefined) {
+    fields.push('rotation = ?');
+    values.push(updates.rotation);
+  }
+  if (updates.is_locked !== undefined) {
+    fields.push('is_locked = ?');
+    values.push(updates.is_locked);
+  }
+
+  if (fields.length === 0) return;
+
+  fields.push('updated_at = ?');
+  values.push(now);
+  values.push(stickerId);
+
+  const sql = `UPDATE page_stickers SET ${fields.join(', ')} WHERE id = ?`;
+
+  if (isAsync) {
+    await runAsync(sql, values);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, sql, values);
+    });
+  }
+}
+
+/**
+ * Duplicar un sticker existente
+ */
+export async function duplicatePageSticker(stickerId: string): Promise<{ id: string } | null> {
+  // Obtener el sticker original
+  let originalSticker: PageSticker | null = null;
+
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync?.(
+      `SELECT * FROM page_stickers WHERE id = ? LIMIT 1`,
+      [stickerId],
+    );
+    originalSticker = rows?.[0] ?? null;
+  } else {
+    originalSticker = await new Promise<PageSticker | null>((resolve, reject) => {
+      legacyDb.readTransaction((tx: any) => {
+        tx.executeSql(
+          `SELECT * FROM page_stickers WHERE id = ? LIMIT 1`,
+          [stickerId],
+          (_: any, res: any) => {
+            resolve(res.rows.length ? res.rows.item(0) : null);
+          },
+          (_: any, err: any) => {
+            reject(err);
+            return true;
+          },
+        );
+      });
+    });
+  }
+
+  if (!originalSticker) return null;
+
+  // Crear nuevo sticker con offset en posición
+  const newId = await Crypto.randomUUID();
+  const now = Math.floor(Date.now() / 1000);
+  const offsetX = 20; // Offset para que no quede exactamente encima
+  const offsetY = 20;
+
+  if (isAsync) {
+    await runAsync(
+      `INSERT INTO page_stickers(id, page_id, sticker_url, sticker_category, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        newId,
+        originalSticker.page_id,
+        originalSticker.sticker_url,
+        originalSticker.sticker_category,
+        originalSticker.position_x + offsetX,
+        originalSticker.position_y + offsetY,
+        originalSticker.width,
+        originalSticker.height,
+        originalSticker.rotation,
+        0, // Duplicado no está bloqueado por defecto
+        now,
+        now,
+      ],
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(
+        tx,
+        `INSERT INTO page_stickers(id, page_id, sticker_url, sticker_category, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [
+          newId,
+          originalSticker.page_id,
+          originalSticker.sticker_url,
+          originalSticker.sticker_category,
+          originalSticker.position_x + offsetX,
+          originalSticker.position_y + offsetY,
+          originalSticker.width,
+          originalSticker.height,
+          originalSticker.rotation,
+          0,
+          now,
+          now,
+        ],
+      );
+    });
+  }
+
+  return { id: newId };
+}
+
+/**
+ * Eliminar un sticker
+ */
+export async function deletePageSticker(stickerId: string) {
+  if (isAsync) {
+    await runAsync(`DELETE FROM page_stickers WHERE id = ?`, [stickerId]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, `DELETE FROM page_stickers WHERE id = ?`, [stickerId]);
+    });
+  }
+}
+
+/**
+ * Alternar el bloqueo de un sticker
+ */
+export async function toggleStickerLock(stickerId: string, locked: boolean) {
+  const value = locked ? 1 : 0;
+  const now = Math.floor(Date.now() / 1000);
+
+  if (isAsync) {
+    await runAsync(`UPDATE page_stickers SET is_locked = ?, updated_at = ? WHERE id = ?`, [
+      value,
+      now,
+      stickerId,
+    ]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, `UPDATE page_stickers SET is_locked = ?, updated_at = ? WHERE id = ?`, [
+        value,
+        now,
+        stickerId,
+      ]);
+    });
+  }
+}
+
+/**
+ * Eliminar todos los stickers de una página
+ */
+export async function deleteAllPageStickers(pageId: string) {
+  if (isAsync) {
+    await runAsync(`DELETE FROM page_stickers WHERE page_id = ?`, [pageId]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, `DELETE FROM page_stickers WHERE page_id = ?`, [pageId]);
+    });
+  }
+}
+
+/**
+ * Obtener un sticker específico por ID
+ */
+export async function getPageSticker(stickerId: string): Promise<PageSticker | null> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync?.(
+      `SELECT * FROM page_stickers WHERE id = ? LIMIT 1`,
+      [stickerId],
+    );
+    return rows?.[0] ?? null;
+  }
+
+  return new Promise<PageSticker | null>((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT * FROM page_stickers WHERE id = ? LIMIT 1`,
+        [stickerId],
+        (_: any, res: any) => {
+          resolve(res.rows.length ? res.rows.item(0) : null);
+        },
+        (_: any, err: any) => {
+          reject(err);
+          return true;
+        },
+      );
+    });
+  });
+}
+
 
 // ---------- DAO: Page Snapshot / Preview ----------
 
@@ -1269,10 +1627,9 @@ export async function getPageSnapshot(
   journalId: string,
   pageNumber: number,
 ): Promise<PageSnapshot | null> {
-  // 1. Obtenemos el ID de la página
   const pageId = await getPageId(journalId, pageNumber);
   if (!pageId) {
-    return null; // no existe esa página
+    return null; 
   }
 
   const bg_color = await getPageColor(journalId, pageNumber);
