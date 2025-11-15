@@ -1,5 +1,15 @@
-import { StyleSheet } from "react-native";
 import { uiColors } from "@/constants/colors";
+import { Dimensions, StyleSheet } from "react-native";
+
+// Helpers responsivos
+const { width: screenWidth } = Dimensions.get("window");
+const isSmallPhone = screenWidth < 375;
+const isMediumPhone = screenWidth >= 375 && screenWidth < 412;
+const getResponsiveValue = (small: number, medium: number, large: number): number => {
+  if (isSmallPhone) return small;
+  if (isMediumPhone) return medium;
+  return large;
+};
 
 export default StyleSheet.create({
   // Header
@@ -19,8 +29,8 @@ export default StyleSheet.create({
 
   // Lista
   list: {
-    paddingHorizontal: 12,
-    paddingBottom: 100, 
+    paddingHorizontal: getResponsiveValue(14, 8, 10),
+    paddingBottom: 100,
   },
   columns: {
     justifyContent: "space-between",
@@ -30,12 +40,12 @@ export default StyleSheet.create({
     flexBasis: "48%",
     maxWidth: "48%",
     flexGrow: 0,
-    marginBottom: 12,
+    marginBottom: getResponsiveValue(12, 14, 16),
   },
 
   // Tarjeta
   card: {
-    borderRadius: 14,
+    borderRadius: getResponsiveValue(10, 15, 18),
     backgroundColor: uiColors.white,
     overflow: "hidden",
     elevation: 2,
@@ -44,7 +54,9 @@ export default StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(218, 196, 196, 0.36)",
+    borderColor: "rgba(151, 146, 146, 0.36)",
+    minHeight: getResponsiveValue(245, 220, 240),
+    maxHeight: getResponsiveValue(240, 260, 280),
   },
 
   pagePreviewWrap: {
@@ -52,13 +64,32 @@ export default StyleSheet.create({
   },
 
   pagePreviewPortrait: {
-    width: "100%",
-    aspectRatio: 3 / 4, 
-    borderRadius: 12,
+    width: "80%",
+    aspectRatio: 3 / 4,
+    borderRadius: getResponsiveValue(12, 13, 15),
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(0,0,0,0.07)",
+    borderColor: "rgba(29, 23, 23, 0.07)",
     alignSelf: "center",
+    minHeight: getResponsiveValue(190, 160, 180),
+    maxHeight: getResponsiveValue(200, 220, 240),
     backgroundColor: "#ffffffff",
+  },
+
+  // Badge con número de página en la miniatura
+  pageNumberBadge: {
+    position: "absolute",
+    top: 6,
+    left: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pageNumberText: {
+    color: uiColors.white,
+    fontSize: getResponsiveValue(10, 11, 12),
+    fontWeight: "600",
   },
 
   previewImage: {
@@ -75,18 +106,18 @@ export default StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 5,
     backgroundColor: uiColors.white,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(0,0,0,0.06)",
   },
   footerText: {
-    fontSize: 12,
+    fontSize: getResponsiveValue(12, 13, 14),
     color: uiColors.gray,
   },
   footerIcon: {
-    width: 26,
-    height: 26,
+    width: 25,
+    height: 25,
     borderRadius: 13,
     backgroundColor: "#FFEFCF",
     alignItems: "center",
@@ -96,21 +127,21 @@ export default StyleSheet.create({
   },
 
   fab: {
-  position: "absolute",
-  right: 24,
-  bottom: 40, 
-  backgroundColor: uiColors.primary,
-  borderRadius: 28,
-  width: 56,
-  height: 56,
-  alignItems: "center",
-  justifyContent: "center",
-  elevation: 5,
-  shadowColor: uiColors.black,
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.25,
-  shadowRadius: 3.5,
-  zIndex: 10, 
-},
+    position: "absolute",
+    right: getResponsiveValue(18, 22, 24),
+    bottom: getResponsiveValue(21, 12, 16), // más cerca de la barra inferior (tabs)
+    backgroundColor: uiColors.primary,
+    borderRadius: 28,
+    width: getResponsiveValue(52, 54, 56),
+    height: getResponsiveValue(52, 54, 56),
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 5,
+    shadowColor: uiColors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.5,
+    zIndex: 10,
+  },
 
 });
