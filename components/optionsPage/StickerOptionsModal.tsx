@@ -1,17 +1,20 @@
 import { uiColors } from '@/constants/colors';
 import { AVAILABLE_STICKER_IDS, STICKER_SOURCES } from '@/constants/stickers';
-import S from '@/styles/pageViewStyles';
+import pageStyles from '@/styles/pageViewStyles';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  Dimensions,
   Image,
   Modal,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
+
+const COLUMN_COUNT = 3;
+const { width } = Dimensions.get('window');
+const ITEM_SIZE = (width - 60) / COLUMN_COUNT;
 
 interface StickerPickerModalProps {
   visible: boolean;
@@ -19,14 +22,13 @@ interface StickerPickerModalProps {
   onSelectSticker: (stickerId: string, category: string) => void;
 }
 
-const COLUMN_COUNT = 3;
-
 export function StickerPickerModal({
   visible,
   onClose,
   onSelectSticker,
 }: StickerPickerModalProps) {
   const handleStickerSelect = (stickerId: string) => {
+    console.log('Sticker seleccionado:', stickerId);
     onSelectSticker(stickerId, 'objetos');
     onClose();
   };
@@ -44,82 +46,46 @@ export function StickerPickerModal({
       transparent={true}
       onRequestClose={onClose}
     >
-      <View style={S.stickerModalOverlay}>
-        {/* Fondo oscuro */}
-        <TouchableWithoutFeedback onPress={onClose}>
-          <View style={S.stickerModalBackground} />
-        </TouchableWithoutFeedback>
+      <View style={pageStyles.stickerModalOverlay}>
 
         {/* Contenedor del modal */}
-        <View style={S.stickerOptionsContainer}>
+        <View style={pageStyles.stickerModalContainer}>
           {/* Header */}
-          <View style={S.stickerOptionsHeader}>
-            <View style={S.stickerIconContainer}>
-              <Ionicons name="happy-outline" size={20} color={uiColors.primary} />
+          <View style={pageStyles.stickerModalHeader}>
+            <View style={pageStyles.shapeIconContainer}>
+                <Ionicons name="happy-outline"size={20} color={uiColors.black} />
             </View>
-            <Text style={S.stickerOptionsTitle}>Seleccionar Sticker</Text>
+            <Text style={pageStyles.shapeOptionsTitle}>Seleccionar Sticker</Text>
           </View>
 
-          {/* Grid de Stickers en 3 columnas */}
-          <View style={{ flex: 1 }}>
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.gridContainer}
-            >
-              <View style={styles.stickerGrid}>
-                {allStickers.map((sticker) => (
-                  <TouchableOpacity
-                    key={sticker.id}
-                    style={styles.stickerGridItem}
-                    onPress={() => handleStickerSelect(sticker.id)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.stickerBox}>
-                      <Image
-                        source={sticker.source}
-                        style={styles.stickerImage}
-                        resizeMode="contain"
-                      />
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
+          {/* Grid de Stickers */}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={pageStyles.stickerModalGridContainer}
+          >
+            <View style={pageStyles.stickerModalGrid}>
+              {allStickers.map((sticker) => (
+                <TouchableOpacity
+                  key={sticker.id}
+                  style={pageStyles.stickerModalItem}
+                  onPress={() => handleStickerSelect(sticker.id)}
+                  activeOpacity={0.7}
+                >
+                  <View style={pageStyles.stickerModalBox}>
+                    <Image
+                      source={sticker.source}
+                      style={pageStyles.stickerModalImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <Text style={pageStyles.stickerModalLabel}></Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
         </View>
       </View>
     </Modal>
   );
 }
 
-const styles = StyleSheet.create({
-  gridContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  stickerGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  stickerGridItem: {
-    width: `${100 / COLUMN_COUNT}%`,
-    aspectRatio: 1,
-    padding: 8,
-    marginBottom: 8,
-  },
-  stickerBox: {
-    flex: 1,
-    backgroundColor: uiColors.cards,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: uiColors.bord,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  stickerImage: {
-    width: '80%',
-    height: '80%',
-  },
-});
