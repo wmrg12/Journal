@@ -1,11 +1,11 @@
 import { uiColors } from "@/constants/colors";
-import { Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
-import { FlatList, Text, TouchableOpacity, View } from "react-native";
-import HeaderDiarios from "../../components/headerDiary";
+import { Journal, getPageColor, getTotalPages, listJournals, toggleFavorite } from "@/src/db/dao";
 import styles from "@/styles/globalStyles";
-import { useCallback, useState, useMemo } from "react";
-import { listJournals, Journal, getTotalPages, getPageColor, toggleFavorite } from "@/src/db/dao";
+import { Ionicons } from "@expo/vector-icons";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
+import { FlatList, Keyboard, Text, TouchableOpacity, View } from "react-native";
+import HeaderDiarios from "../../components/headerDiary";
 
 export default function Home() {
   const { highlight } = useLocalSearchParams<{ highlight?: string }>();
@@ -21,6 +21,8 @@ export default function Home() {
 
   useFocusEffect(
     useCallback(() => {
+      // Ocultar el teclado al enfocar la pantalla para evitar desplazamientos
+      Keyboard.dismiss();
       load();
       if (typeof highlight === "string" && highlight.length > 0) {
         setHl(highlight);
@@ -145,7 +147,6 @@ export default function Home() {
 
   return (
     <View style={styles.container}>
-      <View style={{ marginTop: 35 }}>
       <HeaderDiarios
         active={tab}
         onChangeTab={(t) => setTab(t)}
@@ -161,6 +162,11 @@ export default function Home() {
           filtered.length ? styles.gridContent : styles.emptyContent
         }
         ListEmptyComponent={<Empty />}
+        keyboardShouldPersistTaps="handled"
+        scrollEnabled={true}
+        removeClippedSubviews={false}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
       />
 
       <TouchableOpacity
@@ -169,7 +175,6 @@ export default function Home() {
       >
         <Ionicons name="add" size={28} color={uiColors.white} />
       </TouchableOpacity>
-      </View>
     </View>
   );
 }
