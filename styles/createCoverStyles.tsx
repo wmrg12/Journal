@@ -48,7 +48,7 @@ export const diaryStyles = StyleSheet.create({
     marginBottom: 32,
   },
   diary: {
-    width: 130,
+    width: 170,
     height: 180,
     borderRadius: 8,
     position: "relative",
