@@ -1,5 +1,19 @@
-import { StyleSheet, Platform } from "react-native";
 import { uiColors } from "@/constants/colors";
+import { Dimensions, Platform, StyleSheet } from "react-native";
+
+// Obtener dimensiones de pantalla para estilos responsivos
+const { width: screenWidth } = Dimensions.get("window");
+
+// Calcular valores responsivos basados en el ancho de pantalla
+const isSmallPhone = screenWidth < 375;
+const isMediumPhone = screenWidth >= 375 && screenWidth < 412;
+
+// Funciones auxiliares para valores responsivos
+const getResponsiveValue = (small: number, medium: number, large: number) => {
+  if (isSmallPhone) return small;
+  if (isMediumPhone) return medium;
+  return large;
+};
 
 const styles = StyleSheet.create({
 
@@ -13,19 +27,19 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 40,
+    marginTop: getResponsiveValue(40, 50, 60),
   },
 
   message: {
-    fontSize: 19,
+    fontSize: getResponsiveValue(16, 18, 19),
     fontWeight: "600",
     color: uiColors.danger,
   },
 
   fab: {
     position: "absolute",
-    bottom: -280,
-    right: 20,
+    bottom: getResponsiveValue(80, 75, 80),
+    right: getResponsiveValue(12, 16, 20),
     backgroundColor: uiColors.primary,
     borderRadius: 40,
     width: 56,
@@ -36,14 +50,19 @@ const styles = StyleSheet.create({
   },
 
   // --- Barra de Filtros / Tabs / Home ---
-  searchButton: { padding: 6, marginLeft: 10 },
+  searchButton: { 
+    padding: 6, 
+    marginLeft: getResponsiveValue(6, 8, 10) 
+  },
 
   tabsWrapper: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: getResponsiveValue(12, 14, 16),
+    paddingVertical: getResponsiveValue(30, 35, 40),
+    marginTop: getResponsiveValue(20, 25, 30),
+    marginBottom: getResponsiveValue(-10, -15, -20),
   },
 
   tabsContainer: {
@@ -53,7 +72,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
     paddingVertical: 0,
-    width: 260,
+    width: getResponsiveValue(220, 240, 260),
     borderWidth: 1,
     borderColor: uiColors.white,
   },
@@ -62,13 +81,13 @@ const styles = StyleSheet.create({
     width: "50%",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
+    paddingVertical: getResponsiveValue(10, 11, 12),
     backgroundColor: "transparent",
     zIndex: 1,
   },
 
   tabText: {
-    fontSize: 16,
+    fontSize: getResponsiveValue(14, 15, 16),
     color: uiColors.danger,
     fontWeight: "bold",
     backgroundColor: "transparent",
@@ -80,7 +99,7 @@ const styles = StyleSheet.create({
     top: -2,
     bottom: -2,
     left: 2,
-    width: 136,
+    width: getResponsiveValue(110, 120, 136),
     backgroundColor: uiColors.rgba,
     borderRadius: 12,
     shadowOpacity: 0.06,
@@ -115,9 +134,9 @@ const styles = StyleSheet.create({
   // --- filtros de tab ---
   containerTab: {
     position: "absolute",
-    bottom: 20,
-    left: 30,
-    right: 30,
+    bottom: getResponsiveValue(15, 18, 20),
+    left: getResponsiveValue(20, 25, 30),
+    right: getResponsiveValue(20, 25, 30),
     backgroundColor: uiColors.white,
     borderRadius: 10,
     paddingVertical: 2,
@@ -128,19 +147,19 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     width: 18,
-    height: 48,
+    height: 45,
     backgroundColor: uiColors.rgba,
     borderRadius: 10,
     zIndex: 0,
   },
   rowTab: { flexDirection: "row", flex: 1, justifyContent: "space-around" },
   tabButton: {
-    paddingVertical: 10,
+    paddingVertical: getResponsiveValue(8, 9, 10),
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1,
   },
-  tabLabel: { marginLeft: 6 },
+  tabLabel: { marginLeft: getResponsiveValue(4, 5, 6) },
   homeRowTab: {
     flexDirection: "row",
     alignItems: "center",
@@ -151,26 +170,26 @@ const styles = StyleSheet.create({
 
   // --- Grid de diarios ---
   gridContent: {
-    paddingHorizontal: 8,
-    paddingTop: 8,
-    paddingBottom: 96,
+    paddingHorizontal: getResponsiveValue(10, 7, 8),
+    paddingTop: getResponsiveValue(10, 70, 80),
+    paddingBottom: getResponsiveValue(100, 110, 120),
   },
   emptyContent: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 96,
+    paddingHorizontal: getResponsiveValue(12, 14, 16),
+    paddingBottom: getResponsiveValue(100, 110, 120),
   },
 
   card: {
-    width: 140,
-    height: 180,
-    margin: 12,
+    width: getResponsiveValue(155, 130, 140),
+    height: getResponsiveValue(200, 170, 180),
+    margin: getResponsiveValue(8, 10, 12),
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    padding: 10,
+    padding: getResponsiveValue(8, 9, 10),
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.15)",
     shadowColor: "#000",
@@ -184,7 +203,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: uiColors.gray,
     fontWeight: "600",
-    fontSize: 18,
+    fontSize: getResponsiveValue(16, 17, 18),
     fontFamily: Platform.select({
       ios: "Times New Roman",
       android: "serif",
@@ -194,12 +213,12 @@ const styles = StyleSheet.create({
 
   cardWrapper: {
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: getResponsiveValue(6, 7, 8),
   },
   // --- fecha ---
   cardDate: {
     textAlign: "center",
-    fontSize: 13,
+    fontSize: getResponsiveValue(11, 12, 13),
     color: "rgba(0,0,0,0.65)",
     textTransform: "lowercase",
     marginTop: -4,
@@ -208,13 +227,13 @@ const styles = StyleSheet.create({
   // --- favorito ---
   favWrap: {
     position: "absolute",
-    top: 8,
-    left: 8,
+    top: getResponsiveValue(6, 7, 8),
+    left: getResponsiveValue(6, 7, 8),
     zIndex: 2,
   },
   favBtn: {
-    width: 34,
-    height: 34,
+    width: getResponsiveValue(30, 32, 34),
+    height: getResponsiveValue(30, 32, 34),
     borderRadius: 78,
     alignItems: "center",
     justifyContent: "center",
@@ -230,13 +249,13 @@ const styles = StyleSheet.create({
   // --- Editar ---
   editWrap: {
     position: "absolute",
-    top: 135,           
-    right: 100,
+    top: getResponsiveValue(165, 127, 135),
+    right: getResponsiveValue(120, 95, 100),
   },
 
   editBtn: {
-    width: 28,
-    height: 28,
+    width: getResponsiveValue(26, 27, 28),
+    height: getResponsiveValue(26, 27, 28),
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
@@ -251,99 +270,99 @@ const styles = StyleSheet.create({
   // --- Panel de busqueda por fechas ---
   searchPanel: {
     overflow: "hidden",
-    paddingHorizontal: 16,
+    paddingHorizontal: getResponsiveValue(12, 14, 16),
   },
-searchRow: {
-  flexDirection: "row",
-  flexWrap: "wrap",
-  gap: 8,
-  paddingTop: 8,
-},
-chip: {
-  paddingHorizontal: 10,
-  paddingVertical: 8,
-  backgroundColor: "#fff",
-  borderRadius: 10,
-  borderWidth: 1,
-  borderColor: "rgba(0,0,0,0.08)",
-  elevation: 1,
-},
-chipActive: {
-  backgroundColor: uiColors.rgba,
-},
-chipText: {
-  fontSize: 12,
-  color: uiColors.brown,
-},
-rangeRow: {
-  flexDirection: "row",
-  alignItems: "flex-end",
-  gap: 10,
-  paddingTop: 10,
-},
-rangeCol: {
-  flex: 1,
-},
-applyBtn: {
-  height: 40,
-  paddingHorizontal: 14,
-  backgroundColor: uiColors.primary,
-  borderRadius: 12,
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 6,
-},
+  searchRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: getResponsiveValue(6, 7, 8),
+    paddingTop: getResponsiveValue(6, 7, 8),
+  },
+  chip: {
+    paddingHorizontal: getResponsiveValue(8, 9, 10),
+    paddingVertical: getResponsiveValue(6, 7, 8),
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.08)",
+    elevation: 1,
+  },
+  chipActive: {
+    backgroundColor: uiColors.rgba,
+  },
+  chipText: {
+    fontSize: getResponsiveValue(10, 11, 12),
+    color: uiColors.brown,
+  },
+  rangeRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: getResponsiveValue(8, 9, 10),
+    paddingTop: getResponsiveValue(8, 9, 10),
+  },
+  rangeCol: {
+    flex: 1,
+  },
+  applyBtn: {
+    height: getResponsiveValue(36, 38, 40),
+    paddingHorizontal: getResponsiveValue(12, 13, 14),
+    backgroundColor: uiColors.primary,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: getResponsiveValue(4, 5, 6),
+  },
 
-searchBarRow: {
-  flexDirection: "row",
-  alignItems: "center",
-  backgroundColor: "#fff",
-  borderRadius: 12,
-  borderWidth: 1,
-  borderColor: "rgba(0,0,0,0.08)",
-  paddingHorizontal: 10,
-  height: 44,
-  gap: 6,
-},
+  searchBarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.08)",
+    paddingHorizontal: getResponsiveValue(8, 9, 10),
+    height: getResponsiveValue(40, 42, 44),
+    gap: getResponsiveValue(4, 5, 6),
+  },
 
-inputMM: {
-  width: 82,
-  textAlign: "center",
-  paddingHorizontal: 8,
-},
+  inputMM: {
+    width: getResponsiveValue(70, 76, 82),
+    textAlign: "center",
+    paddingHorizontal: getResponsiveValue(6, 7, 8),
+  },
 
-inputYYYY: {
-  width: 110,
-  textAlign: "center",
-  paddingHorizontal: 8,
-},
+  inputYYYY: {
+    width: getResponsiveValue(95, 102, 110),
+    textAlign: "center",
+    paddingHorizontal: getResponsiveValue(6, 7, 8),
+  },
 
   slash: {
-  marginHorizontal: 2,
-  color: "#777",
+    marginHorizontal: getResponsiveValue(1, 1.5, 2),
+    color: "#777",
   },
 
   applyBtnInline: {
-  height: 36,
-  paddingHorizontal: 12,
-  backgroundColor: uiColors.primary,
-  borderRadius: 10,
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 6,
+    height: getResponsiveValue(32, 34, 36),
+    paddingHorizontal: getResponsiveValue(10, 11, 12),
+    backgroundColor: uiColors.primary,
+    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: getResponsiveValue(4, 5, 6),
   },
 
   closeBtn: {
-  marginLeft: 6,
-  height: 36,
-  width: 36,
-  borderRadius: 10,
-  alignItems: "center",
-  justifyContent: "center",
-  backgroundColor: "rgba(0,0,0,0.05)",
+    marginLeft: getResponsiveValue(4, 5, 6),
+    height: getResponsiveValue(32, 34, 36),
+    width: getResponsiveValue(32, 34, 36),
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.05)",
   },
 
+} as const);
 
-  } as const);
-  export default styles;
+export default styles;
 
