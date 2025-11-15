@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useRef, memo } from 'react';
-import { View, TouchableOpacity, Animated, PanResponder } from 'react-native';
-import Svg, { Circle, Rect, Polygon, Path, Line } from 'react-native-svg';
-import { MaterialIcons } from '@expo/vector-icons';
-import { PageShape, updatePageShape } from '@/src/db/dao';
 import { uiColors } from '@/constants/colors';
+import { PageShape, updatePageShape } from '@/src/db/dao';
 import S from '@/styles/pageViewStyles';
+import { MaterialIcons } from '@expo/vector-icons';
+import { memo, useEffect, useRef, useState } from 'react';
+import { Animated, PanResponder, TouchableOpacity, View } from 'react-native';
+import Svg, { Circle, Line, Path, Polygon, Rect } from 'react-native-svg';
 
 type DraggableShapeProps = {
   shape: PageShape;
@@ -17,7 +17,7 @@ type DraggableShapeProps = {
   onToggleLock: (id: string) => void;
   onSelect: (id: string) => void;
   onDuplicate: (s: PageShape) => void;
-  onChangeColor: (s: PageShape) => void;
+  onDoublePress?: (shape: PageShape) => void;
   canvasWidth: number;
   canvasHeight: number;
 };
@@ -33,6 +33,7 @@ const DraggableShapeBase = ({
   onToggleLock,
   onSelect,
   onDuplicate,
+  onDoublePress,
   canvasWidth,
   canvasHeight,
 }: DraggableShapeProps) => {
@@ -60,7 +61,10 @@ const DraggableShapeBase = ({
   const initialAngleRef = useRef(0);
 
   const [isResizing, setIsResizing] = useState(false);
-  const resizeStartPosRef = useRef({ x: 0, y: 0 });
+
+  // Double tap para cambiar color
+  const lastTapRef = useRef(0);
+  const DOUBLE_TAP_DELAY = 300;
   
   // Para pinch
   const pinchInitialDistanceRef = useRef(0);
@@ -599,6 +603,24 @@ const DraggableShapeBase = ({
     }
   };
 
+  // HANDLERS
+  const handleTap = () => {
+    if (toolbarButtonPressed.current) return;
+
+    const now = Date.now();
+    const timeSinceLastTap = now - lastTapRef.current;
+
+    if (timeSinceLastTap < DOUBLE_TAP_DELAY && isSelected && !lockedRef.current) {
+      // Double tap: abrir modal de color
+      onDoublePress?.(shape);
+    } else {
+      // Single tap: seleccionar
+      onSelect(shape.id);
+    }
+
+    lastTapRef.current = now;
+  };
+
   return (
     <Animated.View
       {...panResponder.panHandlers}
@@ -617,11 +639,7 @@ const DraggableShapeBase = ({
     >
       <TouchableOpacity
         activeOpacity={1}
-        onPress={() => {
-          if (!toolbarButtonPressed.current) {
-            onSelect(shape.id);
-          }
-        }}
+        onPress={handleTap}
       >
         <View
           ref={shapeBoxRef}
