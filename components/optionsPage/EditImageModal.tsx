@@ -1,5 +1,5 @@
 // components/optionsPage/EditImageModal.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Modal,
   View,
@@ -14,35 +14,66 @@ import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { uiColors } from "@/constants/colors";
 import { Feather } from "@expo/vector-icons";
+import ViewShot from "react-native-view-shot";
+import Svg, {
+  Defs,
+  ClipPath,
+  Rect,
+  Circle,
+  Path,
+  G,
+  Image as SvgImage,
+} from "react-native-svg";
 
-/**
- * Props:
- *  visible: boolean
- *  image: { id, uri, width?, height?, rotation? } | null
- *  onClose: () => void
- *  onSave: (id, newUri, opts?) => void
- */
 type Props = {
   visible: boolean;
-  image: { id: string; uri: string; width?: number; height?: number; rotation?: number } | null;
+  image: {
+    id: string;
+    uri: string;
+    width?: number;
+    height?: number;
+    rotation?: number;
+  } | null;
   onClose: () => void;
-  onSave: (id: string, newUri: string, opts?: { rotation?: number; width?: number; height?: number }) => void;
+  onSave: (
+    id: string,
+    newUri: string,
+    opts?: { rotation?: number; width?: number; height?: number }
+  ) => void;
 };
 
-export default function EditImageModal({ visible, image, onClose, onSave }: Props) {
-  const [workingUri, setWorkingUri] = useState<string | null>(image?.uri ?? null);
+type Shape = "none" | "square" | "circle" | "heart" | "star";
+
+export default function EditImageModal({
+  visible,
+  image,
+  onClose,
+  onSave,
+}: Props) {
+  const [workingUri, setWorkingUri] = useState<string | null>(
+    image?.uri ?? null
+  );
   const [rotation, setRotation] = useState<number>(image?.rotation ?? 0);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
+  const [naturalSize, setNaturalSize] = useState<{
+    w: number;
+    h: number;
+  } | null>(null);
+
+  // showCropOptions controla si se muestran las formas (solo aparece al pulsar el botón Recortar)
   const [showCropOptions, setShowCropOptions] = useState(false);
+  const [shape, setShape] = useState<Shape>("none");
+
+  // ViewShot ref (any para evitar TS en versiones donde capture() no toma args)
+  const viewShotRef = useRef<any>(null);
 
   useEffect(() => {
     setWorkingUri(image?.uri ?? null);
     setRotation(image?.rotation ?? 0);
     setNaturalSize(null);
     setShowCropOptions(false);
+    setShape("none");
     if (image?.uri) {
-      // obtener tamaño natural de la imagen
       Image.getSize(
         image.uri,
         (w, h) => setNaturalSize({ w, h }),
@@ -54,7 +85,6 @@ export default function EditImageModal({ visible, image, onClose, onSave }: Prop
     }
   }, [image]);
 
-  // ROTAR 90 grados (manipulateAsync crea una nueva URI)
   const doRotate = async (deg = 90) => {
     try {
       if (!workingUri) return;
@@ -62,12 +92,18 @@ export default function EditImageModal({ visible, image, onClose, onSave }: Prop
       const res = await ImageManipulator.manipulateAsync(
         workingUri,
         [{ rotate: deg }],
-        { compress: 1, format: ImageManipulator.SaveFormat.PNG }
+        {
+          compress: 1,
+          format: ImageManipulator.SaveFormat.PNG,
+        }
       );
       setWorkingUri(res.uri);
       setRotation((r) => r + deg);
-      // actualizar tamaño natural después de rotar
-      Image.getSize(res.uri, (w, h) => setNaturalSize({ w, h }), () => {});
+      Image.getSize(
+        res.uri,
+        (w, h) => setNaturalSize({ w, h }),
+        () => {}
+      );
     } catch (e) {
       console.error("rotate error", e);
       Alert.alert("Error", "No se pudo rotar la imagen.");
@@ -76,7 +112,6 @@ export default function EditImageModal({ visible, image, onClose, onSave }: Prop
     }
   };
 
-  // REEMPLAZAR imagen con galería
   const pickReplace = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -87,110 +122,142 @@ export default function EditImageModal({ visible, image, onClose, onSave }: Prop
       if (!result.canceled && result.assets.length > 0) {
         setWorkingUri(result.assets[0].uri);
         setRotation(0);
-        // actualizar natural size del nuevo asset
-        Image.getSize(result.assets[0].uri, (w, h) => setNaturalSize({ w, h }), () => {});
+        Image.getSize(
+          result.assets[0].uri,
+          (w, h) => setNaturalSize({ w, h }),
+          () => {}
+        );
       }
     } catch (e) {
       console.error("pickReplace error", e);
     }
   };
 
-  // Guardar - llama al onSave del padre
+  // Paths normalizados 0..100 para heart y star
+  const HEART_PATH =
+    "M50 88 L17 55 C2 40 10 15 35 15 C50 15 50 30 50 30 C50 30 50 15 65 15 C90 15 98 40 83 55 Z";
+  const STAR_PATH =
+    "M50 5 L61 39 L98 39 L67 59 L78 93 L50 72 L22 93 L33 59 L2 39 L39 39 Z";
+
+  // Guarda: si no hay forma, devolvemos la uri actual; si hay forma, capturamos el ViewShot
   const handleSave = async () => {
     if (!image || !workingUri) return onClose();
-    onSave(image.id, workingUri, { rotation });
-  };
-
-  // Recortar: calcula recorte centrado basado en relación (ratio = w/h)
-  const doCropCentered = async (ratioW: number, ratioH: number) => {
-    if (!workingUri) return;
     try {
       setIsProcessing(true);
 
-      // si no tenemos tamaño natural, intentar obtenerlo
-      let w = naturalSize?.w;
-      let h = naturalSize?.h;
-      if (!w || !h) {
-        await new Promise<void>((resolve) => {
-          Image.getSize(
-            workingUri,
-            (ww, hh) => {
-              w = ww;
-              h = hh;
-              setNaturalSize({ w: ww, h: hh });
-              resolve();
-            },
-            () => resolve()
-          );
-        });
-      }
-      if (!w || !h) {
-        Alert.alert("Error", "No se pudo determinar el tamaño de la imagen para recortar.");
+      if (!showCropOptions || shape === "none") {
+        // sin recorte: devolver la uri original (posiblemente una imagen rotada si se rotó)
+        onSave(image.id, workingUri, { rotation });
         setIsProcessing(false);
         return;
       }
 
-      // tamaño objetivo manteniendo ratio dentro de la imagen original (max centered box)
-      const targetRatio = ratioW / ratioH;
-      const currentRatio = w / h;
-
-      let cropW = w;
-      let cropH = h;
-
-      if (currentRatio > targetRatio) {
-        // imagen más ancha: limitar ancho
-        cropH = h;
-        cropW = Math.round(h * targetRatio);
-      } else {
-        // imagen más alta: limitar alto
-        cropW = w;
-        cropH = Math.round(w / targetRatio);
+      // Comprobación del ref y captura (sin args, que es la versión que tu view-shot acepta)
+      if (!viewShotRef.current) {
+        Alert.alert(
+          "Error",
+          "No se pudo capturar la imagen (referencia no encontrada)."
+        );
+        setIsProcessing(false);
+        return;
       }
 
-      const originX = Math.round((w - cropW) / 2);
-      const originY = Math.round((h - cropH) / 2);
+      const uri: string | null = await viewShotRef.current.capture();
 
-      const manipResult = await ImageManipulator.manipulateAsync(
-        workingUri,
-        [{ crop: { originX, originY, width: cropW, height: cropH } }],
-        { compress: 1, format: ImageManipulator.SaveFormat.PNG }
-      );
+      if (!uri) {
+        Alert.alert("Error", "No se pudo generar la imagen recortada.");
+        setIsProcessing(false);
+        return;
+      }
 
-      setWorkingUri(manipResult.uri);
-      // update natural size to new one
-      setNaturalSize({ w: cropW, h: cropH });
-      setShowCropOptions(false);
+      // Resultado: png con transparencia en fondo fuera de la forma
+      onSave(image.id, uri, { rotation });
     } catch (e) {
-      console.error("crop error", e);
-      Alert.alert("Error", "No se pudo recortar la imagen.");
+      console.error("save capture error", e);
+      Alert.alert("Error", "No se pudo guardar la imagen recortada.");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // UI: botones rápidos para ratio
-  const CropOptions = () => (
-    <View style={styles.cropOptionsRow}>
-      <TouchableOpacity style={styles.cropButton} onPress={() => doCropCentered(1, 1)}>
-        <Text style={styles.cropButtonText}>1:1</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.cropButton} onPress={() => doCropCentered(4, 3)}>
-        <Text style={styles.cropButtonText}>4:3</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.cropButton} onPress={() => doCropCentered(16, 9)}>
-        <Text style={styles.cropButtonText}>16:9</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.cropButton}
-        onPress={() => {
-          // Full: no crop / cancel crop options
-          setShowCropOptions(false);
+  const PreviewMasked = ({ size = 300 }: { size?: number }) => {
+    const box = size;
+    return (
+      // Establecemos backgroundColor transparent para que la captura tenga transparencia
+      <ViewShot
+        ref={viewShotRef}
+        // opciones en el componente (capture() usará estas opciones si tu versión de view-shot no acepta args)
+        options={{
+          format: "png",
+          quality: 1,
+          result: "tmpfile",
+        }}
+        style={{
+          width: box,
+          height: box,
+          backgroundColor: "transparent",
+          alignSelf: "center",
         }}
       >
-        <Text style={styles.cropButtonText}>Full</Text>
-      </TouchableOpacity>
-    </View>
-  );
+        <Svg width={box} height={box} viewBox={`0 0 ${box} ${box}`}>
+          <Defs>
+            {shape !== "none" && (
+              <ClipPath id="mask">
+                {shape === "square" && (
+                  <Rect x="0" y="0" width={box} height={box} />
+                )}
+                {shape === "circle" && (
+                  <Circle cx={box / 2} cy={box / 2} r={box / 2} />
+                )}
+                {shape === "heart" && (
+                  <Path
+                    d={HEART_PATH}
+                    transform={`scale(${box / 100}) translate(0,0)`}
+                  />
+                )}
+                {shape === "star" && (
+                  <Path
+                    d={STAR_PATH}
+                    transform={`scale(${box / 100}) translate(0,0)`}
+                  />
+                )}
+              </ClipPath>
+            )}
+          </Defs>
+
+          {/* Fondo transparente (no fill) */}
+          <Rect x="0" y="0" width={box} height={box} fill="transparent" />
+
+          {/* Imagen raster dentro del grupo clipPath -> esto garantiza que la imagen sea recortada */}
+          {workingUri && shape !== "none" && (
+            <G clipPath="url(#mask)">
+              {/* SvgImage con preserveAspectRatio='xMidYMid slice' hace 'cover' del box */}
+              <SvgImage
+                x={0}
+                y={0}
+                width={box}
+                height={box}
+                preserveAspectRatio="xMidYMid slice"
+                href={{ uri: workingUri }}
+              />
+            </G>
+          )}
+
+          {/* si no hay forma seleccionada mostramos la imagen entera centrada (fit inside) */}
+          {workingUri && shape === "none" && (
+            <SvgImage
+              x={0}
+              y={0}
+              width={box}
+              height={box}
+              preserveAspectRatio="xMidYMid meet"
+              href={{ uri: workingUri }}
+            />
+          )}
+        </Svg>
+      </ViewShot>
+    );
+  };
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
@@ -198,7 +265,7 @@ export default function EditImageModal({ visible, image, onClose, onSave }: Prop
         <View style={styles.sheet}>
           <View style={styles.previewWrap}>
             {workingUri ? (
-              <Image source={{ uri: workingUri }} style={styles.previewImage} resizeMode="contain" />
+              <PreviewMasked size={260} />
             ) : (
               <View style={styles.placeholder}>
                 <Text>No hay imagen</Text>
@@ -207,7 +274,10 @@ export default function EditImageModal({ visible, image, onClose, onSave }: Prop
           </View>
 
           <View style={styles.actionsRow}>
-            <TouchableOpacity onPress={() => doRotate(90)} style={styles.actionBtn}>
+            <TouchableOpacity
+              onPress={() => doRotate(90)}
+              style={styles.actionBtn}
+            >
               <Feather name="rotate-ccw" size={18} color={uiColors.black} />
               <Text style={styles.actionLabel}>Rotar</Text>
             </TouchableOpacity>
@@ -217,16 +287,78 @@ export default function EditImageModal({ visible, image, onClose, onSave }: Prop
               <Text style={styles.actionLabel}>Reemplazar</Text>
             </TouchableOpacity>
 
+            {/* al pulsar togglea showCropOptions: solo entonces aparecen las formas */}
             <TouchableOpacity
-              onPress={() => setShowCropOptions((s) => !s)}
-              style={[styles.actionBtn, showCropOptions && styles.actionBtnActive]}
+              onPress={() => {
+                setShowCropOptions((s) => !s);
+                // si se cierra el panel, resetear la forma a 'none' para evitar recorte accidental
+                if (showCropOptions) setShape("none");
+                else setShape("square"); // al abrir por defecto seleccionar cuadrado
+              }}
+              style={[
+                styles.actionBtn,
+                showCropOptions && styles.actionBtnActive,
+              ]}
             >
               <Feather name="crop" size={18} color={uiColors.black} />
               <Text style={styles.actionLabel}>Recortar</Text>
             </TouchableOpacity>
           </View>
 
-          {showCropOptions && <CropOptions />}
+          {/* Solo se muestran las opciones de forma cuando showCropOptions === true */}
+          {showCropOptions && (
+            <View style={styles.cropOptionsRow}>
+              <TouchableOpacity
+                style={[
+                  styles.cropButton,
+                  shape === "square" && styles.actionBtnActive,
+                ]}
+                onPress={() => setShape("square")}
+              >
+                <Text style={styles.cropButtonText}>Cuadrado</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.cropButton,
+                  shape === "circle" && styles.actionBtnActive,
+                ]}
+                onPress={() => setShape("circle")}
+              >
+                <Text style={styles.cropButtonText}>Círculo</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.cropButton,
+                  shape === "heart" && styles.actionBtnActive,
+                ]}
+                onPress={() => setShape("heart")}
+              >
+                <Text style={styles.cropButtonText}>Corazón</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.cropButton,
+                  shape === "star" && styles.actionBtnActive,
+                ]}
+                onPress={() => setShape("star")}
+              >
+                <Text style={styles.cropButtonText}>Estrella</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.cropButton,
+                  shape === "none" && styles.actionBtnActive,
+                ]}
+                onPress={() => setShape("none")}
+              >
+                <Text style={styles.cropButtonText}>Full</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           <View style={styles.footerRow}>
             <TouchableOpacity onPress={onClose} style={styles.cancelBtn}>
@@ -234,7 +366,11 @@ export default function EditImageModal({ visible, image, onClose, onSave }: Prop
             </TouchableOpacity>
 
             <TouchableOpacity onPress={handleSave} style={styles.saveBtn}>
-              {isProcessing ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Guardar</Text>}
+              {isProcessing ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.saveText}>Guardar</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -254,7 +390,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 14,
-    minHeight: 360,
+    minHeight: 420,
   },
   previewWrap: {
     alignItems: "center",
@@ -268,8 +404,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#eee",
   },
   placeholder: {
-    width: 240,
-    height: 240,
+    width: 260,
+    height: 260,
     borderRadius: 8,
     backgroundColor: "#eee",
     alignItems: "center",
@@ -327,12 +463,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     marginTop: 8,
+    flexWrap: "wrap",
   },
   cropButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,
     backgroundColor: "#f5f5f5",
     borderRadius: 8,
+    marginHorizontal: 4,
+    marginVertical: 4,
   },
   cropButtonText: {
     fontWeight: "600",
