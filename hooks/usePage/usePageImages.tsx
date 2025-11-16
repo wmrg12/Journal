@@ -1,154 +1,243 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
-import { rotate } from "@shopify/react-native-skia";
+
+import {
+  listPageImages,
+  createPageImage,
+  updatePageImage,
+  deletePageImage,
+} from "@/src/db/dao";
+
+export type PageImage = {
+  id: string;
+  page_id: string;
+  uri: string;
+  position_x: number;
+  position_y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  created_at: number;
+  updated_at: number;
+};
 
 export function usePageImages(currentPageId: string | null) {
-  const [pageImages, setPageImages] = useState<
-    {
-      id: string;
-      uri: string;
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      rotation?: number;
-    }[]
-  >([]);
+  const [pageImages, setPageImages] = useState<PageImage[]>([]);
+  const pageImagesRef = useRef<PageImage[]>([]);
+  pageImagesRef.current = pageImages;
+
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // AGREGAR IMAGEN
-  const addImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 1,
-      });
-
-      if (!result.canceled && result.assets.length > 0 && currentPageId) {
-        const image = {
-          id: Date.now().toString(),
-          uri: result.assets[0].uri,
-          x: 50,
-          y: 50,
-          width: 150,
-          height: 150,
-          rotation: 0,
-        };
-        setPageImages((prev) => [...prev, image]);
-      }
-    } catch (e) {
-      console.error("Error al agregar imagen:", e);
+  // util: compara arrays por id + updated_at (rápido y suficiente para evitar setState redundante)
+  const sameImages = (a: PageImage[], b: PageImage[]) => {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (a[i].id !== b[i].id) return false;
+      if ((a[i].updated_at ?? 0) !== (b[i].updated_at ?? 0)) return false;
     }
+    return true;
   };
 
-  // DUPLICAR IMAGEN
-  const handleDuplicateImage = (id: string) => {
-    setPageImages((prev) => {
-      const img = prev.find((i) => i.id === id);
-      if (!img) return prev;
-      const offset = 16; 
-      const copy = {
-        ...img,
-        id: Date.now().toString(),
-        x: Math.min((img.x ?? 50) + offset, 10000),
-        y: Math.min((img.y ?? 50) + offset, 10000),
+  // LOAD images when page changes (only updates state if different)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!currentPageId) {
+        if (mounted) {
+          if (pageImagesRef.current.length > 0) setPageImages([]);
+        }
+        return;
+      }
+      setLoading(true);
+      try {
+        const rows = (await listPageImages(currentPageId)) as PageImage[];
+        if (!mounted) return;
+
+        // ordenar por created_at para comparaciones estables (opcional)
+        const ordered = rows.slice().sort((a, b) => (a.created_at ?? 0) - (b.created_at ?? 0));
+
+        if (!sameImages(pageImagesRef.current, ordered)) {
+          setPageImages(ordered);
+        }
+      } catch (e) {
+        console.error("Error cargando pageImages:", e);
+        if (mounted) setPageImages([]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+    
+  }, [currentPageId]); // intentionally only depends on currentPageId
+
+  // ADD image (picker -> create DB -> setState)
+  const addImage = useCallback(async () => {
+    if (!currentPageId) return;
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.9,
+      });
+      if (res.canceled || !res.assets?.length) return;
+      const uri = res.assets[0].uri;
+      const finalUri = uri;
+
+      const { id } = await createPageImage(
+        currentPageId,
+        finalUri,
+        20, // default x
+        20, // default y
+        150,
+        150
+      );
+
+      const now = Math.floor(Date.now() / 1000);
+      const newImg: PageImage = {
+        id,
+        page_id: currentPageId,
+        uri: finalUri,
+        position_x: 20,
+        position_y: 20,
+        width: 150,
+        height: 150,
+        rotation: 0,
+        created_at: now,
+        updated_at: now,
       };
-      return [...prev, copy];
-    });
-  };
 
-  // EDITAR IMAGEN SELECCIONADA (recortar, girar, etc.)
-  const handleEditImage = async (id: string) => {
-    const image = pageImages.find((img) => img.id === id);
-    if (!image) return;
-
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true, // ✅ solo al editar
-        quality: 1,
-      });
-
-      if (!result.canceled && result.assets.length > 0) {
-        const editedImage = await ImageManipulator.manipulateAsync(
-          result.assets[0].uri,
-          [{ resize: { width: 400 } }],
-          { compress: 1, format: ImageManipulator.SaveFormat.PNG }
-        );
-
-        setPageImages((prev) =>
-          prev.map((img) =>
-            img.id === id ? { ...img, uri: editedImage.uri } : img
-          )
-        );
-      }
+      // functional update (evita dependencias)
+      setPageImages((prev) => [...prev, newImg]);
+      setSelectedImageId(id);
     } catch (e) {
-      console.error("Error al editar imagen:", e);
+      console.error("addImage error:", e);
     }
-  };
+  }, [currentPageId]);
 
-  // ELIMINAR IMAGEN
-  const handleDeleteImage = (id: string) => {
-    setPageImages((prev) => prev.filter((img) => img.id !== id));
-    if (selectedImageId === id) setSelectedImageId(null);
-  };
-
-  // MOVER IMAGEN
-  const handleMoveEnd = (id: string, x: number, y: number) => {
-    setPageImages((prev) =>
-      prev.map((img) => (img.id === id ? { ...img, x, y } : img))
-    );
-  };
-
-  // CAMBIAR TAMAÑO
-  const handleResizeEnd = (id: string, width: number, height: number) => {
-    setPageImages((prev) =>
-      prev.map((img) => (img.id === id ? { ...img, width, height } : img))
-    );
-  };
-
-  // CAMBIAR ROTACIÓN
-  const handleRotateEnd = (id: string, rotation: number) => {
-    setPageImages((prev) =>
-      prev.map((img) => (img.id === id ? { ...img, rotation } : img))
-    );
-  };
-
-// REEMPLAZAR URI (usar para guardar cambios del modal)
-  const replaceImage = (id: string, newUri: string, opts?: { width?: number; height?: number; rotation?: number }) => {
-    setPageImages(prev =>
-      prev.map(img =>
-        img.id === id ? { ...img, uri: newUri, width: opts?.width ?? img.width, height: opts?.height ?? img.height, rotation: opts?.rotation ?? img.rotation } : img
-      )
-    );
-  };
-
-  // (Opcional) función para abrir galería y reemplazar — sólo si la quieres aquí
-  const pickAndReplaceImage = async (id: string) => {
+  // DUPLICATE image (creates DB entry with offset)
+  const handleDuplicateImage = useCallback(async (id: string) => {
+    const src = pageImagesRef.current.find((p) => p.id === id);
+    if (!src || !currentPageId) return;
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
+      const offset = 16;
+      const x = Math.min(src.position_x + offset, 100000);
+      const y = Math.min(src.position_y + offset, 100000);
+      const { id: newId } = await createPageImage(
+        currentPageId,
+        src.uri,
+        x,
+        y,
+        src.width,
+        src.height
+      );
+
+      const now = Math.floor(Date.now() / 1000);
+      const copy: PageImage = {
+        id: newId,
+        page_id: currentPageId,
+        uri: src.uri,
+        position_x: x,
+        position_y: y,
+        width: src.width,
+        height: src.height,
+        rotation: src.rotation ?? 0,
+        created_at: now,
+        updated_at: now,
+      };
+
+      setPageImages((prev) => [...prev, copy]);
+      setSelectedImageId(newId);
+    } catch (e) {
+      console.error("Error duplicando imagen:", e);
+    }
+  }, [currentPageId]);
+
+  // REPLACE URI (edit from modal) -> update DB + state
+  const replaceImage = useCallback(async (id: string, newUri: string, opts?: { width?: number; height?: number; rotation?: number }) => {
+    const img = pageImagesRef.current.find((p) => p.id === id);
+    if (!img) return;
+    const newWidth = opts?.width ?? img.width;
+    const newHeight = opts?.height ?? img.height;
+    const newRotation = opts?.rotation ?? img.rotation ?? 0;
+    try {
+      await updatePageImage(id, { uri: newUri, width: newWidth, height: newHeight, rotation: newRotation } as any);
+      const now = Math.floor(Date.now() / 1000);
+      setPageImages((prev) =>
+        prev.map((p) =>
+          p.id === id ? { ...p, uri: newUri, width: newWidth, height: newHeight, rotation: newRotation, updated_at: now } : p
+        )
+      );
+    } catch (e) {
+      console.error("replaceImage error:", e);
+    }
+  }, []);
+
+  // PICK and replace convenience
+  const pickAndReplaceImage = useCallback(async (id: string) => {
+    try {
+      const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 1,
+        allowsEditing: true,
+        quality: 0.9,
       });
-      if (!result.canceled && result.assets.length > 0) {
-        const uri = result.assets[0].uri;
-        replaceImage(id, uri);
-      }
+      if (res.canceled || !res.assets?.length) return;
+      const uri = res.assets[0].uri;
+      await replaceImage(id, uri);
     } catch (e) {
       console.error("pickAndReplaceImage error:", e);
     }
-  };
+  }, [replaceImage]);
 
+  // DELETE image (DB + state)
+  const handleDeleteImage = useCallback(async (id: string) => {
+    try {
+      await deletePageImage(id);
+    } catch (e) {
+      console.warn("deletePageImage warning (continuing):", e);
+    } finally {
+      setPageImages((prev) => prev.filter((p) => p.id !== id));
+      setSelectedImageId((s) => (s === id ? null : s));
+    }
+  }, []);
+
+  // MOVE / RESIZE / ROTATE handlers (state + persist)
+  const handleMoveEnd = useCallback(async (id: string, x: number, y: number) => {
+    setPageImages((prev) => prev.map((p) => (p.id === id ? { ...p, position_x: x, position_y: y } : p)));
+    try {
+      await updatePageImage(id, { position_x: x, position_y: y } as any);
+    } catch (e) {
+      console.error("Error guardando movimiento:", e);
+    }
+  }, []);
+
+  const handleResizeEnd = useCallback(async (id: string, width: number, height: number) => {
+    setPageImages((prev) => prev.map((p) => (p.id === id ? { ...p, width, height } : p)));
+    try {
+      await updatePageImage(id, { width, height } as any);
+    } catch (e) {
+      console.error("Error guardando tamaño:", e);
+    }
+  }, []);
+
+  const handleRotateEnd = useCallback(async (id: string, rotation: number) => {
+    setPageImages((prev) => prev.map((p) => (p.id === id ? { ...p, rotation } : p)));
+    try {
+      await updatePageImage(id, { rotation } as any);
+    } catch (e) {
+      console.error("Error guardando rotación:", e);
+    }
+  }, []);
 
   return {
     pageImages,
     selectedImageId,
     setSelectedImageId,
     addImage,
-    handleEditImage,
+    handleEditImage: pickAndReplaceImage,
     handleDeleteImage,
     handleMoveEnd,
     handleResizeEnd,
@@ -156,5 +245,6 @@ export function usePageImages(currentPageId: string | null) {
     handleDuplicateImage,
     replaceImage,
     pickAndReplaceImage,
+    loading,
   };
 }
