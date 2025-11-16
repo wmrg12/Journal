@@ -3,7 +3,7 @@ import "react-native-get-random-values";
 import { v4 as uuid } from "uuid";
 
 
-const db = (SQLite as any).openDatabase("journali.db");
+const db = (SQLite as any).openDatabase("journalin.db");
 
 export type PageRecord = {
     id: string;
