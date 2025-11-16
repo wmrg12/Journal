@@ -1,3 +1,4 @@
+// app/page.tsx (o donde tengas PageView)
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
   View,
@@ -7,7 +8,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { usePageImages } from "@/hooks/usePage/usePageImages";
+import { PageImage, usePageImages } from "@/hooks/usePage/usePageImages";
 import { DraggableImage } from "@/components/optionsPage/DraggableImage";
 
 // Constants
@@ -35,7 +36,7 @@ import { BottomToolbar } from "@/components/optionsPage/TolbarDown";
 import SkiaCanvas from "@/components/optionsPage/PageCanvas";
 
 // Modals
-import { DrawToolsModal } from "@/components/optionsPage/DrawToolsModal";
+import{DrawToolsModal} from '@/components/optionsPage/DrawToolsModal';
 import { DraggableText } from "@/components/optionsPage/DraggableText";
 import { DraggableShape } from "@/components/optionsPage/DraggableShape";
 import { TextOptionsModal } from "@/components/optionsPage/TextOptionsModal";
@@ -66,8 +67,6 @@ export default function PageView() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentPageId, setCurrentPageId] = useState<string | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-  const [canvasWidth, setCanvasWidth] = useState(0);
-  const [canvasHeight, setCanvasHeight] = useState(0);
 
   // MEMOIZED VALUES
   const pageNum = useMemo(
@@ -103,6 +102,7 @@ export default function PageView() {
     handleRotateEnd,
     handleDuplicateImage,
     replaceImage,
+    loading: imagesLoading,
   } = usePageImages(currentPageId);
 
   // HANDLER PARA MEDIR EL CANVAS
@@ -117,6 +117,37 @@ export default function PageView() {
       });
     }
   }, []);
+
+  // ---------- Tipo local Img (para DraggableImage + modal) ----------
+  type Img = {
+    id: string;
+    uri: string;
+    x: number;
+    y: number;
+    width: number; // requerido ahora
+    height: number; // requerido ahora
+    rotation?: number;
+  };
+
+  // Mapea PageImage (DB) a Img (componente) — stable via useCallback
+  const mapPageImageToImg = useCallback((p: PageImage): Img => {
+    return {
+      id: p.id,
+      uri: p.uri,
+      // DB uses position_x / position_y
+      x: (p as any).position_x ?? (p as any).x ?? 0,
+      y: (p as any).position_y ?? (p as any).y ?? 0,
+      width: (p as any).width ?? 120,
+      height: (p as any).height ?? 120,
+      rotation: (p as any).rotation ?? 0,
+    };
+  }, []);
+
+  // Memoiza la conversión completa de la lista para evitar crear nuevos objetos cada render
+  const memoizedPageImgs = useMemo(
+    () => pageImages.map(mapPageImageToImg),
+    [pageImages, mapPageImageToImg]
+  );
 
   // Helper para convertir path SVG a puntos
   const parsePathDToPoints = (pathD: string): { x: number; y: number }[] => {
@@ -189,9 +220,9 @@ export default function PageView() {
         let pageId = await getPageId(String(journalId), pageNum);
 
         if (!pageId) {
-          const total = await getTotalPages(String(journalId));
+          const totalPagesDb = await getTotalPages(String(journalId));
 
-          if (total === 0) {
+          if (totalPagesDb === 0) {
             await createPage(String(journalId), String(bg));
             pageId = await getPageId(String(journalId), 1);
           }
@@ -260,14 +291,23 @@ export default function PageView() {
     return () => {
       mounted = false;
     };
+    // intentionally excluding drawing/textManager/shapeManager from deps to avoid unnecessary reloads here
+    // they are stable hooks in your codebase — if not, consider memoizing them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [journalId, pageNum, bg]);
 
   // EFFECTS - LIMPIAR TRAZOS DE BORRADOR AL DESMONTAR
+  // Use empty deps to only run on unmount; drawing might be unstable reference from hook
   useEffect(() => {
     return () => {
-      // Limpiar trazos de borrador antes de salir
-      drawing.clearEraserStrokes();
+      try {
+        // call safely (in case drawing is nullish)
+        (drawing as any)?.clearEraserStrokes?.();
+      } catch (e) {
+        // ignore
+      }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // EFFECTS - VALIDAR TOTAL DE PÁGINAS
@@ -302,7 +342,6 @@ export default function PageView() {
   }, [journalId, pageNum, total, bg, router]);
 
   // CALLBACKS - GESTIÓN DE PÁGINAS
-
   const handleDeletePage = useCallback(() => {
     if (total <= 1 || !journalId) {
       Alert.alert("No se puede eliminar", "Debe existir al menos una página.");
@@ -371,7 +410,6 @@ export default function PageView() {
 
   const navigateToPage = useCallback(
     async (newPageNum: number) => {
-      // Esperar a que se guarden los trazos pendientes
       await drawing.waitForPendingSaves();
 
       router.replace({
@@ -387,8 +425,7 @@ export default function PageView() {
     [journalId, bg, total, router, drawing]
   );
 
-  // CALLBACKS - GESTIÓN DE HERRAMIENTAS
-
+  // CALLBACKS - HERRAMIENTAS
   const handleOpenTextOptions = useCallback(() => {
     drawing.setDrawMode(false);
     textManager.setEditingTextId(null);
@@ -424,7 +461,6 @@ export default function PageView() {
   );
 
   const handleNavigateBack = useCallback(async () => {
-    // Esperar a que se guarden los trazos pendientes
     await drawing.waitForPendingSaves();
 
     router.replace({
@@ -455,7 +491,7 @@ export default function PageView() {
     [currentPageId, shapeManager]
   );
 
-  // CALLBACKS - GESTIÓN DE AUDIO
+  // AUDIO
   const handleOpenAudioSelector = useCallback(() => {
     setIsAudioModalOpen(true);
   }, []);
@@ -466,26 +502,19 @@ export default function PageView() {
     console.log("Audio seleccionado:", audioUri, audioType);
   };
 
-  // ESTADOS Y HANDLERS
-  const [editingImage, setEditingImage] = useState<null | {
-    id: string;
-    uri: string;
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    rotation?: number;
-  }>(null);
+  // EDIT IMAGE MODAL STATE
+  const [editingImage, setEditingImage] = useState<null | Img>(null);
 
   const openImageEditor = useCallback(
     (id: string) => {
-      const img = pageImages.find((i) => i.id === id);
-      if (img) {
+      const p = pageImages.find((i) => i.id === id);
+      if (p) {
+        const img = mapPageImageToImg(p);
         setEditingImage(img);
         setSelectedImageId(id);
       }
     },
-    [pageImages, setSelectedImageId]
+    [pageImages, mapPageImageToImg, setSelectedImageId]
   );
 
   const handleSaveEditedImage = useCallback(
@@ -494,7 +523,7 @@ export default function PageView() {
       newUri: string,
       opts?: { width?: number; height?: number; rotation?: number }
     ) => {
-      replaceImage(id, newUri, opts);
+      await replaceImage(id, newUri, opts);
       setEditingImage(null);
     },
     [replaceImage]
@@ -504,7 +533,7 @@ export default function PageView() {
     setEditingImage(null);
   }, []);
 
-  // MEMOIZED VALUES - CONFIGURACIÓN DE TOOLBAR
+  // TOOLBAR ITEMS
   const toolbarItems = useMemo(
     () => [
       {
@@ -575,12 +604,13 @@ export default function PageView() {
       showTextOptions,
       showShapeOptions,
       showDrawTools,
+      addImage,
     ]
   );
 
-  // ORDENAMIENTO
+  // ORDENAMIENTO (usar copia antes de sort para no mutar estado)
   const sortedPageTexts = useMemo(() => {
-    return textManager.pageTexts.sort((a, b) => {
+    return [...textManager.pageTexts].sort((a, b) => {
       if (a.id === textManager.selectedTextId) return 1;
       if (b.id === textManager.selectedTextId) return -1;
       return a.created_at - b.created_at;
@@ -588,7 +618,7 @@ export default function PageView() {
   }, [textManager.pageTexts, textManager.selectedTextId]);
 
   const sortedPageShapes = useMemo(() => {
-    return shapeManager.pageShapes.sort((a, b) => {
+    return [...shapeManager.pageShapes].sort((a, b) => {
       if (a.id === shapeManager.selectedShapeId) return 1;
       if (b.id === shapeManager.selectedShapeId) return -1;
       return a.created_at - b.created_at;
@@ -604,7 +634,7 @@ export default function PageView() {
       edges={["top", "left", "right"]}
     >
       {/* Overlay de carga */}
-      {isLoading && (
+      {(isLoading || imagesLoading) && (
         <View style={S.loadingOverlay}>
           <ActivityIndicator size="large" color={uiColors.danger} />
         </View>
@@ -644,6 +674,7 @@ export default function PageView() {
             onDeselect={() => {
               textManager.setSelectedTextId(null);
               shapeManager.setSelectedShapeId(null);
+              setSelectedImageId(null);
             }}
           >
             {/* Textos arrastrables */}
@@ -688,18 +719,21 @@ export default function PageView() {
               />
             ))}
 
-            {pageImages.map((img) => (
+            {/* Imágenes arrastrables */}
+            {memoizedPageImgs.map((img) => (
               <DraggableImage
                 key={img.id}
                 image={img}
                 isSelected={selectedImageId === img.id}
-                onSelect={setSelectedImageId}
+                onSelect={(id: string) => setSelectedImageId(id)}
                 onDelete={handleDeleteImage}
                 onEdit={openImageEditor}
                 onMoveEnd={handleMoveEnd}
                 onResizeEnd={handleResizeEnd}
                 onRotateEnd={handleRotateEnd}
                 onDuplicate={handleDuplicateImage}
+                canvasWidth={canvasSize.width}
+                canvasHeight={canvasSize.height}
               />
             ))}
 
