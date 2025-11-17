@@ -1,29 +1,28 @@
-import React, { useEffect, useRef, useState } from "react";
-import {
-  Modal,
-  View,
-  Image,
-  TouchableOpacity,
-  Text,
-  Alert,
-  ActivityIndicator,
-  StyleSheet,
-} from "react-native";
+import { uiColors } from "@/constants/colors";
+import S from "@/styles/pageViewStyles";
+import { Feather } from "@expo/vector-icons";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
-import { uiColors } from "@/constants/colors";
-import { Feather } from "@expo/vector-icons";
-import S from "@/styles/pageViewStyles";
-import ViewShot from "react-native-view-shot";
+import { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import Svg, {
-  Defs,
-  ClipPath,
-  Rect,
   Circle,
-  Path,
+  ClipPath,
+  Defs,
   G,
+  Path,
+  Rect,
   Image as SvgImage,
 } from "react-native-svg";
+import ViewShot from "react-native-view-shot";
 
 type Props = {
   visible: boolean;
@@ -83,34 +82,9 @@ export default function EditImageModal({
     }
   }, [image]);
 
-const [outputSize, setOutputSize] = useState<{ w: number; h: number } | null>(null);
-
-  const doRotate = async (deg = 90) => {
-    try {
-      if (!workingUri) return;
-      setIsProcessing(true);
-      const res = await ImageManipulator.manipulateAsync(
-        workingUri,
-        [{ rotate: deg }],
-        {
-          compress: 1,
-          format: ImageManipulator.SaveFormat.PNG,
-        }
-      );
-      setWorkingUri(res.uri);
-      setRotation((r) => r + deg);
-      Image.getSize(
-        res.uri,
-        (w, h) => setNaturalSize({ w, h }),
-        () => {}
-      );
-    } catch (e) {
-      console.error("rotate error", e);
-      Alert.alert("Error", "No se pudo rotar la imagen.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  const [outputSize, setOutputSize] = useState<{ w: number; h: number } | null>(
+    null
+  );
 
   const pickReplace = async () => {
     try {
@@ -139,63 +113,104 @@ const [outputSize, setOutputSize] = useState<{ w: number; h: number } | null>(nu
   const STAR_PATH =
     "M50 5 L61 39 L98 39 L67 59 L78 93 L50 72 L22 93 L33 59 L2 39 L39 39 Z";
 
-
-    // al abrir la imagen puedes inicializar outputSize con naturalSize (o con el box por defecto)
-useEffect(() => {
-  if (naturalSize) {
-    setOutputSize({ w: naturalSize.w, h: naturalSize.h });
-  } else if (image) {
-    // fallback a un cuadrado de preview si quieres
-    setOutputSize({ w: 260, h: 260 });
-  } else {
-    setOutputSize(null);
-  }
-}, [naturalSize, image]);
+  // al abrir la imagen puedes inicializar outputSize con naturalSize (o con el box por defecto)
+  useEffect(() => {
+    if (naturalSize) {
+      setOutputSize({ w: naturalSize.w, h: naturalSize.h });
+    } else if (image) {
+      // fallback a un cuadrado de preview si quieres
+      setOutputSize({ w: 260, h: 260 });
+    } else {
+      setOutputSize(null);
+    }
+  }, [naturalSize, image]);
   // Guarda: si no hay forma, devolvemos la uri actual; si hay forma, capturamos el ViewShot
   const handleSave = async () => {
-  if (!image || !workingUri) return onClose();
-  try {
-    setIsProcessing(true);
+    if (!image || !workingUri) return onClose();
+    try {
+      setIsProcessing(true);
 
-    // If no crop -> return workingUri and size (if we know it)
-    if (!showCropOptions || shape === "none") {
-      // Preferimos outputSize (si UI de resize lo llenó), si no, usar naturalSize
-      const width = outputSize?.w ?? naturalSize?.w ?? undefined;
-      const height = outputSize?.h ?? naturalSize?.h ?? undefined;
+      // Determinar dimensiones finales (preferir outputSize, si no naturalSize)
+      const finalW = outputSize?.w ?? naturalSize?.w ?? undefined;
+      const finalH = outputSize?.h ?? naturalSize?.h ?? undefined;
 
-      onSave(image.id, workingUri, {
-        rotation,
-        ...(width ? { width } : {}),
-        ...(height ? { height } : {}),
-      });
+      // Si no hay crop: siempre intentar asegurar una URI final (manipulate)
+      if (!showCropOptions || shape === "none") {
+        let finalUri = workingUri;
+
+        // Si conocemos dimensiones finales y son distintas del natural (o si queremos forzar),
+        // generamos un nuevo archivo con ImageManipulator (esto evita problemas de cache).
+        if (finalW && finalH) {
+          try {
+            // Redondear dimensiones para ImageManipulator
+            const targetW = Math.round(finalW);
+            const targetH = Math.round(finalH);
+
+            // Si naturalSize existe y ya coincide y aún así quieres evitar usar la misma URI,
+            // puedes forzar la manipulación siempre; aquí solo la hacemos si difiere o si la URI no es local.
+            const shouldManipulate =
+              !naturalSize ||
+              naturalSize.w !== targetW ||
+              naturalSize.h !== targetH;
+
+            if (shouldManipulate) {
+              const ops: any[] = [
+                { resize: { width: targetW, height: targetH } },
+              ];
+              const res = await ImageManipulator.manipulateAsync(
+                finalUri,
+                ops,
+                {
+                  compress: 1,
+                  format: ImageManipulator.SaveFormat.PNG,
+                }
+              );
+              finalUri = res.uri;
+            }
+          } catch (err) {
+            console.warn("resize failed (continued):", err);
+            // no detener el guardado por un fallo de manipulación
+          }
+        }
+
+        // Llamar a onSave con URI y dimensiones (si las conocemos)
+        onSave(image.id, finalUri, {
+          rotation,
+          ...(finalW ? { width: Math.round(finalW) } : {}),
+          ...(finalH ? { height: Math.round(finalH) } : {}),
+        });
+
+        setIsProcessing(false);
+        return;
+      }
+
+      // Si hay recorte: capturar ViewShot (tu lógica actual)
+      if (!viewShotRef.current) {
+        Alert.alert(
+          "Error",
+          "No se pudo capturar la imagen (referencia no encontrada)."
+        );
+        setIsProcessing(false);
+        return;
+      }
+
+      const uri: string | null = await viewShotRef.current.capture();
+      if (!uri) {
+        Alert.alert("Error", "No se pudo generar la imagen recortada.");
+        setIsProcessing(false);
+        return;
+      }
+
+      const box = 260; // tamaño del ViewShot
+      onSave(image.id, uri, { rotation, width: box, height: box });
+    } catch (e) {
+      console.error("save capture error", e);
+      Alert.alert("Error", "No se pudo guardar la imagen.");
+    } finally {
       setIsProcessing(false);
-      return;
     }
+  };
 
-    // Con recorte: capture del ViewShot
-    if (!viewShotRef.current) {
-      Alert.alert("Error", "No se pudo capturar la imagen (referencia no encontrada).");
-      setIsProcessing(false);
-      return;
-    }
-
-    const uri: string | null = await viewShotRef.current.capture();
-    if (!uri) {
-      Alert.alert("Error", "No se pudo generar la imagen recortada.");
-      setIsProcessing(false);
-      return;
-    }
-
-    // Cuando capturas con ViewShot usando box px, el PNG resultante tendrá tamaño = box.
-    const box = 260; // o usa la variable size que pasas a PreviewMasked
-    onSave(image.id, uri, { rotation, width: box, height: box });
-  } catch (e) {
-    console.error("save capture error", e);
-    Alert.alert("Error", "No se pudo guardar la imagen recortada.");
-  } finally {
-    setIsProcessing(false);
-  }
-};
   const PreviewMasked = ({ size = 300 }: { size?: number }) => {
     const box = size;
     return (
@@ -275,7 +290,7 @@ useEffect(() => {
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
-      <View style={S.backdrop}>
+      <View style={[S.backdrop, { backgroundColor: "transparent" }]}>
         <View style={S.sheet}>
           <View style={S.previewWrap}>
             {workingUri ? (
@@ -285,17 +300,71 @@ useEffect(() => {
                 <Text>No hay imagen</Text>
               </View>
             )}
+            {/* Controles simples para redimensionar (±10%) */}
+            {workingUri && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "center",
+                  marginTop: 8,
+                }}
+              >
+                <TouchableOpacity
+                  onPress={() => {
+                    if (!outputSize && naturalSize)
+                      setOutputSize({ w: naturalSize.w, h: naturalSize.h });
+                    if (outputSize) {
+                      setOutputSize((prev) =>
+                        prev
+                          ? {
+                              w: Math.max(1, Math.round(prev.w * 0.9)),
+                              h: Math.max(1, Math.round(prev.h * 0.9)),
+                            }
+                          : prev
+                      );
+                    }
+                  }}
+                  style={[S.actionBtn, { paddingHorizontal: 12 }]}
+                >
+                  <Text style={S.actionLabel}>-</Text>
+                </TouchableOpacity>
+
+                <View style={{ width: 12 }} />
+
+                <TouchableOpacity
+                  onPress={() => {
+                    if (!outputSize && naturalSize)
+                      setOutputSize({ w: naturalSize.w, h: naturalSize.h });
+                    if (outputSize) {
+                      setOutputSize((prev) =>
+                        prev
+                          ? {
+                              w: Math.round(prev.w * 1.1),
+                              h: Math.round(prev.h * 1.1),
+                            }
+                          : prev
+                      );
+                    }
+                  }}
+                  style={[S.actionBtn, { paddingHorizontal: 12 }]}
+                >
+                  <Text style={S.actionLabel}>+</Text>
+                </TouchableOpacity>
+
+                <View style={{ width: 16 }} />
+
+                <Text style={{ alignSelf: "center" }}>
+                  {outputSize
+                    ? `${outputSize.w}×${outputSize.h}`
+                    : naturalSize
+                    ? `${naturalSize.w}×${naturalSize.h}`
+                    : "—"}
+                </Text>
+              </View>
+            )}
           </View>
 
           <View style={S.actionsRow}>
-            <TouchableOpacity
-              onPress={() => doRotate(90)}
-              style={S.actionBtn}
-            >
-              <Feather name="rotate-ccw" size={18} color={uiColors.black} />
-              <Text style={S.actionLabel}>Rotar</Text>
-            </TouchableOpacity>
-
             <TouchableOpacity onPress={pickReplace} style={S.actionBtn}>
               <Feather name="image" size={18} color={uiColors.black} />
               <Text style={S.actionLabel}>Reemplazar</Text>
@@ -309,10 +378,7 @@ useEffect(() => {
                 if (showCropOptions) setShape("none");
                 else setShape("square"); // al abrir por defecto seleccionar cuadrado
               }}
-              style={[
-                S.actionBtn,
-                showCropOptions && S.actionBtnActive,
-              ]}
+              style={[S.actionBtn, showCropOptions && S.actionBtnActive]}
             >
               <Feather name="crop" size={18} color={uiColors.black} />
               <Text style={S.actionLabel}>Recortar</Text>
@@ -323,50 +389,35 @@ useEffect(() => {
           {showCropOptions && (
             <View style={S.cropOptionsRow}>
               <TouchableOpacity
-                style={[
-                  S.cropButton,
-                  shape === "square" && S.actionBtnActive,
-                ]}
+                style={[S.cropButton, shape === "square" && S.actionBtnActive]}
                 onPress={() => setShape("square")}
               >
                 <Text style={S.cropButtonText}>Cuadrado</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  S.cropButton,
-                  shape === "circle" && S.actionBtnActive,
-                ]}
+                style={[S.cropButton, shape === "circle" && S.actionBtnActive]}
                 onPress={() => setShape("circle")}
               >
                 <Text style={S.cropButtonText}>Círculo</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  S.cropButton,
-                  shape === "heart" && S.actionBtnActive,
-                ]}
+                style={[S.cropButton, shape === "heart" && S.actionBtnActive]}
                 onPress={() => setShape("heart")}
               >
                 <Text style={S.cropButtonText}>Corazón</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  S.cropButton,
-                  shape === "star" && S.actionBtnActive,
-                ]}
+                style={[S.cropButton, shape === "star" && S.actionBtnActive]}
                 onPress={() => setShape("star")}
               >
                 <Text style={S.cropButtonText}>Estrella</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  S.cropButton,
-                  shape === "none" && S.actionBtnActive,
-                ]}
+                style={[S.cropButton, shape === "none" && S.actionBtnActive]}
                 onPress={() => setShape("none")}
               >
                 <Text style={S.cropButtonText}>Full</Text>
