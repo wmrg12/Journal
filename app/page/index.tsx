@@ -33,18 +33,20 @@ import { AudioSelector } from '@/components/optionsPage/AudioSelector';
 import { DraggableShape } from '@/components/optionsPage/DraggableShape';
 import { PageStickerComponent } from '@/components/optionsPage/DraggableSticker';
 import { DraggableText } from '@/components/optionsPage/DraggableText';
+import { DraggableImage } from "@/components/optionsPage/DraggableImage";
 import { DrawToolsModal } from '@/components/optionsPage/DrawToolsModal';
 import { ShapeColorEditModal } from '@/components/optionsPage/ShapeColorEditModal';
 import { ShapeOptionsModal } from '@/components/optionsPage/ShapeOptionsModal';
 import { StickerPickerModal } from '@/components/optionsPage/StickerOptionsModal';
 import { TextOptionsModal } from '@/components/optionsPage/TextOptionsModal';
+import EditImageModal from "@/components/optionsPage/EditImageModal";
 
 // Hooks
 import { useSkiaDrawing } from '@/hooks/usePage/usePageDrawing';
 import { usePageShapes } from '@/hooks/usePage/usePageShapes';
 import { usePageStickers } from '@/hooks/usePage/usePageStickers';
 import { usePageText } from '@/hooks/usePage/usePageTexts';
-
+import { PageImage, usePageImages } from "@/hooks/usePage/usePageImages";
 // Types
 import { Params } from '@/types';
 
@@ -76,6 +78,21 @@ export default function PageView() {
   const textManager = usePageText(currentPageId, canvasSize.width, canvasSize.height);
   const shapeManager = usePageShapes(currentPageId, canvasSize.width, canvasSize.height);
   const stickerManager = usePageStickers(currentPageId);
+  const {
+    pageImages,
+    selectedImageId,
+    setSelectedImageId,
+    addImage,
+    handleEditImage,
+    handleDeleteImage,
+    handleMoveEnd,
+    handleResizeEnd,
+    handleRotateEnd,
+    handleDuplicateImage,
+    replaceImage,
+    loading: imagesLoading,
+  } = usePageImages(currentPageId);
+
 
   // HANDLER PARA MEDIR EL CANVAS
   const handleCanvasLayout = useCallback((event: LayoutChangeEvent) => {
@@ -89,6 +106,36 @@ export default function PageView() {
       });
     }
   }, []);
+// ---------- Tipo local Img (para DraggableImage + modal) ----------
+  type Img = {
+    id: string;
+    uri: string;
+    x: number;
+    y: number;
+    width: number; // requerido ahora
+    height: number; // requerido ahora
+    rotation?: number;
+  };
+
+  // Mapea PageImage (DB) a Img (componente) — stable via useCallback
+  const mapPageImageToImg = useCallback((p: PageImage): Img => {
+    return {
+      id: p.id,
+      uri: p.uri,
+      // DB uses position_x / position_y
+      x: (p as any).position_x ?? (p as any).x ?? 0,
+      y: (p as any).position_y ?? (p as any).y ?? 0,
+      width: (p as any).width ?? 120,
+      height: (p as any).height ?? 120,
+      rotation: (p as any).rotation ?? 0,
+    };
+  }, []);
+
+  // Memoiza la conversión completa de la lista para evitar crear nuevos objetos cada render
+  const memoizedPageImgs = useMemo(
+    () => pageImages.map(mapPageImageToImg),
+    [pageImages, mapPageImageToImg]
+  );
 
   // Helper para convertir path SVG a puntos
   const parsePathDToPoints = (pathD: string): { x: number; y: number }[] => {
@@ -467,6 +514,39 @@ export default function PageView() {
     console.log('Audio seleccionado:', audioUri, audioType);
   };
 
+
+    // EDIT IMAGE MODAL STATE
+  const [editingImage, setEditingImage] = useState<null | Img>(null);
+
+  const openImageEditor = useCallback(
+    (id: string) => {
+      const p = pageImages.find((i) => i.id === id);
+      if (p) {
+        const img = mapPageImageToImg(p);
+        setEditingImage(img);
+        setSelectedImageId(id);
+      }
+    },
+    [pageImages, mapPageImageToImg, setSelectedImageId]
+  );
+
+  const handleSaveEditedImage = useCallback(
+    async (
+      id: string,
+      newUri: string,
+      opts?: { width?: number; height?: number; rotation?: number }
+    ) => {
+      await replaceImage(id, newUri, opts);
+      setEditingImage(null);
+    },
+    [replaceImage]
+  );
+
+  const handleCloseEditor = useCallback(() => {
+    setEditingImage(null);
+  }, []);
+
+  
   // MEMOIZED VALUES - CONFIGURACIÓN DE TOOLBAR
   const toolbarItems = useMemo(
     () => [
@@ -526,6 +606,14 @@ export default function PageView() {
         disabled: isLoading,
         isActive: false,
       },
+      {
+        id: "image",
+        icon: "image" as const,
+        label: "Imagen",
+        onPress: addImage,
+        disabled: isLoading,
+        isActive: false,
+      },
     ],
     [
       handleAddPage,
@@ -540,6 +628,7 @@ export default function PageView() {
       showShapeOptions,
       showStickerPicker,
       showDrawTools,
+      addImage,
     ],
   );
 
@@ -658,6 +747,33 @@ export default function PageView() {
                 canvasHeight={canvasSize.height}
               />
             ))}
+
+            {/* Imágenes arrastrables */}
+            {memoizedPageImgs.map((img) => (
+              <DraggableImage
+                key={img.id}
+                image={img}
+                isSelected={selectedImageId === img.id}
+                onSelect={(id: string) => setSelectedImageId(id)}
+                onDelete={handleDeleteImage}
+                onEdit={openImageEditor}
+                onMoveEnd={handleMoveEnd}
+                onResizeEnd={handleResizeEnd}
+                onRotateEnd={handleRotateEnd}
+                onDuplicate={handleDuplicateImage}
+                canvasWidth={canvasSize.width}
+                canvasHeight={canvasSize.height}
+              />
+            ))}
+
+            {/* Edit Image Modal */}
+            <EditImageModal
+              visible={!!editingImage}
+              image={editingImage}
+              onClose={handleCloseEditor}
+              onSave={handleSaveEditedImage}
+            />
+
 
             {/* Stickers arrastrables */}
             {sortedPageStickers.map((sticker) => (
