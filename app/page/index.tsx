@@ -21,6 +21,7 @@ import {
   listPageTexts,
   updatePageShape,
   PageAudio,
+  getPagePattern,
 } from '@/src/db/dao';
 
 // Toolbars
@@ -43,6 +44,7 @@ import { ShapeOptionsModal } from '@/components/optionsPage/ShapeOptionsModal';
 import { StickerPickerModal } from '@/components/optionsPage/StickerOptionsModal';
 import { TextOptionsModal } from '@/components/optionsPage/TextOptionsModal';
 import EditImageModal from '@/components/optionsPage/EditImageModal';
+import { PagePattern, PagePatternBackground } from '@/components/optionsCreatePage/PagePatterns';
 
 // Hooks
 import { useSkiaDrawing } from '@/hooks/usePage/usePageDrawing';
@@ -70,9 +72,9 @@ export default function PageView() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentPageId, setCurrentPageId] = useState<string | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-
   const [showShapeColorModal, setShowShapeColorModal] = useState(false);
   const [selectedShapeForColor, setSelectedShapeForColor] = useState<any>(null);
+  const [pagePattern, setPagePattern] = useState<PagePattern>('none');
 
   // MEMOIZED VALUES
   const pageNum = useMemo(() => Math.max(Number(pageNumber ?? 1) || 1, 1), [pageNumber]);
@@ -203,6 +205,31 @@ export default function PageView() {
     };
   }, [journalId, pageNum]);
 
+  // EFFECTS - CARGAR PATRON
+  useEffect(() => {
+    if (!journalId) return;
+    let mounted = true;
+
+    (async () => {
+      try {
+        const dbPattern = await getPagePattern(String(journalId), pageNum);
+
+        if (mounted && typeof dbPattern === 'string' && dbPattern.length > 0) {
+          setPagePattern(dbPattern as PagePattern);
+        } else {
+          setPagePattern('none');
+        }
+      } catch (error) {
+        console.error('Error loading page pattern:', error);
+        setPagePattern('none');
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [journalId, pageNum]);
+
   // EFFECTS - CARGAR DATOS DE PÁGINA
   useEffect(() => {
     if (!journalId) return;
@@ -216,7 +243,7 @@ export default function PageView() {
           const total = await getTotalPages(String(journalId));
 
           if (total === 0) {
-            await createPage(String(journalId), String(bg));
+            await createPage(String(journalId), String(bg), pagePattern);
             pageId = await getPageId(String(journalId), 1);
           }
         }
@@ -374,6 +401,7 @@ export default function PageView() {
       const { pageNumber: newNum, total: newTotal } = await createPage(
         String(journalId),
         String(bg),
+        pagePattern,
       );
 
       router.replace({
@@ -391,7 +419,7 @@ export default function PageView() {
     } finally {
       setIsLoading(false);
     }
-  }, [journalId, bg, router]);
+  }, [journalId, bg, pagePattern, router]);
 
   const navigateToPage = useCallback(
     async (newPageNum: number) => {
@@ -728,6 +756,15 @@ export default function PageView() {
       {/* Contenido de la página */}
       <View style={S.pageContent}>
         <View style={[S.pageCard, { backgroundColor: bg }]} onLayout={handleCanvasLayout}>
+          {/* Renderizar el patrón de fondo */}
+          {canvasSize.width > 0 && canvasSize.height > 0 && (
+            <PagePatternBackground
+              pattern={pagePattern}
+              width={canvasSize.width}
+              height={canvasSize.height}
+              color={uiColors.gray}
+            />
+          )}
           <SkiaCanvas
             width={canvasSize.width}
             height={canvasSize.height}
