@@ -86,6 +86,8 @@ async function _initDbInternal() {
           updated_at INTEGER NOT NULL
         );`,
       );
+      // PagePatterns
+      await execTxIgnore(tx, `ALTER TABLE pages ADD COLUMN pattern TEXT NOT NULL DEFAULT 'none'`);
 
       // Tabla para textos en páginas
       await execTx(
@@ -393,6 +395,7 @@ async function _initDbInternal() {
         `ALTER TABLE page_texts ADD COLUMN rotation REAL NOT NULL DEFAULT 0`,
         `ALTER TABLE page_shapes ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0`,
         `ALTER TABLE page_shapes ADD COLUMN rotation REAL NOT NULL DEFAULT 0`,
+        `ALTER TABLE pages ADD COLUMN pattern TEXT NOT NULL DEFAULT 'none'`,
       ];
 
       for (const migration of migrations) {
@@ -682,7 +685,7 @@ export async function getPageColor(journalId: string, pageNumber: number): Promi
   });
 }
 
-export async function createPage(journalId: string, bgColor: string) {
+export async function createPage(journalId: string, bgColor: string, pattern: string = 'none') {
   const id = await Crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
 
@@ -696,9 +699,9 @@ export async function createPage(journalId: string, bgColor: string) {
       const next = rows?.[0]?.next ?? 1;
 
       await runAsync(
-        `INSERT INTO pages(id, journal_id, page_number, bg_color, created_at, updated_at)
-         VALUES(?,?,?,?,?,?)`,
-        [id, journalId, next, bgColor, now, now],
+        `INSERT INTO pages(id, journal_id, page_number, bg_color, pattern, created_at, updated_at)
+         VALUES(?,?,?,?,?,?,?)`,
+        [id, journalId, next, bgColor, pattern, now, now],
       );
 
       await runAsync('COMMIT');
@@ -731,11 +734,71 @@ export async function createPage(journalId: string, bgColor: string) {
       tx,
       `INSERT INTO pages(id, journal_id, page_number, bg_color, created_at, updated_at)
        VALUES(?,?,?,?,?,?)`,
-      [id, journalId, next, bgColor, now, now],
+      [id, journalId, next, bgColor, pattern, now, now],
     );
   });
 
   return { pageNumber: next, total: next };
+}
+
+// Obtener el patrón de una página:
+export async function getPagePattern(
+  journalId: string,
+  pageNumber: number,
+): Promise<string | null> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync?.(
+      `SELECT pattern
+         FROM pages
+        WHERE journal_id = ? AND page_number = ?
+        LIMIT 1`,
+      [journalId, pageNumber],
+    );
+    return rows?.[0]?.pattern ?? null;
+  }
+
+  return new Promise<string | null>((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT pattern
+           FROM pages
+          WHERE journal_id = ? AND page_number = ?
+          LIMIT 1`,
+        [journalId, pageNumber],
+        (_: any, res: any) => {
+          resolve(res.rows.length ? (res.rows.item(0).pattern as string) : null);
+        },
+        (_: any, err: any) => {
+          reject(err);
+          return true;
+        },
+      );
+    });
+  });
+}
+
+// Actualizar el patrón:
+export async function updatePagePattern(
+  journalId: string,
+  pageNumber: number,
+  pattern: string,
+): Promise<void> {
+  const now = Math.floor(Date.now() / 1000);
+
+  if (isAsync) {
+    await runAsync(
+      `UPDATE pages SET pattern = ?, updated_at = ? WHERE journal_id = ? AND page_number = ?`,
+      [pattern, now, journalId, pageNumber],
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(
+        tx,
+        `UPDATE pages SET pattern = ?, updated_at = ? WHERE journal_id = ? AND page_number = ?`,
+        [pattern, now, journalId, pageNumber],
+      );
+    });
+  }
 }
 
 export async function deletePage(journalId: string, pageNumber: number) {
