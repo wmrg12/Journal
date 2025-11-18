@@ -5,7 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import { initDb } from '../src/db/dao';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-
+import { Audio } from 'expo-av';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -53,6 +53,7 @@ export default function RootLayout() {
 
   const [dbReady, setDbReady] = useState(false);
 
+  // Inicializar base de datos
   useEffect(() => {
     (async () => {
       try {
@@ -64,6 +65,26 @@ export default function RootLayout() {
     })();
   }, []);
 
+  // Configurar audio mode globalmente al inicio
+  useEffect(() => {
+    (async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: false,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+          interruptionModeAndroid: 1,
+          interruptionModeIOS: 1,
+        });
+      } catch (error) {
+        console.error('Error configurando audio global:', error);
+      }
+    })();
+  }, []);
+
+  // Ocultar splash screen cuando todo esté listo
   useEffect(() => {
     if (fontsLoaded && dbReady) {
       SplashScreen.hideAsync();
