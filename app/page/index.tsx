@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, BackHandler, LayoutChangeEvent, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import React from 'react';
 
 // Constants
 import { pagePalette, uiColors } from '@/constants/colors';
@@ -18,7 +19,8 @@ import {
   getTotalPages,
   listPageDraws,
   listPageTexts,
-  updatePageShape
+  updatePageShape,
+  PageAudio,
 } from '@/src/db/dao';
 
 // Toolbars
@@ -33,20 +35,23 @@ import { AudioSelector } from '@/components/optionsPage/AudioSelector';
 import { DraggableShape } from '@/components/optionsPage/DraggableShape';
 import { PageStickerComponent } from '@/components/optionsPage/DraggableSticker';
 import { DraggableText } from '@/components/optionsPage/DraggableText';
-import { DraggableImage } from "@/components/optionsPage/DraggableImage";
+import { DraggableImage } from '@/components/optionsPage/DraggableImage';
+import { DraggableAudio } from '@/components/optionsPage/DraggableAudio';
 import { DrawToolsModal } from '@/components/optionsPage/DrawToolsModal';
 import { ShapeColorEditModal } from '@/components/optionsPage/ShapeColorEditModal';
 import { ShapeOptionsModal } from '@/components/optionsPage/ShapeOptionsModal';
 import { StickerPickerModal } from '@/components/optionsPage/StickerOptionsModal';
 import { TextOptionsModal } from '@/components/optionsPage/TextOptionsModal';
-import EditImageModal from "@/components/optionsPage/EditImageModal";
+import EditImageModal from '@/components/optionsPage/EditImageModal';
 
 // Hooks
 import { useSkiaDrawing } from '@/hooks/usePage/usePageDrawing';
 import { usePageShapes } from '@/hooks/usePage/usePageShapes';
 import { usePageStickers } from '@/hooks/usePage/usePageStickers';
 import { usePageText } from '@/hooks/usePage/usePageTexts';
-import { PageImage, usePageImages } from "@/hooks/usePage/usePageImages";
+import { PageImage, usePageImages } from '@/hooks/usePage/usePageImages';
+import { usePageAudios } from '@/hooks/usePage/usePageAudio';
+
 // Types
 import { Params } from '@/types';
 
@@ -78,6 +83,7 @@ export default function PageView() {
   const textManager = usePageText(currentPageId, canvasSize.width, canvasSize.height);
   const shapeManager = usePageShapes(currentPageId, canvasSize.width, canvasSize.height);
   const stickerManager = usePageStickers(currentPageId);
+  const audioManager = usePageAudios(currentPageId, canvasSize.width, canvasSize.height);
   const {
     pageImages,
     selectedImageId,
@@ -93,7 +99,6 @@ export default function PageView() {
     loading: imagesLoading,
   } = usePageImages(currentPageId);
 
-
   // HANDLER PARA MEDIR EL CANVAS
   const handleCanvasLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -106,14 +111,15 @@ export default function PageView() {
       });
     }
   }, []);
-// ---------- Tipo local Img (para DraggableImage + modal) ----------
+
+  // ---------- Tipo local Img (para DraggableImage + modal) ----------
   type Img = {
     id: string;
     uri: string;
     x: number;
     y: number;
-    width: number; // requerido ahora
-    height: number; // requerido ahora
+    width: number;
+    height: number;
     rotation?: number;
   };
 
@@ -122,7 +128,6 @@ export default function PageView() {
     return {
       id: p.id,
       uri: p.uri,
-      // DB uses position_x / position_y
       x: (p as any).position_x ?? (p as any).x ?? 0,
       y: (p as any).position_y ?? (p as any).y ?? 0,
       width: (p as any).width ?? 120,
@@ -134,7 +139,7 @@ export default function PageView() {
   // Memoiza la conversión completa de la lista para evitar crear nuevos objetos cada render
   const memoizedPageImgs = useMemo(
     () => pageImages.map(mapPageImageToImg),
-    [pageImages, mapPageImageToImg]
+    [pageImages, mapPageImageToImg],
   );
 
   // Helper para convertir path SVG a puntos
@@ -259,8 +264,8 @@ export default function PageView() {
             if (mounted) drawing.setStrokes([]);
           }
 
-          // Cargar stickers — el hook `usePageStickers` ya carga stickers cuando `pageId` cambia,
-          // por lo que no llamamos a `refresh()` aquí para evitar carreras con `setCurrentPageId`.
+          // Cargar stickers
+          // El hook `usePageStickers` ya carga stickers cuando `pageId` cambia
         } else if (mounted) {
           setCurrentPageId(null);
           textManager.setPageTexts([]);
@@ -423,11 +428,14 @@ export default function PageView() {
     setShowShapeOptions(true);
   }, [drawing]);
 
-  const handleDoublePresShape = useCallback((shape: any) => {
-    drawing.setDrawMode(false);
-    setSelectedShapeForColor(shape);
-    setShowShapeColorModal(true);
-  }, [drawing]);
+  const handleDoublePresShape = useCallback(
+    (shape: any) => {
+      drawing.setDrawMode(false);
+      setSelectedShapeForColor(shape);
+      setShowShapeColorModal(true);
+    },
+    [drawing],
+  );
 
   const handleSaveShapeColor = useCallback(
     async (color: string) => {
@@ -485,22 +493,27 @@ export default function PageView() {
   // Capturar el botón back del dispositivo para evitar repetición de pantallas
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      // Ejecutar la navegación sin esperar (se ejecutará en background)
       handleNavigateBack();
-      return true; // true = manejamos el evento, no dejar el default
+      return true;
     });
 
     return () => backHandler.remove();
   }, [handleNavigateBack]);
 
-  // CALLBACKS - GESTIÓN DE SHAPES
+  // CALLBACKS - GESTIÓN DE STICKERS
   const handleSelectSticker = useCallback(
     async (stickerId: string, category: string) => {
-      // Agregar sticker en el centro del canvas. Si canvas no tiene tamaño aún, usar posición por defecto.
       const centerX = canvasSize.width > 0 ? canvasSize.width / 2 - 40 : 100;
       const centerY = canvasSize.height > 0 ? canvasSize.height / 2 - 40 : 100;
 
-      await stickerManager.addSticker(stickerId, category, Number(centerX), Number(centerY), 80, 80);
+      await stickerManager.addSticker(
+        stickerId,
+        category,
+        Number(centerX),
+        Number(centerY),
+        80,
+        80,
+      );
     },
     [stickerManager, canvasSize],
   );
@@ -510,12 +523,30 @@ export default function PageView() {
     setIsAudioModalOpen(true);
   }, []);
 
-  const handleAudioSelected = (audioUri: string, audioType: 'recording' | 'file') => {
-    console.log('Audio seleccionado:', audioUri, audioType);
-  };
+  const handleAudioSelected = useCallback(
+    async (audioUri: string, audioType: 'recording' | 'file') => {
+      try {
+        await audioManager.handleAddAudio(audioUri, audioType);
+        setIsAudioModalOpen(false);
+      } catch (error) {
+        // El error ya se maneja en el hook
+      }
+    },
+    [audioManager],
+  );
 
+  const handleSelectAudio = useCallback(
+    (audioId: string) => {
+      audioManager.handleSelectAudio(audioId);
+      textManager.setSelectedTextId(null);
+      shapeManager.setSelectedShapeId(null);
+      stickerManager.setSelectedStickerId(null);
+      setSelectedImageId(null);
+    },
+    [audioManager, textManager, shapeManager, stickerManager, setSelectedImageId],
+  );
 
-    // EDIT IMAGE MODAL STATE
+  // EDIT IMAGE MODAL STATE
   const [editingImage, setEditingImage] = useState<null | Img>(null);
 
   const openImageEditor = useCallback(
@@ -527,26 +558,25 @@ export default function PageView() {
         setSelectedImageId(id);
       }
     },
-    [pageImages, mapPageImageToImg, setSelectedImageId]
+    [pageImages, mapPageImageToImg, setSelectedImageId],
   );
 
   const handleSaveEditedImage = useCallback(
     async (
       id: string,
       newUri: string,
-      opts?: { width?: number; height?: number; rotation?: number }
+      opts?: { width?: number; height?: number; rotation?: number },
     ) => {
       await replaceImage(id, newUri, opts);
       setEditingImage(null);
     },
-    [replaceImage]
+    [replaceImage],
   );
 
   const handleCloseEditor = useCallback(() => {
     setEditingImage(null);
   }, []);
 
-  
   // MEMOIZED VALUES - CONFIGURACIÓN DE TOOLBAR
   const toolbarItems = useMemo(
     () => [
@@ -602,14 +632,14 @@ export default function PageView() {
         id: 'audio',
         icon: 'volume-up' as const,
         label: 'Audio',
-        onPress: () => handleOpenAudioSelector(),
+        onPress: handleOpenAudioSelector,
         disabled: isLoading,
         isActive: false,
       },
       {
-        id: "image",
-        icon: "image" as const,
-        label: "Imagen",
+        id: 'image',
+        icon: 'image' as const,
+        label: 'Imagen',
         onPress: addImage,
         disabled: isLoading,
         isActive: false,
@@ -657,6 +687,14 @@ export default function PageView() {
     });
   }, [stickerManager.stickers, stickerManager.selectedStickerId]);
 
+  const sortedAudios = useMemo(() => {
+    return [...audioManager.audios].sort((a: PageAudio, b: PageAudio) => {
+      if (a.id === audioManager.selectedAudioId) return 1;
+      if (b.id === audioManager.selectedAudioId) return -1;
+      return a.created_at - b.created_at;
+    });
+  }, [audioManager.audios, audioManager.selectedAudioId]);
+
   const TOOLBAR_BG = uiColors.background;
 
   // RENDER
@@ -666,7 +704,7 @@ export default function PageView() {
       edges={['top', 'left', 'right']}
     >
       {/* Overlay de carga */}
-      {isLoading && (
+      {(isLoading || audioManager.isLoading) && (
         <View style={S.loadingOverlay}>
           <ActivityIndicator size="large" color={uiColors.danger} />
         </View>
@@ -704,6 +742,8 @@ export default function PageView() {
               textManager.setSelectedTextId(null);
               shapeManager.setSelectedShapeId(null);
               stickerManager.setSelectedStickerId(null);
+              audioManager.setSelectedAudioId(null);
+              setSelectedImageId(null);
             }}
           >
             {/* Textos arrastrables */}
@@ -774,7 +814,6 @@ export default function PageView() {
               onSave={handleSaveEditedImage}
             />
 
-
             {/* Stickers arrastrables */}
             {sortedPageStickers.map((sticker) => (
               <PageStickerComponent
@@ -789,6 +828,32 @@ export default function PageView() {
                 scale={1}
               />
             ))}
+
+            {/* Audios arrastrables */}
+            {currentPageId &&
+              sortedAudios.map((audio) => (
+                <DraggableAudio
+                  key={audio.id}
+                  audio={{
+                    id: audio.id,
+                    page_id: audio.page_id,
+                    audio_uri: audio.audio_uri,
+                    audio_type: audio.audio_type,
+                    position_x: audio.position_x,
+                    position_y: audio.position_y,
+                    is_locked: audio.is_locked === 1,
+                    created_at: audio.created_at,
+                  }}
+                  getPanFor={audioManager.getPanForAudio}
+                  onPositionCommit={audioManager.handleAudioPositionCommit}
+                  onDelete={audioManager.handleDeleteAudio}
+                  onToggleLock={audioManager.handleToggleAudioLock}
+                  onSelect={handleSelectAudio}
+                  onDuplicate={audioManager.handleDuplicateAudio}
+                  locked={audio.is_locked === 1}
+                  isSelected={audioManager.selectedAudioId === audio.id}
+                />
+              ))}
           </SkiaCanvas>
         </View>
       </View>
