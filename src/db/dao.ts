@@ -732,7 +732,7 @@ export async function createPage(journalId: string, bgColor: string, pattern: st
 
     await execTx(
       tx,
-      `INSERT INTO pages(id, journal_id, page_number, bg_color, created_at, updated_at)
+      `INSERT INTO pages(id, journal_id, page_number, bg_color, pattern, created_at, updated_at)
        VALUES(?,?,?,?,?,?)`,
       [id, journalId, next, bgColor, pattern, now, now],
     );
