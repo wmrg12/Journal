@@ -223,6 +223,8 @@ async function _initDbInternal() {
         `ALTER TABLE page_texts ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1))`,
       );
       await execTxIgnore(tx, `ALTER TABLE page_texts ADD COLUMN rotation REAL NOT NULL DEFAULT 0`);
+      await execTxIgnore(tx, `ALTER TABLE journals ADD COLUMN default_pattern TEXT`);
+      await execTxIgnore(tx, `ALTER TABLE journals ADD COLUMN default_color TEXT`);
 
       // Migraciones para page_shapes
       await execTxIgnore(
@@ -396,6 +398,8 @@ async function _initDbInternal() {
         `ALTER TABLE page_shapes ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0`,
         `ALTER TABLE page_shapes ADD COLUMN rotation REAL NOT NULL DEFAULT 0`,
         `ALTER TABLE pages ADD COLUMN pattern TEXT NOT NULL DEFAULT 'none'`,
+        `ALTER TABLE journals ADD COLUMN default_pattern TEXT`,
+        `ALTER TABLE journals ADD COLUMN default_color TEXT`,
       ];
 
       for (const migration of migrations) {
@@ -449,12 +453,6 @@ async function runAsync(sql: string, params: any[] = []): Promise<void> {
   }
 }
 
-async function runAsyncIgnore(sql: string, params: any[] = []) {
-  try {
-    await runAsync(sql, params);
-  } catch {}
-}
-
 function txLegacy<T>(fn: (tx: any) => Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     (legacyDb as any).transaction(
@@ -476,17 +474,17 @@ export async function createJournal(name: string, color: string) {
 
   if (isAsync) {
     await runAsync(
-      `INSERT INTO journals(id, name, color, is_favorite, created_at, updated_at)
-       VALUES(?,?,?,?,?,?)`,
-      [id, name, color, 0, now, now],
+      `INSERT INTO journals(id, name, color, is_favorite, created_at, updated_at, default_pattern, default_color)
+       VALUES(?,?,?,?,?,?,?,?)`,
+      [id, name, color, 0, now, now, 'none', color],
     );
   } else {
     await txLegacy(async (tx) => {
       await execTx(
         tx,
-        `INSERT INTO journals(id, name, color, is_favorite, created_at, updated_at)
-         VALUES(?,?,?,?,?,?)`,
-        [id, name, color, 0, now, now],
+        `INSERT INTO journals(id, name, color, is_favorite, created_at, updated_at, default_pattern, default_color)
+         VALUES(?,?,?,?,?,?,?,?)`,
+        [id, name, color, 0, now, now, 'none', color],
       );
     });
   }
@@ -564,6 +562,57 @@ export async function deleteJournal(journalId: string) {
   }
 }
 
+// Obtener el patrón por defecto del diario
+export async function getJournalDefaultPattern(journalId: string): Promise<string> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync?.(
+      `SELECT default_pattern FROM journals WHERE id = ? LIMIT 1`,
+      [journalId],
+    );
+    return rows?.[0]?.default_pattern ?? 'none';
+  }
+
+  return new Promise<string>((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT default_pattern FROM journals WHERE id = ? LIMIT 1`,
+        [journalId],
+        (_: any, res: any) => {
+          resolve(res.rows.length ? res.rows.item(0).default_pattern ?? 'none' : 'none');
+        },
+        (_: any, err: any) => {
+          reject(err);
+          return true;
+        },
+      );
+    });
+  });
+}
+
+// Actualizar el patrón por defecto del diario
+export async function updateJournalDefaultPattern(
+  journalId: string,
+  pattern: string,
+): Promise<void> {
+  const now = Math.floor(Date.now() / 1000);
+
+  if (isAsync) {
+    await runAsync(`UPDATE journals SET default_pattern = ?, updated_at = ? WHERE id = ?`, [
+      pattern,
+      now,
+      journalId,
+    ]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, `UPDATE journals SET default_pattern = ?, updated_at = ? WHERE id = ?`, [
+        pattern,
+        now,
+        journalId,
+      ]);
+    });
+  }
+}
+
 // ---------- DAO: Update Journal Cover ----------
 export async function updateJournalCover(
   journalId: string,
@@ -629,11 +678,14 @@ export async function getTotalPages(journalId: string): Promise<number> {
 
 export async function getPageId(journalId: string, pageNumber: number): Promise<string | null> {
   if (isAsync) {
-    const rows = await (adb as any).getAllAsync?.(
-      `SELECT id FROM pages WHERE journal_id = ? AND page_number = ? LIMIT 1`,
-      [journalId, pageNumber],
-    );
-    return rows?.[0]?.id ?? null;
+    try {
+      const query = `SELECT id FROM pages WHERE journal_id = ? AND page_number = ? LIMIT 1`;
+      const rows = await (adb as any).getAllAsync(query, [journalId, pageNumber]);
+      return rows?.[0]?.id ?? null;
+    } catch (error) {
+      console.error('Error in getPageId (async):', error);
+      return null;
+    }
   }
 
   return new Promise<string | null>((resolve, reject) => {
@@ -655,23 +707,20 @@ export async function getPageId(journalId: string, pageNumber: number): Promise<
 
 export async function getPageColor(journalId: string, pageNumber: number): Promise<string | null> {
   if (isAsync) {
-    const rows = await (adb as any).getAllAsync?.(
-      `SELECT bg_color
-         FROM pages
-        WHERE journal_id = ? AND page_number = ?
-        LIMIT 1`,
-      [journalId, pageNumber],
-    );
-    return rows?.[0]?.bg_color ?? null;
+    try {
+      const query = `SELECT bg_color FROM pages WHERE journal_id = ? AND page_number = ? LIMIT 1`;
+      const rows = await (adb as any).getAllAsync(query, [journalId, pageNumber]);
+      return rows?.[0]?.bg_color ?? null;
+    } catch (error) {
+      console.error('Error in getPageColor (async):', error);
+      return null;
+    }
   }
 
   return new Promise<string | null>((resolve, reject) => {
     legacyDb.readTransaction((tx: any) => {
       tx.executeSql(
-        `SELECT bg_color
-           FROM pages
-          WHERE journal_id = ? AND page_number = ?
-          LIMIT 1`,
+        `SELECT bg_color FROM pages WHERE journal_id = ? AND page_number = ? LIMIT 1`,
         [journalId, pageNumber],
         (_: any, res: any) => {
           resolve(res.rows.length ? (res.rows.item(0).bg_color as string) : null);
@@ -683,6 +732,51 @@ export async function getPageColor(journalId: string, pageNumber: number): Promi
       );
     });
   });
+}
+
+// Actualizar color de una sola página
+export async function updatePageColor(
+  journalId: string,
+  pageNumber: number,
+  color: string,
+): Promise<void> {
+  const now = Math.floor(Date.now() / 1000);
+
+  if (isAsync) {
+    await runAsync(
+      `UPDATE pages SET bg_color = ?, updated_at = ? WHERE journal_id = ? AND page_number = ?`,
+      [color, now, journalId, pageNumber],
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(
+        tx,
+        `UPDATE pages SET bg_color = ?, updated_at = ? WHERE journal_id = ? AND page_number = ?`,
+        [color, now, journalId, pageNumber],
+      );
+    });
+  }
+}
+
+// Actualizar color de todas las páginas del journal
+export async function updateAllPagesColor(journalId: string, color: string): Promise<void> {
+  const now = Math.floor(Date.now() / 1000);
+
+  if (isAsync) {
+    await runAsync(`UPDATE pages SET bg_color = ?, updated_at = ? WHERE journal_id = ?`, [
+      color,
+      now,
+      journalId,
+    ]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, `UPDATE pages SET bg_color = ?, updated_at = ? WHERE journal_id = ?`, [
+        color,
+        now,
+        journalId,
+      ]);
+    });
+  }
 }
 
 export async function createPage(journalId: string, bgColor: string, pattern: string = 'none') {
@@ -747,23 +841,20 @@ export async function getPagePattern(
   pageNumber: number,
 ): Promise<string | null> {
   if (isAsync) {
-    const rows = await (adb as any).getAllAsync?.(
-      `SELECT pattern
-         FROM pages
-        WHERE journal_id = ? AND page_number = ?
-        LIMIT 1`,
-      [journalId, pageNumber],
-    );
-    return rows?.[0]?.pattern ?? null;
+    try {
+      const query = `SELECT pattern FROM pages WHERE journal_id = ? AND page_number = ? LIMIT 1`;
+      const rows = await (adb as any).getAllAsync(query, [journalId, pageNumber]);
+      return rows?.[0]?.pattern ?? null;
+    } catch (error) {
+      console.error('Error in getPagePattern (async):', error);
+      return null;
+    }
   }
 
   return new Promise<string | null>((resolve, reject) => {
     legacyDb.readTransaction((tx: any) => {
       tx.executeSql(
-        `SELECT pattern
-           FROM pages
-          WHERE journal_id = ? AND page_number = ?
-          LIMIT 1`,
+        `SELECT pattern FROM pages WHERE journal_id = ? AND page_number = ? LIMIT 1`,
         [journalId, pageNumber],
         (_: any, res: any) => {
           resolve(res.rows.length ? (res.rows.item(0).pattern as string) : null);
