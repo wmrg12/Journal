@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, Text } from 'react-native';
+import { View, TouchableOpacity, Text, Image } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { uiColors } from '@/constants/colors';
 import S from '../../styles/pageViewStyles';
@@ -11,10 +11,6 @@ type PageToolbarProps = {
   onBack: () => void;
   onPrevPage: () => void;
   onNextPage: () => void;
-  onUndo: () => void;
-  onRedo: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
   onDone: () => void;
 };
 
@@ -25,10 +21,6 @@ export default function PageToolbar({
   onBack,
   onPrevPage,
   onNextPage,
-  onUndo,
-  onRedo,
-  canUndo = false,
-  canRedo = false,
   onDone,
 }: PageToolbarProps) {
   const isFirstPage = pageNum <= 1;
@@ -36,7 +28,7 @@ export default function PageToolbar({
 
   return (
     <View style={S.topToolbar}>
-      {/* back + undo/redo */}
+      {/* back + imagen decorativa */}
       <View style={S.topToolbarLeft}>
         {/* Back */}
         <TouchableOpacity
@@ -53,35 +45,14 @@ export default function PageToolbar({
           />
         </TouchableOpacity>
 
-        {/* Undo */}
-        <TouchableOpacity
-          onPress={onUndo}
-          style={S.topToolbarIcon}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          activeOpacity={0.6}
-          disabled={!canUndo || isLoading}
-        >
-          <MaterialIcons
-            name="undo"
-            size={22}
-            color={!canUndo || isLoading ? uiColors.gray : uiColors.danger}
+        {/* Imagen decorativa de animalitos */}
+        <View style={S.decorativeImageContainer}>
+          <Image
+            source={require('@/assets/images/cats-decoration.png')}
+            style={S.decorativeImage}
+            resizeMode="contain"
           />
-        </TouchableOpacity>
-
-        {/* Redo */}
-        <TouchableOpacity
-          onPress={onRedo}
-          style={S.topToolbarIcon}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          activeOpacity={0.6}
-          disabled={!canRedo || isLoading}
-        >
-          <MaterialIcons
-            name="redo"
-            size={22}
-            color={!canRedo || isLoading ? uiColors.gray : uiColors.danger}
-          />
-        </TouchableOpacity>
+        </View>
       </View>
 
       {/* Navegación + Pag N */}
