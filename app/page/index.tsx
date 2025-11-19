@@ -801,10 +801,6 @@ export default function PageView() {
         onDone={handleNavigateBack}
         onPrevPage={() => navigateToPage(pageNum - 1)}
         onNextPage={() => navigateToPage(pageNum + 1)}
-        onUndo={() => {}}
-        onRedo={() => {}}
-        canUndo={false}
-        canRedo={false}
       />
 
       {/* Contenido de la página */}
