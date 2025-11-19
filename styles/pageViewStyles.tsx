@@ -89,6 +89,16 @@ export default StyleSheet.create({
   topToolbarPageLabelWrap: { alignItems: 'center', marginBottom: 4 },
   topToolbarPageLabel: { fontSize: 12, color: '#555' },
   disabledIcon: { opacity: 0.4 },
+  decorativeImageContainer: {
+    marginLeft: 0,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  decorativeImage: {
+    height: 80,
+    width: 100,
+  },
 
   /* ──────────────── CANVAS ──────────────── */
   canvasWrapper: { flex: 1 },
