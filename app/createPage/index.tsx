@@ -1,6 +1,6 @@
 import ColorPalette from '@/components/ColorPalette';
 import { pagePalette, uiColors } from '@/constants/colors';
-import { createPage } from '@/src/db/dao';
+import { createPage, updateJournalDefaultPattern } from '@/src/db/dao';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Image, Text, TouchableOpacity, View, ScrollView } from 'react-native';
@@ -42,6 +42,9 @@ export default function CreatePageScreen() {
   async function handleCreatePage() {
     try {
       const { pageNumber, total } = await createPage(journalId as string, bgColor, selectedPattern);
+      if (pageNumber === 1) {
+        await updateJournalDefaultPattern(journalId as string, selectedPattern);
+      }
       router.push({
         pathname: '/page',
         params: {
