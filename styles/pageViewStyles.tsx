@@ -738,7 +738,7 @@ export default StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 0,
     backgroundColor: uiColors.grayO,
   },
 
@@ -794,17 +794,17 @@ export default StyleSheet.create({
   },
 
   shapeColorCircleLarge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     marginRight: 13,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: uiColors.cards,
   },
 
   shapeColorCircleSelected: {
     borderWidth: 2.5,
-    borderColor: uiColors.black,
+    borderColor: uiColors.primary,
   },
 
   shapeAddButton: {
@@ -1262,5 +1262,134 @@ export default StyleSheet.create({
   cropButtonText: {
     fontWeight: '600',
     color: '#222',
+  },
+
+  /* ──────────────── MODAL SETTINGS ──────────────── */
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: uiColors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '85%',
+  },
+  patternNote: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 10,
+    fontStyle: 'italic',
+  },
+  section: {
+    marginBottom: 20,
+  },
+  scopeContainer: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  scopeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 12,
+  },
+  radioOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: uiColors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  radioSelected: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: uiColors.primary,
+  },
+  radioLabel: {
+    fontSize: 14,
+    color: uiColors.gray,
+  },
+  patternOption: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+  },
+  patternOptionSelected: {
+    borderColor: uiColors.primary,
+    borderWidth: 3,
+    shadowColor: uiColors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  saveButton: {
+    backgroundColor: uiColors.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: uiColors.white,
+  },
+  patternOptionContent: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  patternPreviewWrapper: {
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
+    borderRadius: 8,
+  },
+  colorScrollWrapper: {
+    marginBottom: 10,
+  },
+  colorScrollContent: {
+    flexDirection: 'row',
+    paddingHorizontal: 4,
+  },
+  colorSectionLabel: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#374151',
+    marginBottom: 12,
+    marginTop: 0,
+  },
+  patternScrollWrapper: {
+    marginBottom: 12,
+  },
+  patternScrollContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 4,
   },
 });
