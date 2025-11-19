@@ -22,11 +22,15 @@ import {
   updatePageShape,
   PageAudio,
   getPagePattern,
+  updatePagePattern,
+  updatePageColor,
+  updateAllPagesColor,
 } from '@/src/db/dao';
 
 // Toolbars
 import { BottomToolbar } from '@/components/optionsPage/TolbarDown';
 import PageToolbar from '@/components/optionsPage/TolbarUp';
+import { PageSettingsModal } from '@/components/optionsPage/PageSettingsModal';
 
 // Canvas Skia
 import SkiaCanvas from '@/components/optionsPage/PageCanvas';
@@ -75,6 +79,7 @@ export default function PageView() {
   const [showShapeColorModal, setShowShapeColorModal] = useState(false);
   const [selectedShapeForColor, setSelectedShapeForColor] = useState<any>(null);
   const [pagePattern, setPagePattern] = useState<PagePattern>('none');
+  const [showPageSettings, setShowPageSettings] = useState(false);
 
   // MEMOIZED VALUES
   const pageNum = useMemo(() => Math.max(Number(pageNumber ?? 1) || 1, 1), [pageNumber]);
@@ -243,7 +248,7 @@ export default function PageView() {
           const total = await getTotalPages(String(journalId));
 
           if (total === 0) {
-            await createPage(String(journalId), String(bg), pagePattern);
+            await createPage(String(journalId), String(bg), 'none');
             pageId = await getPageId(String(journalId), 1);
           }
         }
@@ -400,7 +405,7 @@ export default function PageView() {
     try {
       const { pageNumber: newNum, total: newTotal } = await createPage(
         String(journalId),
-        String(bg),
+        bg,
         pagePattern,
       );
 
@@ -408,7 +413,7 @@ export default function PageView() {
         pathname: '/page',
         params: {
           journalId,
-          color: String(bg),
+          color: bg,
           pageNumber: String(newNum),
           totalPages: String(newTotal),
         },
@@ -574,6 +579,45 @@ export default function PageView() {
     [audioManager, textManager, shapeManager, stickerManager, setSelectedImageId],
   );
 
+  // CALLBACKS - Modal Settings
+  const handleSavePageSettings = useCallback(
+    async (newColor: string, newPattern: PagePattern, colorScope: 'current' | 'all') => {
+      if (!journalId) return;
+
+      try {
+        setIsLoading(true);
+
+        // Actualizar color según el alcance seleccionado
+        if (newColor !== bg) {
+          if (colorScope === 'all') {
+            await updateAllPagesColor(String(journalId), newColor);
+            Alert.alert('Color actualizado', 'El color se aplicó a todas las páginas del diario.');
+          } else {
+            await updatePageColor(String(journalId), pageNum, newColor);
+          }
+          setBg(newColor as (typeof pagePalette)[number]);
+        }
+
+        // Actualizar patrón (solo página actual)
+        if (newPattern !== pagePattern) {
+          await updatePagePattern(String(journalId), pageNum, newPattern);
+          setPagePattern(newPattern);
+        }
+      } catch (error) {
+        console.error('Error updating page settings:', error);
+        Alert.alert('Error', 'No se pudieron guardar los cambios.');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [journalId, pageNum, bg, pagePattern],
+  );
+
+  // Agregar callback para abrir modal:
+  const handleOpenPageSettings = useCallback(() => {
+    setShowPageSettings(true);
+  }, []);
+
   // EDIT IMAGE MODAL STATE
   const [editingImage, setEditingImage] = useState<null | Img>(null);
 
@@ -672,6 +716,14 @@ export default function PageView() {
         disabled: isLoading,
         isActive: false,
       },
+      {
+        id: 'settings',
+        icon: 'palette' as const,
+        label: 'Estilo',
+        onPress: handleOpenPageSettings,
+        disabled: isLoading,
+        isActive: showPageSettings,
+      },
     ],
     [
       handleAddPage,
@@ -681,11 +733,13 @@ export default function PageView() {
       handleOpenStickerPicker,
       handleOpenDrawTools,
       handleOpenAudioSelector,
+      handleOpenPageSettings,
       isLoading,
       showTextOptions,
       showShapeOptions,
       showStickerPicker,
       showDrawTools,
+      showPageSettings,
       addImage,
     ],
   );
@@ -961,6 +1015,14 @@ export default function PageView() {
         visible={isAudioModalOpen}
         onClose={() => setIsAudioModalOpen(false)}
         onAudioSelected={handleAudioSelected}
+      />
+      {/* Modal de configuración de página */}
+      <PageSettingsModal
+        visible={showPageSettings}
+        onClose={() => setShowPageSettings(false)}
+        currentColor={bg}
+        currentPattern={pagePattern}
+        onSave={handleSavePageSettings}
       />
     </SafeAreaView>
   );
