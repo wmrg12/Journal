@@ -58,6 +58,9 @@ export const DraggableImage: React.FC<Props> = ({
   const [rotation, setRotation] = useState(image.rotation ?? 0);
   const rotationRef = useRef(rotation);
 
+  // keep last computed size in a ref so release/save uses the exact last values
+  const lastSizeRef = useRef({ width: size.width, height: size.height });
+
   //state & refs
   const [isDragging, setIsDragging] = useState(false);
   const toolbarButtonPressed = useRef(false);
@@ -70,13 +73,23 @@ export const DraggableImage: React.FC<Props> = ({
     rotationRef.current = rotation;
   }, [rotation]);
 
+  // sync local state when incoming image props change
   useEffect(() => setSize({ width: image.width ?? 120, height: image.height ?? 120 }), [image.width, image.height]);
   useEffect(() => {
     setRotation(image.rotation ?? 0);
     rotationRef.current = image.rotation ?? 0;
   }, [image.rotation]);
 
-  
+  // sync lastSizeRef whenever size state or incoming props change
+  useEffect(() => {
+    lastSizeRef.current = { width: size.width, height: size.height };
+  }, [size.width, size.height]);
+
+  useEffect(() => {
+    // also sync when image props change (cover cases where parent updates)
+    lastSizeRef.current = { width: image.width ?? 120, height: image.height ?? 120 };
+  }, [image.width, image.height]);
+
   useEffect(() => {
     Animated.timing(pan, {
       toValue: { x: image.x, y: image.y },
@@ -87,7 +100,6 @@ export const DraggableImage: React.FC<Props> = ({
 
   const measureBox = (cb?: (x: number, y: number, w: number, h: number) => void) => {
     if (!boxRef.current) return;
-  
     boxRef.current.measureInWindow((x: number, y: number, w: number, h: number) => {
       if (cb) cb(x, y, w, h);
     });
@@ -103,7 +115,7 @@ export const DraggableImage: React.FC<Props> = ({
       let validY = Math.max(0, Math.min(currentY, canvasHeight - size.height));
       if (validX !== currentX || validY !== currentY) {
         pan.setValue({ x: validX, y: validY });
-      
+
         (async () => {
           try {
             await updatePageImage(image.id, { position_x: validX, position_y: validY });
@@ -168,7 +180,6 @@ export const DraggableImage: React.FC<Props> = ({
 
         pan.setValue({ x: finalX, y: finalY });
 
-        
         try {
           onMoveEnd(image.id, finalX, finalY);
         } catch (e) {
@@ -188,7 +199,7 @@ export const DraggableImage: React.FC<Props> = ({
     })
   ).current;
 
-  
+  // resizeResponder: actualiza setSize y lastSizeRef, y al soltar persiste desde el ref
   const resizeResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -208,29 +219,53 @@ export const DraggableImage: React.FC<Props> = ({
         let nextW = Math.max(MIN_SIZE, resizeStart.current.w + dx);
         let nextH = Math.max(MIN_SIZE, resizeStart.current.h + dy);
 
-       
         const currentX = (pan.x as any)._value ?? image.x;
         const currentY = (pan.y as any)._value ?? image.y;
         if (canvasWidth > 0 && currentX + nextW > canvasWidth) nextW = Math.max(MIN_SIZE, canvasWidth - currentX);
         if (canvasHeight > 0 && currentY + nextH > canvasHeight) nextH = Math.max(MIN_SIZE, canvasHeight - currentY);
 
+        // Actualizamos estado (para render) y el ref (para persistir EXACTAMENTE lo que el usuario vio)
         setSize({ width: nextW, height: nextH });
+        lastSizeRef.current = { width: nextW, height: nextH };
       },
       onPanResponderRelease: async () => {
         toolbarButtonPressed.current = false;
-        onResizeEnd(image.id, size.width, size.height);
+
+        // Usa el valor guardado en el ref (evita race condition con setState)
+        const finalW = Math.max(MIN_SIZE, Math.round(lastSizeRef.current.width));
+        const finalH = Math.max(MIN_SIZE, Math.round(lastSizeRef.current.height));
+
+        // Aseguramos estado consistente
+        setSize({ width: finalW, height: finalH });
 
         try {
-          await updatePageImage(image.id, { width: size.width, height: size.height });
+          onResizeEnd(image.id, finalW, finalH);
+        } catch (e) {
+          console.error("onResizeEnd error:", e);
+        }
+
+        try {
+          await updatePageImage(image.id, { width: finalW, height: finalH });
         } catch (e) {
           console.error("Error guardando tamaño de la imagen en BD:", e);
         }
       },
       onPanResponderTerminate: async () => {
         toolbarButtonPressed.current = false;
-        onResizeEnd(image.id, size.width, size.height);
+
+        const finalW = Math.max(MIN_SIZE, Math.round(lastSizeRef.current.width));
+        const finalH = Math.max(MIN_SIZE, Math.round(lastSizeRef.current.height));
+
+        setSize({ width: finalW, height: finalH });
+
         try {
-          await updatePageImage(image.id, { width: size.width, height: size.height });
+          onResizeEnd(image.id, finalW, finalH);
+        } catch (e) {
+          console.error("onResizeEnd error (terminate):", e);
+        }
+
+        try {
+          await updatePageImage(image.id, { width: finalW, height: finalH });
         } catch (e) {
           console.error("Error guardando tamaño (terminate):", e);
         }
@@ -270,7 +305,8 @@ export const DraggableImage: React.FC<Props> = ({
 
         // Persistir en BD
         try {
-          await updatePageImage(image.id, { rotation: rotationRef.current ?? rotation });
+          const toSave = Number((rotationRef.current ?? rotation) || 0);
+          await updatePageImage(image.id, { rotation: toSave });
         } catch (e) {
           console.error("Error guardando rotación de la imagen en BD:", e);
         }
@@ -279,7 +315,8 @@ export const DraggableImage: React.FC<Props> = ({
         toolbarButtonPressed.current = false;
         onRotateEnd(image.id, rotationRef.current ?? rotation);
         try {
-          await updatePageImage(image.id, { rotation: rotationRef.current ?? rotation });
+          const toSave = Number((rotationRef.current ?? rotation) || 0);
+          await updatePageImage(image.id, { rotation: toSave });
         } catch (e) {
           console.error("Error guardando rotación (terminate):", e);
         }
@@ -315,6 +352,7 @@ export const DraggableImage: React.FC<Props> = ({
   };
 
   return (
+    // Animated.View ahora SOLO hace translateX/translateY (no rotate)
     <Animated.View
       {...panResponder.panHandlers}
       style={[
@@ -323,7 +361,6 @@ export const DraggableImage: React.FC<Props> = ({
           transform: [
             { translateX: pan.x },
             { translateY: pan.y },
-            { rotate: `${rotation}deg` },
           ],
           width: size.width,
           height: size.height,
@@ -332,6 +369,7 @@ export const DraggableImage: React.FC<Props> = ({
         },
       ]}
     >
+      {/* Contenedor medible (boxRef) — dentro de este aplicamos la rotación en el View interno */}
       <View
         ref={boxRef}
         onLayout={handleLayout}
@@ -340,9 +378,12 @@ export const DraggableImage: React.FC<Props> = ({
           height: "100%",
         }}
       >
-        <TouchableOpacity activeOpacity={1} onPress={handleTap} style={{ width: "100%", height: "100%" }}>
-          <Image source={{ uri: image.uri }} style={{ width: "100%", height: "100%", borderRadius: 8 }} resizeMode="cover" />
-        </TouchableOpacity>
+        {/* Aplicamos la rotación en este View interno (rotación alrededor del centro por defecto) */}
+        <View style={{ width: "100%", height: "100%", transform: [{ rotate: `${rotation}deg` }] }}>
+          <TouchableOpacity activeOpacity={1} onPress={handleTap} style={{ width: "100%", height: "100%" }}>
+            <Image source={{ uri: image.uri }} style={{ width: "100%", height: "100%", borderRadius: 8 }} resizeMode="cover" />
+          </TouchableOpacity>
+        </View>
 
         {isSelected && (
           <>
