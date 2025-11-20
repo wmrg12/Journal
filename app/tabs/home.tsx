@@ -1,72 +1,40 @@
-// tabs/home.tsx
-import { uiColors } from "@/constants/colors";
-import { Journal, getPageColor, getTotalPages, listJournals, toggleFavorite } from "@/src/db/dao";
-import styles from "@/styles/globalStyles";
-import { Ionicons } from "@expo/vector-icons";
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback, useMemo, useState, useRef } from "react";
-import { FlatList, Keyboard, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
-import HeaderDiarios from "../../components/headerDiary";
-import { useUser } from "@clerk/clerk-expo";
+import { uiColors } from '@/constants/colors';
+import { Journal, getPageColor, getTotalPages, listJournals, toggleFavorite } from '@/src/db/dao';
+import styles from '@/styles/globalStyles';
+import { Ionicons } from '@expo/vector-icons';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useCallback, useMemo, useState } from 'react';
+import { FlatList, Keyboard, Text, TouchableOpacity, View } from 'react-native';
+import HeaderDiarios from '../../components/headerDiary';
 
 export default function Home() {
   const { highlight } = useLocalSearchParams<{ highlight?: string }>();
-  const { user } = useUser();
   const [items, setItems] = useState<Journal[]>([]);
   const [hl, setHl] = useState<string | undefined>(undefined);
-  const [tab, setTab] = useState<"mine" | "fav">("mine");
+  const [tab, setTab] = useState<'mine' | 'fav'>('mine');
   const [range, setRange] = useState<{ from?: number; to?: number }>({});
-  const [loading, setLoading] = useState(false);
-  const isLoadingRef = useRef(false);  
 
   const load = useCallback(async () => {
-    if (!user?.id) {
-      console.log('No hay usuario, no se puede cargar journals');
-      return;
-    }
-    
-    if (isLoadingRef.current) {
-      console.log('Ya hay una carga en progreso, saltando...');
-      return;
-    }
-    
-    isLoadingRef.current = true;
-    setLoading(true);
-    
-    try {
-      const rows = await listJournals();
-      setItems(rows);
-      console.log('Journals cargados:', rows.length);
-    } catch (error) {
-      console.error('Error cargando journals:', error);
-      setItems([]);
-    } finally {
-      setLoading(false);
-      isLoadingRef.current = false;
-    }
-  }, [user?.id]); 
+    const rows = await listJournals();
+    setItems(rows);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      if (!user?.id) {
-        console.log('Esperando usuario...');
-        return;
-      }
-      
+      // Ocultar el teclado al enfocar la pantalla para evitar desplazamientos
       Keyboard.dismiss();
       load();
-      
-      if (typeof highlight === "string" && highlight.length > 0) {
+      if (typeof highlight === 'string' && highlight.length > 0) {
         setHl(highlight);
         const t = setTimeout(() => setHl(undefined), 2500);
         return () => clearTimeout(t);
       }
-    }, [load, highlight, user?.id])
+    }, [load, highlight]),
   );
-  
+
   const byTab = useMemo(
-    () => (tab === "fav" ? items.filter(i => i.is_favorite === 1) : items),
-    [items, tab]
+    () => (tab === 'fav' ? items.filter((i) => i.is_favorite === 1) : items),
+    [items, tab],
   );
 
   const filtered = useMemo(() => {
@@ -75,43 +43,41 @@ export default function Home() {
   }, [byTab, range]);
 
   const openJournal = async (j: Journal) => {
-    try {
-      const total = Math.max(await getTotalPages(j.id), 1);
-      const c1 = (await getPageColor(j.id, 1)) ?? j.color;
+    const total = Math.max(await getTotalPages(j.id), 1);
+    const c1 = (await getPageColor(j.id, 1)) ?? j.color;
 
-      router.push({
-        pathname: "/pageList",
-        params: { 
-          journalId: j.id,
-          totalPages: total.toString(),
-          color: c1,
-        }
-      });
-    } catch (error) {
-      console.error('Error abriendo journal:', error);
-    }
+    router.push({
+      pathname: '/pageList',
+      params: {
+        journalId: j.id,
+        totalPages: total.toString(),
+        color: c1,
+      },
+    });
   };
 
   const onToggleFavorite = async (j: Journal) => {
     const next = j.is_favorite === 1 ? 0 : 1;
 
-    setItems(prev => prev.map(it => (it.id === j.id ? { ...it, is_favorite: next } : it)));
+    setItems((prev) => prev.map((it) => (it.id === j.id ? { ...it, is_favorite: next } : it)));
 
     try {
       await toggleFavorite(j.id, next === 1);
     } catch (e) {
-      console.error("toggleFavorite error:", e);
-      setItems(prev => prev.map(it => (it.id === j.id ? { ...it, is_favorite: j.is_favorite } : it)));
+      console.error('toggleFavorite error:', e);
+      setItems((prev) =>
+        prev.map((it) => (it.id === j.id ? { ...it, is_favorite: j.is_favorite } : it)),
+      );
     }
   };
 
   const renderItem = ({ item }: { item: Journal }) => {
     const isHL = !!hl && item.id === hl;
     const isFav = item.is_favorite === 1;
-    const fecha = new Date(item.created_at * 1000).toLocaleDateString("es-ES", {
-      day: "numeric",
-      month: "numeric",
-      year: "numeric",
+    const fecha = new Date(item.created_at * 1000).toLocaleDateString('es-ES', {
+      day: 'numeric',
+      month: 'numeric',
+      year: 'numeric',
     });
 
     return (
@@ -123,7 +89,8 @@ export default function Home() {
         >
           <View style={styles.bookBinding} />
           <View style={styles.bookDivider} />
-          
+
+          {/* Boton favorito */}
           <View style={styles.favWrap}>
             <TouchableOpacity
               onPress={(e) => {
@@ -135,19 +102,20 @@ export default function Home() {
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
             >
               <Ionicons
-                name={isFav ? "heart" : "heart-outline"}
+                name={isFav ? 'heart' : 'heart-outline'}
                 size={20}
-                color={isFav ? (uiColors.danger ?? "#E63946") : uiColors.white}
+                color={isFav ? uiColors.danger ?? '#E63946' : uiColors.white}
               />
             </TouchableOpacity>
           </View>
-          
+
+          {/* Boton editar */}
           <View style={styles.editWrap}>
             <TouchableOpacity
               onPress={(e) => {
                 e?.stopPropagation?.();
                 router.push({
-                  pathname: "/editCover",
+                  pathname: '/editCover',
                   params: { journalId: item.id },
                 });
               }}
@@ -164,6 +132,7 @@ export default function Home() {
           </Text>
         </TouchableOpacity>
 
+        {/* Fecha  */}
         <Text style={styles.cardDate}>{fecha}</Text>
       </View>
     );
@@ -173,47 +142,21 @@ export default function Home() {
     <View style={styles.content}>
       <Ionicons name="book-outline" size={80} color={uiColors.brown} />
       <Text style={styles.message}>
-        {tab === "fav" ? "Aun no tienes favoritos" : "CREA UN DIARIO..!"}
+        {tab === 'fav' ? 'Aun no tienes favoritos' : 'CREA UN DIARIO..!'}
       </Text>
     </View>
   );
 
-  // Loading inicial suario
-  if (!user?.id) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={uiColors.brown} />
-        <Text style={{ marginTop: 10, color: uiColors.gray }}>Cargando...</Text>
-      </View>
-    );
-  }
-
-  // Loading de diarios 
-  if (loading && items.length === 0) {
-    return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={uiColors.brown} />
-        <Text style={{ marginTop: 10, color: uiColors.gray }}>Cargando diarios...</Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <HeaderDiarios
-        active={tab}
-        onChangeTab={(t) => setTab(t)}
-        onApplyDates={setRange}
-      />
+      <HeaderDiarios active={tab} onChangeTab={(t) => setTab(t)} onApplyDates={setRange} />
 
       <FlatList
         data={filtered}
         keyExtractor={(it) => it.id}
         renderItem={renderItem}
         numColumns={2}
-        contentContainerStyle={
-          filtered.length ? styles.gridContent : styles.emptyContent
-        }
+        contentContainerStyle={filtered.length ? styles.gridContent : styles.emptyContent}
         ListEmptyComponent={<Empty />}
         keyboardShouldPersistTaps="handled"
         scrollEnabled={true}
@@ -224,7 +167,7 @@ export default function Home() {
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => router.push({ pathname: "/createDiary" })}
+        onPress={() => router.push({ pathname: '/createDiary' })}
       >
         <Ionicons name="add" size={28} color={uiColors.white} />
       </TouchableOpacity>
