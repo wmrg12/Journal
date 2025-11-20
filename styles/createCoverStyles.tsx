@@ -1,151 +1,124 @@
-import { StyleSheet } from "react-native";
-import { uiColors } from "@/constants/colors";
+import { StyleSheet } from 'react-native';
+import { uiColors } from '@/constants/colors';
 
 export const diaryStyles = StyleSheet.create({
-
   container: {
     flex: 1,
     backgroundColor: uiColors.background,
   },
-
-
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: uiColors.background,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
   backButton: {
-    padding: 5,
-  },
-  backArrow: {
-    fontSize: 24,
-    color: uiColors.accent,
-    fontWeight: "500",
+    padding: 8,
+    width: 40,
+    alignItems: 'flex-start',
+    marginTop: 30,
   },
   headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: uiColors.danger,
     flex: 1,
-    textAlign: "center",
-    fontSize: 20,
-    fontWeight: "700",
-    color: uiColors.accent,
-    width: 28, 
-    height: 28,
+    textAlign: 'center',
+    marginTop: 30,
   },
-
-
+  headerSpacer: {
+    width: 40,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 24,
+  },
   content: {
     flex: 1,
-    paddingHorizontal: 40,
-    paddingTop: 20,
+    paddingHorizontal: 24,
+    paddingTop: 32,
   },
-
-
   diaryPreview: {
-    alignItems: "center",
-    marginTop: 12,
-    marginBottom: 32,
+    alignItems: 'center',
+    marginBottom: 40,
   },
   diary: {
-    width: 170,
-    height: 180,
+    width: 160,
+    height: 200,
     borderRadius: 8,
-    position: "relative",
-    shadowColor: uiColors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    position: 'relative',
   },
   diaryBinding: {
-    position: "absolute",
-    right: 20,
+    position: 'absolute',
+    right: 12,
     top: 0,
     bottom: 0,
-    width: 2,
-    backgroundColor: uiColors.white,
-    opacity: 0.7,
+    width: 3,
+    backgroundColor: 'rgba(14, 13, 13, 0.3)',
   },
-
-
   inputContainer: {
     marginBottom: 32,
+    width: 280,
+    marginLeft: 8,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: uiColors.danger,
+    marginBottom: 8,
   },
   nameInput: {
-    borderBottomWidth: 1,
-    borderBottomColor: uiColors.gray,
-    paddingVertical: 12,
+    height: 50,
+    width: 260,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 16,
     fontSize: 16,
     color: uiColors.black,
-    fontFamily: "System",
+    backgroundColor: '#FFFFFF',
+    marginBottom: -20,
+    marginLeft: 15,
   },
-
-
   colorSection: {
-    marginBottom: 40,
+    marginBottom: 45,
+    margin: 7,
+    gap: 5,
+    marginLeft: 7,
+    marginRight: 7,
   },
   colorLabel: {
     fontSize: 16,
-    fontWeight: "600",
-    color: uiColors.accent,
-    marginBottom: 14,
+    fontWeight: '600',
+    color: uiColors.danger,
+    marginBottom: 10,
   },
-
-  
   saveButton: {
     backgroundColor: uiColors.primary,
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    borderRadius: 25,
-    alignSelf: "center",
-    minWidth: 120,
-    marginTop: "auto",
-    marginBottom: 40,
-    shadowColor: uiColors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    height: 50,
+    width: 120,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -25,
+    marginBottom: 10,
+    marginLeft: 100,
   },
   saveButtonText: {
-    color: uiColors.white,
     fontSize: 16,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-
-  
-  bottomIndicator: {
-    width: 134,
-    height: 5,
-    backgroundColor: uiColors.black,
-    borderRadius: 2.5,
-    alignSelf: "center",
-    marginBottom: 8,
-    opacity: 0.3,
-  },
-
-  // Favorite
-
-  favorite: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    zIndex: 10,
-  },
-
-  favoriteButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.18)",
-    shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 5,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
