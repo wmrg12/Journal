@@ -7,13 +7,23 @@ import {
   listPageDraws,
   listPageShapes,
   listPageTexts,
+  listPageImages,
+  listPageStickers,
 } from "@/src/db/dao";
 import styles from "@/styles/globalStyles";
 import S from "@/styles/pageListStyles";
+import SmallPagePreview from "@/components/pageList/SmallPagePreview";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { BackHandler, FlatList, Keyboard, Text, TouchableOpacity, View } from "react-native";
+import {
+  BackHandler,
+  FlatList,
+  Keyboard,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 type PageItem = {
   number: number;
@@ -21,6 +31,11 @@ type PageItem = {
   hasText: boolean;
   hasDraw: boolean;
   hasShapes: boolean;
+  texts?: any[];
+  draws?: any[];
+  shapes?: any[];
+  images?: any[];
+  stickers?: any[];
 };
 
 export default function PagesList() {
@@ -39,8 +54,7 @@ export default function PagesList() {
 
     for (let i = 1; i <= total; i++) {
       const color =
-        (await getPageColor(String(journalId), i)) ??
-        (journalColor as string);
+        (await getPageColor(String(journalId), i)) ?? (journalColor as string);
 
       // Consultar contenido de la página
       const pageId = await getPageId(String(journalId), i);
@@ -48,20 +62,37 @@ export default function PagesList() {
       let hasText = false;
       let hasDraw = false;
       let hasShapes = false;
+      let texts: any[] = [];
+      let draws: any[] = [];
+      let shapes: any[] = [];
+      let images: any[] = [];
+      let stickers: any[] = [];
 
       if (pageId) {
-        const [texts, draws, shapes] = await Promise.all([
+        const [texts, draws, shapes, images, stickers] = await Promise.all([
           listPageTexts(pageId),
           listPageDraws(pageId),
           listPageShapes(pageId),
+          listPageImages(pageId),
+          listPageStickers(pageId),
         ]);
-
         hasText = texts.length > 0;
         hasDraw = draws.length > 0;
         hasShapes = shapes.length > 0;
-      }
 
-      list.push({ number: i, color, hasText, hasDraw, hasShapes });
+        list.push({
+          number: i,
+          color,
+          hasText,
+          hasDraw,
+          hasShapes,
+          texts,
+          draws,
+          shapes,
+          images,
+          stickers,
+        });
+      }
     }
 
     setPages(list);
@@ -122,27 +153,43 @@ export default function PagesList() {
         onPress={() => openPage(item.number, item.color)}
         activeOpacity={0.85}
       >
-        {/* Pagina vertical */}
         <View style={S.pagePreviewWrap}>
+          <SmallPagePreview
+            bgColor={item.color}
+            texts={item.texts}
+            draws={item.draws}
+            shapes={item.shapes}
+            images={item.images}
+            stickers={item.stickers}
+            sourceWidth={555}
+            sourceHeight={850}
+            extraScale={1.05}
+            alignVertical="center"
+            centerNullPositions={true}
+            style={{ width: "100%", height: "100%" }}
+          />
           <View
-            style={[S.pagePreviewPortrait, { backgroundColor: item.color }]}
+            style={{
+              position: "absolute",
+              bottom: 6,
+              right: 6,
+              flexDirection: "row",
+              gap: 6,
+            }}
           >
-            {/* Badge con número de página */}
-            <View style={S.pageNumberBadge}>
-              <Text style={S.pageNumberText}>{item.number}</Text>
-            </View>
-            {/* Iconos de contenido en la mini página */}
-            <View style={{ position: "absolute", bottom: 4, right: 4, flexDirection: "row", gap: 4 }}>
-              {item.hasText && (
-                <Ionicons name="text-outline" size={12} color={uiColors.white} />
-              )}
-              {item.hasDraw && (
-                <Ionicons name="brush-outline" size={12} color={uiColors.white} />
-              )}
-              {item.hasShapes && (
-                <Ionicons name="shapes-outline" size={12} color={uiColors.white} />
-              )}
-            </View>
+            {item.hasText && (
+              <Ionicons name="text-outline" size={12} color={uiColors.white} />
+            )}
+            {item.hasDraw && (
+              <Ionicons name="brush-outline" size={12} color={uiColors.white} />
+            )}
+            {item.hasShapes && (
+              <Ionicons
+                name="shapes-outline"
+                size={12}
+                color={uiColors.white}
+              />
+            )}
           </View>
         </View>
 
@@ -158,10 +205,13 @@ export default function PagesList() {
 
   // Capturar el botón back del dispositivo para ir a tabs/home
   useEffect(() => {
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      router.replace('/tabs/home');
-      return true; // true = manejamos el evento
-    });
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        router.replace("/tabs/home");
+        return true;
+      }
+    );
 
     return () => backHandler.remove();
   }, []);
@@ -169,14 +219,12 @@ export default function PagesList() {
   return (
     <View style={styles.container}>
       <View style={S.header}>
-        <TouchableOpacity
-          onPress={() => {
-            router.replace("/tabs/home");
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name="arrow-back" size={28} color={uiColors.danger} />
-                <Text style={[styles.message, { marginLeft: 18 }]}>Mis paginas</Text>
+        <TouchableOpacity onPress={() => router.replace("/tabs/home")}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Ionicons name="arrow-back" size={28} color={uiColors.danger} />
+            <Text style={[styles.message, { marginLeft: 18 }]}>
+              Mis paginas
+            </Text>
           </View>
         </TouchableOpacity>
         <Text style={S.headerTitle}>{journalName}</Text>
