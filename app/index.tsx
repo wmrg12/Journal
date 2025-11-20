@@ -1,14 +1,4 @@
-import { useEffect } from "react";
-import { useRouter } from "expo-router";
-
+//app/index.tsx
 export default function Index() {
-
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace("/tabs/home");
-    {router.replace("/login");}
-  }, [router]); 
   return null;
 }
-

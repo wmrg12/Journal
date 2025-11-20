@@ -1,35 +1,67 @@
+// tabs/home.tsx
 import { uiColors } from "@/constants/colors";
 import { Journal, getPageColor, getTotalPages, listJournals, toggleFavorite } from "@/src/db/dao";
 import styles from "@/styles/globalStyles";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
-import { FlatList, Keyboard, Text, TouchableOpacity, View } from "react-native";
+import { useCallback, useMemo, useState, useRef } from "react";
+import { FlatList, Keyboard, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
 import HeaderDiarios from "../../components/headerDiary";
+import { useUser } from "@clerk/clerk-expo";
 
 export default function Home() {
   const { highlight } = useLocalSearchParams<{ highlight?: string }>();
+  const { user } = useUser();
   const [items, setItems] = useState<Journal[]>([]);
   const [hl, setHl] = useState<string | undefined>(undefined);
   const [tab, setTab] = useState<"mine" | "fav">("mine");
   const [range, setRange] = useState<{ from?: number; to?: number }>({});
-  
+  const [loading, setLoading] = useState(false);
+  const isLoadingRef = useRef(false);  
+
   const load = useCallback(async () => {
-    const rows = await listJournals();
-    setItems(rows);
-  }, []);
+    if (!user?.id) {
+      console.log('No hay usuario, no se puede cargar journals');
+      return;
+    }
+    
+    if (isLoadingRef.current) {
+      console.log('Ya hay una carga en progreso, saltando...');
+      return;
+    }
+    
+    isLoadingRef.current = true;
+    setLoading(true);
+    
+    try {
+      const rows = await listJournals();
+      setItems(rows);
+      console.log('Journals cargados:', rows.length);
+    } catch (error) {
+      console.error('Error cargando journals:', error);
+      setItems([]);
+    } finally {
+      setLoading(false);
+      isLoadingRef.current = false;
+    }
+  }, [user?.id]); 
 
   useFocusEffect(
     useCallback(() => {
-      // Ocultar el teclado al enfocar la pantalla para evitar desplazamientos
+      if (!user?.id) {
+        console.log('Esperando usuario...');
+        return;
+      }
+      
       Keyboard.dismiss();
       load();
+      
       if (typeof highlight === "string" && highlight.length > 0) {
         setHl(highlight);
         const t = setTimeout(() => setHl(undefined), 2500);
         return () => clearTimeout(t);
       }
-    }, [load, highlight])
+    }, [load, highlight, user?.id])
   );
   
   const byTab = useMemo(
@@ -43,17 +75,21 @@ export default function Home() {
   }, [byTab, range]);
 
   const openJournal = async (j: Journal) => {
-    const total = Math.max(await getTotalPages(j.id), 1);
-    const c1 = (await getPageColor(j.id, 1)) ?? j.color;
+    try {
+      const total = Math.max(await getTotalPages(j.id), 1);
+      const c1 = (await getPageColor(j.id, 1)) ?? j.color;
 
-    router.push({
-      pathname: "/pageList",
-      params: { 
-        journalId: j.id,
-        totalPages: total.toString(),
-        color: c1,
-      }
-    });
+      router.push({
+        pathname: "/pageList",
+        params: { 
+          journalId: j.id,
+          totalPages: total.toString(),
+          color: c1,
+        }
+      });
+    } catch (error) {
+      console.error('Error abriendo journal:', error);
+    }
   };
 
   const onToggleFavorite = async (j: Journal) => {
@@ -88,7 +124,6 @@ export default function Home() {
           <View style={styles.bookBinding} />
           <View style={styles.bookDivider} />
           
-          {/* Boton favorito */}
           <View style={styles.favWrap}>
             <TouchableOpacity
               onPress={(e) => {
@@ -107,7 +142,6 @@ export default function Home() {
             </TouchableOpacity>
           </View>
           
-          {/* Boton editar */}
           <View style={styles.editWrap}>
             <TouchableOpacity
               onPress={(e) => {
@@ -130,7 +164,6 @@ export default function Home() {
           </Text>
         </TouchableOpacity>
 
-        {/* Fecha  */}
         <Text style={styles.cardDate}>{fecha}</Text>
       </View>
     );
@@ -144,6 +177,26 @@ export default function Home() {
       </Text>
     </View>
   );
+
+  // Loading inicial suario
+  if (!user?.id) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={uiColors.brown} />
+        <Text style={{ marginTop: 10, color: uiColors.gray }}>Cargando...</Text>
+      </View>
+    );
+  }
+
+  // Loading de diarios 
+  if (loading && items.length === 0) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={uiColors.brown} />
+        <Text style={{ marginTop: 10, color: uiColors.gray }}>Cargando diarios...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

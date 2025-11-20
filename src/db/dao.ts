@@ -5,49 +5,91 @@ import * as Crypto from 'expo-crypto';
 let legacyDb: any = null;
 let adb: any = null;
 let isAsync = false;
+let currentDbUserId: string | null = null;
 
-// SINGLETON PATTERN: Asegurar que initDb solo se ejecute una vez
+// intbd solo se ejecuta una vez
 let initPromise: Promise<void> | null = null;
 let isInitialized = false;
+let isInitializing = false;
 
-export async function initDb() {
-  // Si ya está inicializado, retornar inmediatamente
-  if (isInitialized) {
+export async function closeDatabase() {
+  if (adb && isAsync) {
+    try {
+      console.log('Cerrando base de datos async...');
+      await (adb as any).closeAsync?.();
+      adb = null;
+      console.log('Base de datos async cerrada');
+    } catch (error) {
+      console.error('Error cerrando BD async:', error);
+    }
+  } else if (legacyDb && !isAsync) {
+    try {
+      console.log('Cerrando base de datos legacy...');
+      legacyDb = null;
+      console.log('Base de datos legacy cerrada');
+    } catch (error) {
+      console.error('Error cerrando BD legacy:', error);
+    }
+  }
+  
+  // Resetear flags
+  isInitialized = false;
+  currentDbUserId = null;
+  initPromise = null;
+}
+
+
+export async function initDb(userId?: string) {
+  if (isInitialized && currentDbUserId === userId) {
     return;
   }
 
-  // Si ya hay una inicialización en progreso, esperar a que termine
+  if (isInitialized && currentDbUserId !== userId && userId) {
+    console.log('Cambiando de base de datos de usuario...');
+     await closeDatabase();
+    isInitializing = true;
+    initPromise = null;
+  }
+
   if (initPromise) {
     return initPromise;
   }
 
-  // Crear una nueva promesa de inicialización
-  initPromise = _initDbInternal();
+  isInitializing = true;
+  initPromise = _initDbInternal(userId);
 
   try {
     await initPromise;
     isInitialized = true;
+    isInitializing = false;
+    currentDbUserId = userId || null;
   } catch (error) {
-    // Si falla, resetear para permitir reintentos
+
     initPromise = null;
+    isInitializing = false;
     throw error;
   }
 }
 
-async function _initDbInternal() {
+async function _initDbInternal(userId?: string) {
   const anySQLite = SQLite as any;
+  
+  const dbName = userId ? `journal_${userId}.db` : 'journal.db';
+  console.log('Abriendo base de datos:', dbName);
 
   // -------- LEGACY (openDatabase) --------
   if (typeof anySQLite.openDatabase === 'function') {
-    legacyDb = anySQLite.openDatabase('journal.db');
+    const newDb = anySQLite.openDatabase(dbName); 
     isAsync = false;
 
     // PRAGMA FK
     await new Promise<void>((resolve) => {
-      (legacyDb as any).exec?.([{ sql: 'PRAGMA foreign_keys = ON;', args: [] }], false, () =>
-        resolve(),
-      ) ?? resolve();
-    });
+  (newDb as any).exec?.([{ sql: 'PRAGMA foreign_keys = ON;', args: [] }], false, () =>
+    resolve(),
+  ) ?? resolve();
+});
+    
+    legacyDb = newDb;
 
     // Tablas sql
     await txLegacy(async (tx: any) => {
@@ -218,6 +260,16 @@ async function _initDbInternal() {
         tx,
         `ALTER TABLE pages ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`,
       );
+      await execTxIgnore(tx, `ALTER TABLE journals ADD COLUMN user_id TEXT`);
+      await execTxIgnore(tx, `ALTER TABLE pages ADD COLUMN user_id TEXT`);
+      await execTxIgnore(tx, `ALTER TABLE page_texts ADD COLUMN user_id TEXT`);
+      await execTxIgnore(tx, `ALTER TABLE page_draws ADD COLUMN user_id TEXT`);
+      await execTxIgnore(tx, `ALTER TABLE page_shapes ADD COLUMN user_id TEXT`);
+      await execTxIgnore(tx, `ALTER TABLE page_stickers ADD COLUMN user_id TEXT`);
+      await execTxIgnore(tx, `ALTER TABLE page_images ADD COLUMN user_id TEXT`);
+      await execTxIgnore(tx, `ALTER TABLE page_audios ADD COLUMN user_id TEXT`);
+      await execTxIgnore(tx, `ALTER TABLE tasks ADD COLUMN user_id TEXT`);
+
       await execTxIgnore(
         tx,
         `ALTER TABLE page_texts ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1))`,
@@ -253,11 +305,12 @@ async function _initDbInternal() {
 
   // -------- ASYNC (openDatabaseAsync) --------
   if (typeof anySQLite.openDatabaseAsync === 'function') {
-    adb = await anySQLite.openDatabaseAsync('journal.db');
+    const newAdb = await anySQLite.openDatabaseAsync(dbName);
     isAsync = true;
+    adb = newAdb;
 
     try {
-      await (adb as any).execAsync(`
+      await (newAdb as any).execAsync(`
         PRAGMA foreign_keys = ON;
         
         CREATE TABLE IF NOT EXISTS journals(
@@ -393,6 +446,15 @@ async function _initDbInternal() {
       const migrations = [
         `ALTER TABLE journals ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`,
         `ALTER TABLE pages ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`,
+        `ALTER TABLE journals ADD COLUMN user_id TEXT`,
+        `ALTER TABLE pages ADD COLUMN user_id TEXT`,
+        `ALTER TABLE page_texts ADD COLUMN user_id TEXT`,
+        `ALTER TABLE page_draws ADD COLUMN user_id TEXT`,
+        `ALTER TABLE page_shapes ADD COLUMN user_id TEXT`,
+        `ALTER TABLE page_stickers ADD COLUMN user_id TEXT`,
+        `ALTER TABLE page_images ADD COLUMN user_id TEXT`,
+        `ALTER TABLE page_audios ADD COLUMN user_id TEXT`,
+        `ALTER TABLE tasks ADD COLUMN user_id TEXT`,
         `ALTER TABLE page_texts ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1))`,
         `ALTER TABLE page_texts ADD COLUMN rotation REAL NOT NULL DEFAULT 0`,
         `ALTER TABLE page_shapes ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0`,
@@ -404,9 +466,8 @@ async function _initDbInternal() {
 
       for (const migration of migrations) {
         try {
-          await (adb as any).execAsync(migration);
+          await (newAdb as any).execAsync(migration);
         } catch (error) {
-          // Ignorar errores (columna ya existe)
         }
       }
     } catch (error) {
@@ -453,6 +514,13 @@ async function runAsync(sql: string, params: any[] = []): Promise<void> {
   }
 }
 
+async function runAsyncIgnore(sql: string, params: any[] = []): Promise<void> {
+  try {
+    await runAsync(sql, params);
+  } catch {
+  }
+}
+
 function txLegacy<T>(fn: (tx: any) => Promise<T>): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     (legacyDb as any).transaction(
@@ -474,17 +542,17 @@ export async function createJournal(name: string, color: string) {
 
   if (isAsync) {
     await runAsync(
-      `INSERT INTO journals(id, name, color, is_favorite, created_at, updated_at, default_pattern, default_color)
-       VALUES(?,?,?,?,?,?,?,?)`,
-      [id, name, color, 0, now, now, 'none', color],
+      `INSERT INTO journals(id, name, color, is_favorite, created_at, updated_at, default_pattern, default_color, user_id)
+       VALUES(?,?,?,?,?,?,?,?,?)`,
+      [id, name, color, 0, now, now, 'none', color, currentUserId],
     );
   } else {
     await txLegacy(async (tx) => {
       await execTx(
         tx,
-        `INSERT INTO journals(id, name, color, is_favorite, created_at, updated_at, default_pattern, default_color)
-         VALUES(?,?,?,?,?,?,?,?)`,
-        [id, name, color, 0, now, now, 'none', color],
+        `INSERT INTO journals(id, name, color, is_favorite, created_at, updated_at, default_pattern, default_color, user_id)
+         VALUES(?,?,?,?,?,?,?,?,?)`,
+        [id, name, color, 0, now, now, 'none', color, currentUserId],
       );
     });
   }
@@ -793,9 +861,9 @@ export async function createPage(journalId: string, bgColor: string, pattern: st
       const next = rows?.[0]?.next ?? 1;
 
       await runAsync(
-        `INSERT INTO pages(id, journal_id, page_number, bg_color, pattern, created_at, updated_at)
-         VALUES(?,?,?,?,?,?,?)`,
-        [id, journalId, next, bgColor, pattern, now, now],
+        `INSERT INTO pages(id, journal_id, page_number, bg_color, pattern, created_at, updated_at, user_id)
+         VALUES(?,?,?,?,?,?,?,?)`,
+        [id, journalId, next, bgColor, pattern, now, now, currentUserId],
       );
 
       await runAsync('COMMIT');
@@ -826,9 +894,9 @@ export async function createPage(journalId: string, bgColor: string, pattern: st
 
     await execTx(
       tx,
-      `INSERT INTO pages(id, journal_id, page_number, bg_color, pattern, created_at, updated_at)
-       VALUES(?,?,?,?,?,?)`,
-      [id, journalId, next, bgColor, pattern, now, now],
+      `INSERT INTO pages(id, journal_id, page_number, bg_color, pattern, created_at, updated_at, user_id)
+       VALUES(?,?,?,?,?,?,?,?)`,
+      [id, journalId, next, bgColor, pattern, now, now, currentUserId],
     );
   });
 
@@ -980,8 +1048,8 @@ export async function createPageText(
 
   if (isAsync) {
     await runAsync(
-      `INSERT INTO page_texts(id, page_id, content, font_family, color, position_x, position_y, font_size, rotation, is_locked, created_at, updated_at)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO page_texts(id, page_id, content, font_family, color, position_x, position_y, font_size, rotation, is_locked, created_at, updated_at, user_id)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         id,
         pageId,
@@ -995,14 +1063,15 @@ export async function createPageText(
         isLocked ?? 0,
         now,
         now,
+        currentUserId
       ],
     );
   } else {
     await txLegacy(async (tx) => {
       await execTx(
         tx,
-        `INSERT INTO page_texts(id, page_id, content, font_family, color, position_x, position_y, font_size, rotation, is_locked, created_at, updated_at)
-         VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO page_texts(id, page_id, content, font_family, color, position_x, position_y, font_size, rotation, is_locked, created_at, updated_at, user_id)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           id,
           pageId,
@@ -1016,6 +1085,7 @@ export async function createPageText(
           isLocked ?? 0,
           now,
           now,
+          currentUserId,
         ],
       );
     });
@@ -1180,17 +1250,17 @@ export async function createPageShape(
 
   if (isAsync) {
     await runAsync(
-      `INSERT INTO page_shapes(id, page_id, shape_type, color, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at)
-          VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [id, pageId, shapeType, color, positionX, positionY, width, height, 0, 0, now, now],
+      `INSERT INTO page_shapes(id, page_id, shape_type, color, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at, user_id)
+          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [id, pageId, shapeType, color, positionX, positionY, width, height, 0, 0, now, now, currentUserId],
     );
   } else {
     await txLegacy(async (tx) => {
       await execTx(
         tx,
-        `INSERT INTO page_shapes(id, page_id, shape_type, color, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at)
-          VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [id, pageId, shapeType, color, positionX, positionY, width, height, 0, 0, now, now],
+        `INSERT INTO page_shapes(id, page_id, shape_type, color, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at, user_id)
+          VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [id, pageId, shapeType, color, positionX, positionY, width, height, 0, 0, now, now,currentUserId],
       );
     });
   }
@@ -1307,7 +1377,7 @@ export async function deletePageShape(shapeId: string) {
 export type PageDraw = {
   id: string;
   page_id: string;
-  path_d: string; // Cadena SVG path
+  path_d: string; 
   color: string;
   width: number;
   opacity: number;
@@ -1339,9 +1409,9 @@ export async function createPageDraw(
     }
 
     await runAsync(
-      `INSERT INTO page_draws(id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at)
-       VALUES(?,?,?,?,?,?,?,?,?,?)`,
-      [id, pageId, pathD, color, width, opacity, tool, orderIndex, now, now],
+      `INSERT INTO page_draws(id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at, user_id)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+      [id, pageId, pathD, color, width, opacity, tool, orderIndex, now, now, currentUserId],
     );
   } else {
     await txLegacy(async (tx) => {
@@ -1361,9 +1431,9 @@ export async function createPageDraw(
 
       await execTx(
         tx,
-        `INSERT INTO page_draws(id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at)
-         VALUES(?,?,?,?,?,?,?,?,?,?)`,
-        [id, pageId, pathD, color, width, opacity, tool, orderIndex, now, now],
+        `INSERT INTO page_draws(id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at, user_id)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+        [id, pageId, pathD, color, width, opacity, tool, orderIndex, now, now, currentUserId],
       );
     });
   }
@@ -1445,8 +1515,8 @@ export async function createPageSticker(
 
   if (isAsync) {
     await runAsync(
-      `INSERT INTO page_stickers(id, page_id, sticker_url, sticker_category, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO page_stickers(id, page_id, sticker_url, sticker_category, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at, user_id)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         id,
         pageId,
@@ -1460,14 +1530,15 @@ export async function createPageSticker(
         0,
         now,
         now,
+        currentUserId,
       ],
     );
   } else {
     await txLegacy(async (tx) => {
       await execTx(
         tx,
-        `INSERT INTO page_stickers(id, page_id, sticker_url, sticker_category, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at)
-         VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO page_stickers(id, page_id, sticker_url, sticker_category, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at,user_id)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           id,
           pageId,
@@ -1481,6 +1552,7 @@ export async function createPageSticker(
           0,
           now,
           now,
+          currentUserId
         ],
       );
     });
@@ -1753,17 +1825,17 @@ export async function createPageImage(
 
   if (isAsync) {
     await runAsync(
-      `INSERT INTO page_images(id, page_id, uri, position_x, position_y, width, height, rotation, created_at, updated_at)
-       VALUES(?,?,?,?,?,?,?,?,?,?)`,
-      [id, pageId, uri, positionX, positionY, width, height, 0, now, now],
+      `INSERT INTO page_images(id, page_id, uri, position_x, position_y, width, height, rotation, created_at, updated_at, user_id)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+      [id, pageId, uri, positionX, positionY, width, height, 0, now, now, currentUserId],
     );
   } else {
     await txLegacy(async (tx) => {
       await execTx(
         tx,
-        `INSERT INTO page_images(id, page_id, uri, position_x, position_y, width, height, rotation, created_at, updated_at)
-         VALUES(?,?,?,?,?,?,?,?,?,?)`,
-        [id, pageId, uri, positionX, positionY, width, height, 0, now, now],
+        `INSERT INTO page_images(id, page_id, uri, position_x, position_y, width, height, rotation, created_at, updated_at, user_id)  
+         VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+        [id, pageId, uri, positionX, positionY, width, height, 0, now, now, currentUserId],
       );
     });
   }
@@ -1897,17 +1969,17 @@ export async function createPageAudio(
 
   if (isAsync) {
     await runAsync(
-      `INSERT INTO page_audios(id, page_id, audio_uri, audio_type, position_x, position_y, is_locked, created_at, updated_at)
-       VALUES(?,?,?,?,?,?,?,?,?)`,
-      [id, pageId, audioUri, audioType, positionX, positionY, 0, now, now],
+      `INSERT INTO page_audios(id, page_id, audio_uri, audio_type, position_x, position_y, is_locked, created_at, updated_at, user_id)
+       VALUES(?,?,?,?,?,?,?,?,?,?)`,
+      [id, pageId, audioUri, audioType, positionX, positionY, 0, now, now, currentUserId],
     );
   } else {
     await txLegacy(async (tx) => {
       await execTx(
         tx,
-        `INSERT INTO page_audios(id, page_id, audio_uri, audio_type, position_x, position_y, is_locked, created_at, updated_at)
-         VALUES(?,?,?,?,?,?,?,?,?)`,
-        [id, pageId, audioUri, audioType, positionX, positionY, 0, now, now],
+        `INSERT INTO page_audios(id, page_id, audio_uri, audio_type, position_x, position_y, is_locked, created_at, updated_at, user_id)
+         VALUES(?,?,?,?,?,?,?,?,?,?)`,
+        [id, pageId, audioUri, audioType, positionX, positionY, 0, now, now, currentUserId],
       );
     });
   }
@@ -2034,17 +2106,17 @@ export async function createTask(title: string) {
 
   if (isAsync) {
     await runAsync(
-      `INSERT INTO tasks(id, title, is_completed, created_at, updated_at)
-        VALUES(?,?,?,?,?)`,
-      [id, title, 0, now, now],
+      `INSERT INTO tasks(id, title, is_completed, created_at, updated_at, user_id)
+        VALUES(?,?,?,?,?,?)`,
+      [id, title, 0, now, now, currentUserId],
     );
   } else {
     await txLegacy(async (tx) => {
       await execTx(
         tx,
-        `INSERT INTO tasks(id, title, is_completed, created_at, updated_at)
-          VALUES(?,?,?,?,?)`,
-        [id, title, 0, now, now],
+        `INSERT INTO tasks(id, title, is_completed, created_at, updated_at, user_id)
+          VALUES(?,?,?,?,?,?)`,
+        [id, title, 0, now, now, currentUserId],
       );
     });
   }
@@ -2168,10 +2240,10 @@ export async function getPageSnapshot(
   journalId: string,
   pageNumber: number,
 ): Promise<PageSnapshot | null> {
-  // 1. Obtenemos el ID de la página
+
   const pageId = await getPageId(journalId, pageNumber);
   if (!pageId) {
-    return null; // no existe esa página
+    return null; 
   }
 
   const bg_color = await getPageColor(journalId, pageNumber);
@@ -2197,4 +2269,95 @@ export async function getPageSnapshot(
     stickers,
     audios,
   };
+}
+// ---------- USER ID MANAGEMENT ----------
+let currentUserId: string | null = null;
+
+export function setCurrentUserId(userId: string) {
+  currentUserId = userId;
+  console.log('Current user ID set:', userId);
+}
+
+export function getCurrentUserId(): string | null {
+  return currentUserId;
+}
+
+export async function updateUserIdForExistingData() {
+  if (!currentUserId) {
+    console.log('No user ID set, skipping update');
+    return;
+  }
+  
+  const now = Math.floor(Date.now() / 1000);
+  
+  console.log('Updating user_id for existing data...');
+  
+  if (isAsync) {
+    await runAsyncIgnore(`UPDATE journals SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+    await runAsyncIgnore(`UPDATE pages SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+    await runAsyncIgnore(`UPDATE page_texts SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+    await runAsyncIgnore(`UPDATE page_draws SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+    await runAsyncIgnore(`UPDATE page_shapes SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+    await runAsyncIgnore(`UPDATE page_stickers SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+    await runAsyncIgnore(`UPDATE page_images SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+    await runAsyncIgnore(`UPDATE page_audios SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+    await runAsyncIgnore(`UPDATE tasks SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTxIgnore(tx, `UPDATE journals SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+      await execTxIgnore(tx, `UPDATE pages SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+      await execTxIgnore(tx, `UPDATE page_texts SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+      await execTxIgnore(tx, `UPDATE page_draws SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+      await execTxIgnore(tx, `UPDATE page_shapes SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+      await execTxIgnore(tx, `UPDATE page_stickers SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+      await execTxIgnore(tx, `UPDATE page_images SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+      await execTxIgnore(tx, `UPDATE page_audios SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+      await execTxIgnore(tx, `UPDATE tasks SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+    });
+  }
+  
+  console.log('user_id updated for existing data');
+}
+// ----------- FUNCION AUXILIAR PARA SYNC ----------
+export async function insertJournalFromRemote(journal: {
+  id: string;
+  name: string;
+  color: string;
+  is_favorite: number;
+  created_at: number;
+  updated_at: number;
+  user_id: string;
+}): Promise<void> {
+  if (isAsync) {
+    await runAsync(
+      `INSERT OR REPLACE INTO journals(id, name, color, is_favorite, created_at, updated_at, user_id)
+       VALUES(?,?,?,?,?,?,?)`,
+      [
+        journal.id,
+        journal.name,
+        journal.color,
+        journal.is_favorite,
+        journal.created_at,
+        journal.updated_at,
+        journal.user_id,
+      ],
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(
+        tx,
+        `INSERT OR REPLACE INTO journals(id, name, color, is_favorite, created_at, updated_at, user_id)
+         VALUES(?,?,?,?,?,?,?)`,
+        [
+          journal.id,
+          journal.name,
+          journal.color,
+          journal.is_favorite,
+          journal.created_at,
+          journal.updated_at,
+          journal.user_id,
+        ],
+      );
+    });
+  }
 }
