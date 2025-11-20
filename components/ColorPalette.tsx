@@ -40,9 +40,9 @@ const styles = StyleSheet.create({
   colorRow: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
-    gap: 2,
+    gap: 6,
     marginBottom: 10,
-    marginLeft: 25,
+    marginLeft: 17,
   },
   colorOption: {
     width: OPTION_SIZE,
