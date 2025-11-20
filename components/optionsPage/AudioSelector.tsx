@@ -163,7 +163,9 @@ export const AudioSelector: React.FC<AudioSelectorProps> = ({
           <TouchableOpacity style={S.audioModalBackground} activeOpacity={1} onPress={onClose} />
           <View style={S.audioOptionsContainer}>
             <View style={S.audioOptionsHeader}>
-              <MaterialIcons name="edit" size={20} color="#374151" />
+              <View style={S.audioIconBackground}>
+                <MaterialIcons name="volume-up" size={20} color={uiColors.black} />
+              </View>
               <Text style={S.audioOptionsTitle}>Audio</Text>
             </View>
 
