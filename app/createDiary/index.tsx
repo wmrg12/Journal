@@ -69,6 +69,7 @@ export default function CrearDiario() {
         <View style={styles.diaryPreview}>
           <View style={[styles.diary, { backgroundColor: selectedColor }]}>
             <View style={styles.diaryBinding} />
+            <View style={styles.bookDivider} />
           </View>
         </View>
 

@@ -68,6 +68,16 @@ export const diaryStyles = StyleSheet.create({
     width: 3,
     backgroundColor: 'rgba(14, 13, 13, 0.3)',
   },
+  // Línea divisoria sutil
+  bookDivider: {
+    position: 'absolute',
+    left: 22,
+    top: 10,
+    bottom: 10,
+    width: 1.2,
+    backgroundColor: 'rgba(96, 93, 93, 0.3)',
+    borderRadius: 1,
+  },
   inputContainer: {
     marginBottom: 32,
     width: 280,
