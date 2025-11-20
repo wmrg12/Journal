@@ -13,6 +13,7 @@ type Props = {
 const OPTION_SIZE = 40;
 
 export default function ColorPalette({ options, value, onChange, colorsPerRow = 6 }: Props) {
+  // Dividir los colores en filas dinámicamente
   const rows: string[][] = [];
   for (let i = 0; i < options.length; i += colorsPerRow) {
     rows.push(options.slice(i, i + colorsPerRow) as string[]);
@@ -38,8 +39,10 @@ export default function ColorPalette({ options, value, onChange, colorsPerRow = 
 const styles = StyleSheet.create({
   colorRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 14,
+    justifyContent: 'flex-start',
+    gap: 2,
+    marginBottom: 10,
+    marginLeft: 25,
   },
   colorOption: {
     width: OPTION_SIZE,
