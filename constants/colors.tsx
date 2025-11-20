@@ -1,32 +1,52 @@
 export const uiColors = {
-  primary: "#BF5D4C",    // botón
-  background: "#FFF7EA", // fondo
-  danger: "#B70F0A",     // icono
-  accent: "#B70F0A",     // texto
-  white: "#FFFFFF",      // texto claro
-  black: "#000000",      // texto oscuro
-  gray: "#555555",       // texto gris
-  brown: "#8B5E3C",      // icono
-  rgba: "rgba(233, 106, 83, 0.33)",  // filtro
-  cards: "#c1b1b181",   
-  bord: "#E0E0E0",
-  grayLight: "rgba(255, 255, 255, 0.4)",
-  grayO: "#dfdfdfff",  
-  transparent: "rgba(255, 255, 255, 0.7)", 
-  buttont: "#e3dfdd6f",    
+  primary: '#BF5D4C', // botón
+  background: '#FFF7EA', // fondo
+  danger: '#B70F0A', // icono
+  accent: '#B70F0A', // texto
+  white: '#FFFFFF', // texto claro
+  black: '#000000', // texto oscuro
+  gray: '#555555', // texto gris
+  brown: '#8B5E3C', // icono
+  rgba: 'rgba(233, 106, 83, 0.33)', // filtro
+  cards: '#c1b1b181',
+  bord: '#E0E0E0',
+  grayLight: 'rgba(255, 255, 255, 0.4)',
+  grayO: '#dfdfdfff',
+  transparent: 'rgba(255, 255, 255, 0.7)',
+  buttont: '#e3dfdd6f',
 } as const;
 
 export const pagePalette = [
   '#FFFFFF',
-  '#BFE8C6',
-  '#D9F2B4',
-  '#BBD5FF',
+  '#D4F0D9',
+  '#E8F7D1',
+  '#D4E5FF',
   '#CFEFFF',
   '#E6D6FF',
   '#F7C6D9',
   '#FAD4C3',
   '#FFC9C1',
   '#FFE9A8',
+  '#FFE5F0',
+  '#FFF0F5',
+  '#FFE8E8',
+  '#F5E6D3',
+  '#F0EAE0',
+  '#D4CDB8',
+  '#E8F4F8',
+  '#FFE8D6',
+  '#F0E5FF',
+  '#FFEEF0',
+  '#D4F1E8',
+  '#FFF4E0',
+  '#E8D4F0',
+  '#FFD9E8',
+  '#C9B8A8',
+  '#E5D5C3',
+  '#B8A99A',
+  '#DFD3C3',
+  '#A8C5B0',
+  '#E8DDD0',
 ] as const satisfies readonly string[];
 
 export const coverPalette = [
