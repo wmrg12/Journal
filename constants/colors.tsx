@@ -64,15 +64,66 @@ export const coverPalette = [
 
 export const textColors = [
   '#000000',
-  '#E53935',
-  '#FDD835',
-  '#43A047',
-  '#1E88E5',
-  '#8E24AA',
-  '#FB8C00',
-  '#6D4C41',
-  '#757575',
   '#FFFFFF',
+  '#2D3748',
+  '#4A5568',
+  '#718096',
+  '#A0AEC0',
+
+  // Rojos y rosas
+  '#E53935',
+  '#D32F2F',
+  '#F06292',
+  '#EC407A',
+  '#C2185B',
+
+  // Naranjas y melocotón
+  '#FF6F00',
+  '#FB8C00',
+  '#FFA726',
+  '#FFAB91',
+
+  // Amarillos
+  '#F9A825',
+  '#FDD835',
+  '#FFD54F',
+  // Verdes
+  '#2E7D32',
+  '#43A047',
+  '#66BB6A',
+  '#81C784',
+  '#4DB6AC',
+  '#26A69A',
+
+  // Azules
+  '#0D47A1',
+  '#1565C0',
+  '#1E88E5',
+  '#42A5F5',
+  '#64B5F6',
+  '#5C6BC0',
+
+  // Morados y lilas
+  '#4A148C',
+  '#6A1B9A',
+  '#8E24AA',
+  '#AB47BC',
+  '#BA68C8',
+  '#9C27B0',
+
+  // Marrones y terrosos
+  '#3E2723',
+  '#4E342E',
+  '#6D4C41',
+  '#8D6E63',
+  '#795548',
+  '#A1887F',
+
+  // Tonos especiales que combinan con pasteles
+  '#5D4E37',
+  '#8B7355',
+  '#B87333',
+  '#CD7F32',
 ] as const;
 
 export const drawColors = [
