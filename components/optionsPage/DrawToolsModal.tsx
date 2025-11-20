@@ -21,8 +21,8 @@ type DrawToolsModalProps = {
 };
 
 // Configuración de grosores
-const STROKE_SIZES = [1, 2, 3, 4, 5, 6]; 
-const ERASER_SIZES = [10, 15, 20, 30, 40, 50]; 
+const STROKE_SIZES = [1, 2, 3, 4, 5, 6];
+const ERASER_SIZES = [10, 15, 20, 30, 40, 50];
 
 export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
   visible,
@@ -40,13 +40,13 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
   const dotBarRef = useRef<View>(null);
   const [dotBarLayout, setDotBarLayout] = useState({ x: 0, width: 0 });
 
-  // 
+  //
   const isEraser = selectedTool === 'eraser';
   const sizes = isEraser ? ERASER_SIZES : STROKE_SIZES;
   const currentValue = isEraser ? eraserWidth : strokeWidth;
-  
-  // 
-  const currentIndex = sizes.findIndex(s => s === currentValue);
+
+  //
+  const currentIndex = sizes.findIndex((s) => s === currentValue);
   const safeIndex = currentIndex >= 0 ? currentIndex : 0;
 
   //
@@ -58,7 +58,7 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
     const localX = Math.max(0, Math.min(pageX - dotBarLayout.x, dotBarLayout.width));
     const prog = localX / dotBarLayout.width;
     const idx = Math.round(prog * (sizes.length - 1));
-    
+
     const newSize = sizes[idx];
     if (isEraser) {
       onEraserWidthChange(newSize);
@@ -122,17 +122,19 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
       statusBarTranslucent
     >
       <View style={S.drawModalOverlay}>
-        <TouchableOpacity
-          style={S.drawModalBackground}
-          activeOpacity={1}
-          onPress={onClose}
-        />
+        <TouchableOpacity style={S.drawModalBackground} activeOpacity={1} onPress={onClose} />
         <View style={S.drawOptionsContainer}>
           <View style={S.drawOptionsHeader}>
             <View style={S.drawIconContainer}>
               <MaterialIcons name="brush" size={20} color={uiColors.black} />
             </View>
             <Text style={S.drawOptionsTitle}>Herramientas de dibujo</Text>
+            <TouchableOpacity
+              onPress={onClose}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <MaterialIcons name="close" size={24} color={uiColors.gray} />
+            </TouchableOpacity>
           </View>
 
           {/* Selección de herramienta */}
@@ -147,10 +149,7 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
               ].map((tool) => (
                 <TouchableOpacity
                   key={tool.id}
-                  style={[
-                    S.toolButtonLarge,
-                    selectedTool === tool.id && S.toolButtonActive,
-                  ]}
+                  style={[S.toolButtonLarge, selectedTool === tool.id && S.toolButtonActive]}
                   onPress={() => onToolSelect(tool.id as DrawTool)}
                   accessibilityLabel={tool.label}
                   accessibilityRole="button"
@@ -161,10 +160,12 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
                     size={22}
                     color={selectedTool === tool.id ? uiColors.primary : uiColors.black}
                   />
-                  <Text style={[
-                    S.toolLabelLarge,
-                    selectedTool === tool.id && { color: uiColors.primary, fontWeight: '600' }
-                  ]}>
+                  <Text
+                    style={[
+                      S.toolLabelLarge,
+                      selectedTool === tool.id && { color: uiColors.primary, fontWeight: '600' },
+                    ]}
+                  >
                     {tool.label}
                   </Text>
                 </TouchableOpacity>
@@ -227,13 +228,13 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
               <View style={S.dotBarTrack} />
               {/* Línea de progreso */}
               <View style={[S.dotBarFill, { width: fillWidth }]} />
-              
+
               {/* Puntos de selección */}
               {sizes.map((size, i) => {
                 const active = i === safeIndex;
                 const passed = i < safeIndex;
                 const dotSize = 8 + i * 2;
-                
+
                 return (
                   <TouchableOpacity
                     key={i}
@@ -273,10 +274,7 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
               {sizes.map((size, i) => (
                 <TouchableOpacity
                   key={i}
-                  style={[
-                    S.sizeButton,
-                    currentValue === size && S.sizeButtonActive,
-                  ]}
+                  style={[S.sizeButton, currentValue === size && S.sizeButtonActive]}
                   onPress={() => {
                     if (isEraser) {
                       onEraserWidthChange(size);
@@ -285,10 +283,7 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
                     }
                   }}
                 >
-                  <Text style={[
-                    S.sizeButtonText,
-                    currentValue === size && S.sizeButtonTextActive,
-                  ]}>
+                  <Text style={[S.sizeButtonText, currentValue === size && S.sizeButtonTextActive]}>
                     {size}
                   </Text>
                 </TouchableOpacity>

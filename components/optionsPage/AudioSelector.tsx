@@ -167,6 +167,12 @@ export const AudioSelector: React.FC<AudioSelectorProps> = ({
                 <MaterialIcons name="volume-up" size={20} color={uiColors.black} />
               </View>
               <Text style={S.audioOptionsTitle}>Audio</Text>
+              <TouchableOpacity
+                onPress={onClose}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <MaterialIcons name="close" size={24} color={uiColors.gray} />
+              </TouchableOpacity>
             </View>
 
             {!isRecording ? (

@@ -1,16 +1,8 @@
 import { uiColors } from '@/constants/colors';
 import { AVAILABLE_STICKER_IDS, STICKER_SOURCES } from '@/constants/stickers';
 import pageStyles from '@/styles/pageViewStyles';
-import { Ionicons } from '@expo/vector-icons';
-import {
-  Dimensions,
-  Image,
-  Modal,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Dimensions, Image, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
 const COLUMN_COUNT = 3;
 const { width } = Dimensions.get('window');
@@ -22,11 +14,7 @@ interface StickerPickerModalProps {
   onSelectSticker: (stickerId: string, category: string) => void;
 }
 
-export function StickerPickerModal({
-  visible,
-  onClose,
-  onSelectSticker,
-}: StickerPickerModalProps) {
+export function StickerPickerModal({ visible, onClose, onSelectSticker }: StickerPickerModalProps) {
   const handleStickerSelect = (stickerId: string) => {
     console.log('Sticker seleccionado:', stickerId);
     onSelectSticker(stickerId, 'objetos');
@@ -40,22 +28,22 @@ export function StickerPickerModal({
   }));
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={pageStyles.stickerModalOverlay}>
-
         {/* Contenedor del modal */}
         <View style={pageStyles.stickerModalContainer}>
           {/* Header */}
           <View style={pageStyles.stickerModalHeader}>
             <View style={pageStyles.shapeIconContainer}>
-                <Ionicons name="happy-outline"size={20} color={uiColors.black} />
+              <Ionicons name="happy-outline" size={20} color={uiColors.black} />
             </View>
             <Text style={pageStyles.shapeOptionsTitle}>Seleccionar Sticker</Text>
+            <TouchableOpacity
+              onPress={onClose}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <MaterialIcons name="close" size={24} color={uiColors.gray} />
+            </TouchableOpacity>
           </View>
 
           {/* Grid de Stickers */}
@@ -88,4 +76,3 @@ export function StickerPickerModal({
     </Modal>
   );
 }
-

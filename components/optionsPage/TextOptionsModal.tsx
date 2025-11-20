@@ -10,7 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { textColors } from '@/constants/colors';
+import { textColors, uiColors } from '@/constants/colors';
+import { MaterialIcons } from '@expo/vector-icons';
 import { TextFont, fontFamilyMap, textFonts } from '@/constants/fonts';
 import S from '../../styles/pageViewStyles';
 
@@ -52,17 +53,19 @@ export const TextOptionsModal: React.FC<TextOptionsModalProps> = ({
         style={{ flex: 1 }}
       >
         <View style={S.textModalOverlay}>
-          <TouchableOpacity
-            style={S.textModalBackground}
-            activeOpacity={1}
-            onPress={onClose}
-          />
+          <TouchableOpacity style={S.textModalBackground} activeOpacity={1} onPress={onClose} />
           <View style={S.textOptionsContainer}>
             <View style={S.textOptionsHeader}>
               <View style={S.textIconContainer}>
                 <Text style={S.textIconLetter}>T</Text>
               </View>
               <Text style={S.textOptionsTitle}>Escribir texto</Text>
+              <TouchableOpacity
+                onPress={onClose}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <MaterialIcons name="close" size={24} color={uiColors.gray} />
+              </TouchableOpacity>
             </View>
 
             <TextInput
@@ -129,11 +132,7 @@ export const TextOptionsModal: React.FC<TextOptionsModalProps> = ({
               </ScrollView>
             </View>
 
-            <TouchableOpacity
-              style={S.addTextButton}
-              onPress={onConfirm}
-              activeOpacity={0.7}
-            >
+            <TouchableOpacity style={S.addTextButton} onPress={onConfirm} activeOpacity={0.7}>
               <Text style={S.addTextButtonText}>
                 {isEditing ? 'Guardar cambios' : 'Añadir texto'}
               </Text>
