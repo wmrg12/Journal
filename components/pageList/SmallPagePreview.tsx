@@ -12,54 +12,13 @@ import Svg, {
 } from "react-native-svg";
 import { STICKER_SOURCES } from "@/constants/stickers";
 
-type TextItem = {
-  id: string;
-  content: string;
-  position_x: number;
-  position_y: number;
-  font_size?: number;
-  color?: string;
-  rotation?: number;
-};
-type DrawItem = {
-  id: string;
-  path_d: string;
-  color?: string;
-  width?: number;
-  opacity?: number;
-};
-type ShapeItem = {
-  id: string;
-  shape_type?: string;
-  position_x: number;
-  position_y: number;
-  width?: number;
-  height?: number;
-  color?: string;
-  rotation?: number;
-};
-type ImageItem = {
-  id: string;
-  uri?: string;
-  position_x: number;
-  position_y: number;
-  width?: number;
-  height?: number;
-  rotation?: number;
-};
-type StickerItem = {
-  id: string;
-  sticker_url?: string;
-  position_x: number;
-  position_y: number;
-  width?: number;
-  height?: number;
-  rotation?: number;
-};
+type TextItem = { id: string; content: string; position_x?: number | null; position_y?: number | null; font_size?: number; color?: string; rotation?: number; };
+type DrawItem = { id: string; path_d: string; color?: string; width?: number; opacity?: number; rotation?: number; };
+type ShapeItem = { id: string; shape_type?: string | null; position_x?: number | null; position_y?: number | null; width?: number; height?: number; color?: string; rotation?: number; };
+type ImageItem = { id: string; uri?: string; position_x?: number | null; position_y?: number | null; width?: number; height?: number; rotation?: number; };
+type StickerItem = { id: string; sticker_url?: string; position_x?: number | null; position_y?: number | null; width?: number; height?: number; rotation?: number; };
 
 type Props = {
-  width?: number;
-  height?: number;
   style?: any;
   bgColor?: string;
   texts?: TextItem[];
@@ -69,16 +28,11 @@ type Props = {
   stickers?: StickerItem[];
   sourceWidth?: number;
   sourceHeight?: number;
-  extraScale?: number; // factor para agrandar un poco
-  alignVertical?: "top" | "center" | "bottom";
-  offsetX?: number; // mover contenido en px (positivo => derecha)
-  offsetY?: number; // mover contenido en px (positivo => abajo)
-  centerNullPositions?: boolean; // si true, null => centro; si false, null => 0 (izq/arriba)
+  positionMode?: "topleft" | "center";
+  debug?: boolean;
 };
 
 export default function SmallPagePreview({
-  width,
-  height,
   style,
   bgColor = "#fff",
   texts = [],
@@ -86,438 +40,319 @@ export default function SmallPagePreview({
   shapes = [],
   images = [],
   stickers = [],
-  sourceWidth = 720,
-  sourceHeight = 1280,
-  extraScale = 1.08,
-  alignVertical = "center",
-  offsetX = 0,
-  offsetY = 0,
-  centerNullPositions = true,
+  sourceWidth = 555,
+  sourceHeight = 850,
+  positionMode = "topleft",
+  debug = false,
 }: Props) {
-  // normalizar coordenadas (si vienen en 0..1)
-  const norm = (v: number | undefined, max: number) => {
-    if (v == null) return centerNullPositions ? max / 2 : 0;
+  const norm = (v: number | null | undefined, max: number) => {
+    if (v == null) return max / 2;
     if (typeof v !== "number") return 0;
     if (v >= 0 && v <= 1) return v * max;
     return v;
   };
 
-  // safe color helper (evita valores vacíos o undefined)
   const safeColor = (c: any, fallback = "#000000") => {
     if (!c) return fallback;
     if (typeof c !== "string") return fallback;
     const clean = c.trim();
     if (clean.length === 0) return fallback;
-    if (!clean.startsWith("#")) return fallback; // evitar cosas inválidas
+    if (!clean.startsWith("#")) return fallback;
     return clean;
   };
 
-  // Modo fill cuando no se pasan width/height numéricos
-  const fillContainer = typeof width !== "number" || typeof height !== "number";
+  function getCenter(posX: number | null | undefined, posY: number | null | undefined, w = 0, h = 0) {
+    const x = norm(posX, sourceWidth);
+    const y = norm(posY, sourceHeight);
+    if (positionMode === "center") {
+      return { cx: x, cy: y };
+    }
+    return { cx: x + w / 2, cy: y + h / 2 };
+  }
 
-  const containerW = typeof width === "number" ? width : 150;
-  const containerH = typeof height === "number" ? height : 220;
+  function normalizeType(raw?: string | null) {
+    if (!raw) return "";
+    return raw.toString().trim().toLowerCase();
+  }
 
-  // escala base para modo numérico (retrocompatibilidad)
-  const scaleX = containerW / sourceWidth;
-  const scaleY = containerH / sourceHeight;
-  const baseScale = Math.min(scaleX, scaleY);
-  const scale = Math.min(
-    baseScale * extraScale,
-    baseScale * Math.max(extraScale, 1)
-  );
-  const svgRenderW = sourceWidth * scale;
-  const svgRenderH = sourceHeight * scale;
-  const left = (containerW - svgRenderW) / 2 + offsetX;
-  let top = 0;
-  if (alignVertical === "center") top = (containerH - svgRenderH) / 2 + offsetY;
-  if (alignVertical === "top") top = 0 + offsetY;
-  if (alignVertical === "bottom") top = containerH - svgRenderH + offsetY;
+  function guessShapeType(sh: ShapeItem) {
+    const explicit = normalizeType(sh.shape_type);
+    if (explicit) return explicit;
 
-  // render block para evitar duplicar mucho código: devuelve los children <G> con contenido
-  const renderContent = () => (
-    <G>
-      {/* DIBUJOS */}
-      {draws.map((d) => (
-        <Path
-          key={`draw-${d.id}`}
-          d={d.path_d}
-          fill="none"
-          stroke={safeColor(d.color, "#222")}
-          strokeWidth={Math.max(0.8, d.width ?? 2)}
-          opacity={d.opacity ?? 1}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      ))}
+    const w = sh.width ?? 0;
+    const h = sh.height ?? 0;
 
-      {/* SHAPES */}
-      {shapes.map((sh) => {
-        const x = norm(sh.position_x, sourceWidth);
-        const y = norm(sh.position_y, sourceHeight);
-        const w = sh.width ?? 60;
-        const h = sh.height ?? 60;
-        const color = safeColor(sh.color, "#000");
-        const rot = sh.rotation ?? 0;
-        const cx = x + w / 2;
-        const cy = y + h / 2;
-        const transform = rot ? `rotate(${rot}, ${cx}, ${cy})` : undefined;
+    if (w <= 0 || h <= 0) return "rectangle"; // fallback
 
-        // Cada case retorna un elemento con key único
-        switch (sh.shape_type) {
-          case "circle":
-            return (
-              <Circle
-                key={`shape-circle-${sh.id}`}
-                cx={cx}
-                cy={cy}
-                r={Math.min(w, h) / 2}
-                fill={sh.color}
-                stroke={sh.color}
-                transform={transform}
-              />
-            );
+    // heurísticas:
+    if (Math.abs(w - h) < Math.min(w, h) * 0.2) {
+      if (Math.min(w, h) < 40) return "circle";
+      return "square";
+    }
+    if (Math.min(w, h) < Math.min(w, h) * 0.2 || Math.min(w, h) < 10) {
+      return "line";
+    }
+    if (w / h > 2 || h / w > 2) return "rectangle";
+    return "rectangle";
+  }
 
-          case "triangle":
-            return (
-              <Polygon
-                key={`shape-triangle-${sh.id}`}
-                points={`${x + w / 2},${y} ${x + w},${y + h} ${x},${y + h}`}
-                fill={sh.color}
-                stroke={sh.color}
-                transform={transform}
-              />
-            );
+  function starPoints(cx: number, cy: number, w: number, h: number, spikes = 5) {
+    const pts: string[] = [];
+    const outer = Math.min(w, h) * 0.45;
+    const inner = outer * 0.45;
+    const total = spikes * 2;
+    for (let i = 0; i < total; i++) {
+      const angle = (Math.PI / spikes) * i - Math.PI / 2;
+      const r = i % 2 === 0 ? outer : inner;
+      pts.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
+    }
+    return pts.join(" ");
+  }
 
-          case "square":
-          case "rectangle":
-            return (
-              <Rect
-                key={`shape-rect-${sh.id}`}
-                x={x}
-                y={y}
-                width={w}
-                height={h}
-                fill={sh.color}
-                stroke={sh.color}
-                transform={transform}
-              />
-            );
+  function pentagonPoints(cx: number, cy: number, w: number, h: number) {
+    const pts: string[] = [];
+    const r = Math.min(w, h) * 0.45;
+    for (let i = 0; i < 5; i++) {
+      const angle = (2 * Math.PI * i) / 5 - Math.PI / 2;
+      pts.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
+    }
+    return pts.join(" ");
+  }
 
-          case "line":
-            return (
-              <Line
-                key={`shape-line-${sh.id}`}
-                x1={x}
-                y1={y + h / 2}
-                x2={x + w}
-                y2={y + h / 2}
-                stroke={color}
-                strokeWidth={Math.max(2, Math.min(w, h) / 8)}
-                strokeLinecap="round"
-                transform={transform}
-              />
-            );
+  const renderContent = () => {
+    if (debug) console.debug("SmallPagePreview debug shapes:", shapes);
 
-          case "arrow":
-            return (
-              <G key={`shape-arrow-${sh.id}`} transform={transform}>
-                <Line
-                  x1={x}
-                  y1={y + h / 2}
-                  x2={x + w * 0.85}
-                  y2={y + h / 2}
-                  stroke={color}
-                  strokeWidth={Math.max(2, Math.min(w, h) / 8)}
-                  strokeLinecap="round"
-                />
-                <Polygon
-                  key={`shape-arrow-head-${sh.id}`}
-                  points={`${x + w},${y + h / 2} ${x + w * 0.85},${
-                    y + h * 0.4
-                  } ${x + w * 0.85},${y + h * 0.6}`}
-                  fill={sh.color}
-                  stroke={sh.color}
-                />
-              </G>
-            );
-
-          case "heart":
-            return (
-              <Path
-                key={`shape-heart-${sh.id}`}
-                d="M50 85 C 50 85, 10 55, 10 35 C 10 20, 25 10, 40 15 C 50 20, 60 20, 70 15 C 85 10, 90 20, 90 35 C 90 55, 50 85, 50 85 Z"
-                fill={sh.color}
-                stroke={sh.color}
-                transform={`translate(${x - 50},${y - 35}) scale(${
-                  Math.min(w, h) / 100
-                })`}
-              />
-            );
-
-          case "star": {
-            const pts: string[] = [];
-            const outer = Math.min(w, h) * 0.45;
-            const inner = outer * 0.45;
-            for (let i = 0; i < 10; i++) {
-              const angle = (Math.PI / 5) * i - Math.PI / 2;
-              const r = i % 2 === 0 ? outer : inner;
-              pts.push(
-                `${x + w / 2 + r * Math.cos(angle)},${
-                  y + h / 2 + r * Math.sin(angle)
-                }`
-              );
-            }
-            return (
-              <Polygon
-                key={`shape-star-${sh.id}`}
-                points={pts.join(" ")}
-                fill={sh.color}
-                stroke={sh.color}
-                transform={transform}
-              />
-            );
-          }
-
-          case "diamond":
-            return (
-              <Polygon
-                key={`shape-diamond-${sh.id}`}
-                points={`${x + w / 2},${y} ${x + w},${y + h / 2} ${x + w / 2},${
-                  y + h
-                } ${x},${y + h / 2}`}
-                fill={sh.color}
-                stroke={sh.color}
-                transform={transform}
-              />
-            );
-
-          case "pentagon": {
-            const pts: string[] = [];
-            const r = Math.min(w, h) * 0.45;
-            for (let i = 0; i < 5; i++) {
-              const angle = (2 * Math.PI * i) / 5 - Math.PI / 2;
-              pts.push(
-                `${x + w / 2 + r * Math.cos(angle)},${
-                  y + h / 2 + r * Math.sin(angle)
-                }`
-              );
-            }
-            return (
-              <Polygon
-                key={`shape-pentagon-${sh.id}`}
-                points={pts.join(" ")}
-                fill={sh.color}
-                stroke={sh.color}
-                transform={transform}
-              />
-            );
-          }
-
-          case "sun": {
-            const pts: string[] = [];
-            for (let i = 0; i < 16; i++) {
-              const angle = (Math.PI / 8) * i;
-              const r =
-                i % 2 === 0 ? Math.min(w, h) * 0.45 : Math.min(w, h) * 0.25;
-              pts.push(
-                `${x + w / 2 + r * Math.cos(angle)},${
-                  y + h / 2 + r * Math.sin(angle)
-                }`
-              );
-            }
-            return (
-              <Polygon
-                key={`shape-sun-${sh.id}`}
-                points={pts.join(" ")}
-                fill={sh.color}
-                stroke={sh.color}
-                transform={transform}
-              />
-            );
-          }
-
-          case "bolt":
-            return (
-              <Path
-                key={`shape-bolt-${sh.id}`}
-                d="M60 5 L25 55 L45 55 L35 95 L80 45 L55 45 Z"
-                fill={sh.color}
-                stroke={sh.color}
-                transform={`translate(${x - 5},${y - 5}) scale(${
-                  Math.min(w, h) / 100
-                })`}
-              />
-            );
-
-          case "flower":
-            return (
-              <G key={`shape-flower-${sh.id}`} transform={transform}>
-                {[0, 60, 120, 180, 240, 300].map((a, i) => {
-                  const rad = (a * Math.PI) / 180;
-                  return (
-                    <Circle
-                      key={`flower-${sh.id}-${i}`}
-                      cx={x + w / 2 + Math.min(w, h) * 0.3 * Math.cos(rad)}
-                      cy={y + h / 2 + Math.min(w, h) * 0.3 * Math.sin(rad)}
-                      r={Math.min(w, h) * 0.14}
-                      fill={sh.color}
-                      stroke={sh.color}
-                    />
-                  );
-                })}
-                <Circle
-                  key={`flower-center-${sh.id}`}
-                  cx={x + w / 2}
-                  cy={y + h / 2}
-                  r={Math.min(w, h) * 0.12}
-                  fill={sh.color}
-                  stroke={sh.color}
-                />
-              </G>
-            );
-
-          case "mountain":
-            return (
-              <G key={`shape-mountain-${sh.id}`} transform={transform}>
-                <Polygon
-                  points={`${x + w * 0.05},${y + h * 0.95} ${x + w * 0.25},${
-                    y + h * 0.5
-                  } ${x + w * 0.5},${y + h * 0.95}`}
-                  fill={sh.color}
-                  stroke={sh.color}
-                  opacity="0.7"
-                />
-                <Polygon
-                  points={`${x + w * 0.15},${y + h * 0.95} ${x + w * 0.4},${
-                    y + h * 0.15
-                  } ${x + w * 0.85},${y + h * 0.95}`}
-                  fill={sh.color}
-                  stroke={sh.color}
-                />
-              </G>
-            );
-
-          default:
-            return null;
-        }
-      })}
-
-      {/* IMÁGENES */}
-      {images.map((im) => {
-        const src =
-          im.uri && (im.uri.startsWith("http") || im.uri.startsWith("file"))
-            ? { uri: im.uri }
-            : undefined;
-        if (!src) return null;
-        return (
-          <SvgImage
-            key={`image-${im.id}`}
-            x={norm(im.position_x, sourceWidth)}
-            y={norm(im.position_y, sourceHeight)}
-            width={im.width ?? 100}
-            height={im.height ?? 100}
-            href={src as any}
-            preserveAspectRatio="xMidYMid slice"
+    return (
+      <G>
+        {/* Draws */}
+        {draws.map((d) => (
+          <Path
+            key={`draw-${d.id}`}
+            d={d.path_d}
+            fill="none"
+            stroke={safeColor(d.color, "#222")}
+            strokeWidth={d.width ?? 2}
+            opacity={d.opacity ?? 1}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            transform={d.rotation ? `rotate(${d.rotation} ${sourceWidth / 2} ${sourceHeight / 2})` : undefined}
           />
-        );
-      })}
+        ))}
 
-      {/* STICKERS */}
-      {stickers.map((st) => {
-        const asset = STICKER_SOURCES[st.sticker_url ?? ""];
-        if (!asset) {
+        {/* Shapes */}
+        {shapes.map((sh) => {
+          const w = Math.max(1, sh.width ?? 60);
+          const h = Math.max(1, sh.height ?? 60);
+          const { cx, cy } = getCenter(sh.position_x, sh.position_y, w, h);
+          const rotation = Number(sh.rotation ?? 0);
+          const transform = rotation ? `rotate(${rotation} ${cx} ${cy})` : undefined;
+          const color = safeColor(sh.color, "#8B5CF6");
+          const rawType = normalizeType(sh.shape_type);
+          const type = rawType || guessShapeType(sh);
+
+          const dbgOutline = debug ? <Rect key={`dbg-${sh.id}`} x={cx - w / 2} y={cy - h / 2} width={w} height={h} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth={1} /> : null;
+
+          switch (type) {
+            case "circle":
+              return (
+                <G key={`shape-${sh.id}`}>
+                  {dbgOutline}
+                  <Circle cx={cx} cy={cy} r={Math.min(w, h) / 2} fill={color} transform={transform} />
+                </G>
+              );
+
+            case "triangle":
+              return (
+                <G key={`shape-${sh.id}`}>
+                  {dbgOutline}
+                  <Polygon points={`${cx},${cy - h/2} ${cx - w/2},${cy + h/2} ${cx + w/2},${cy + h/2}`} fill={color} transform={transform} />
+                </G>
+              );
+
+            case "square":
+            case "rectangle":
+              return (
+                <G key={`shape-${sh.id}`}>
+                  {dbgOutline}
+                  <Rect x={cx - w / 2} y={cy - h / 2} width={w} height={h} rx={Math.min(12, Math.min(w, h) * 0.08)} fill={color} transform={transform} />
+                </G>
+              );
+
+            case "diamond":
+              return (
+                <G key={`shape-${sh.id}`}>
+                  {dbgOutline}
+                  <Polygon points={`${cx},${cy - h/2} ${cx + w/2},${cy} ${cx},${cy + h/2} ${cx - w/2},${cy}`} fill={color} transform={transform} />
+                </G>
+              );
+
+            case "line": {
+              const x1 = cx - w / 2;
+              const x2 = cx + w / 2;
+              const y = cy;
+              return (
+                <G key={`shape-${sh.id}`}>
+                  {dbgOutline}
+                  <Line x1={x1} y1={y} x2={x2} y2={y} stroke={color} strokeWidth={Math.max(2, Math.min(w, h) * 0.12)} strokeLinecap="round" transform={transform} />
+                </G>
+              );
+            }
+
+            case "arrow": {
+              const shaftStartX = cx - w / 2;
+              const shaftEndX = cx + w / 2 * 0.85;
+              const centerY = cy;
+              const headX = cx + w / 2;
+              return (
+                <G key={`shape-${sh.id}`} transform={transform}>
+                  {dbgOutline}
+                  <Line x1={shaftStartX} y1={centerY} x2={shaftEndX} y2={centerY} stroke={color} strokeWidth={Math.max(2, Math.min(w, h) * 0.12)} strokeLinecap="round" />
+                  <Polygon points={`${headX},${centerY} ${shaftEndX},${centerY - h*0.15} ${shaftEndX},${centerY + h*0.15}`} fill={color} />
+                </G>
+              );
+            }
+
+            case "star":
+              return (
+                <G key={`shape-${sh.id}`}>
+                  {dbgOutline}
+                  <Polygon points={starPoints(cx, cy, w, h, 5)} fill={color} transform={transform} />
+                </G>
+              );
+
+            case "pentagon":
+              return (
+                <G key={`shape-${sh.id}`}>
+                  {dbgOutline}
+                  <Polygon points={pentagonPoints(cx, cy, w, h)} fill={color} transform={transform} />
+                </G>
+              );
+
+            case "sun": {
+              const pts: string[] = [];
+              for (let i = 0; i < 16; i++) {
+                const angle = (Math.PI / 8) * i;
+                const r = i % 2 === 0 ? Math.min(w, h) * 0.45 : Math.min(w, h) * 0.25;
+                pts.push(`${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`);
+              }
+              return (
+                <G key={`shape-${sh.id}`}>
+                  {dbgOutline}
+                  <Polygon points={pts.join(" ")} fill={color} transform={transform} />
+                </G>
+              );
+            }
+
+            case "bolt":
+              return (
+                <G key={`shape-${sh.id}`}>
+                  {dbgOutline}
+                  <Path d={`M ${cx - w*0.05} ${cy - h*0.4} L ${cx - w*0.3} ${cy + h*0.1} L ${cx - w*0.05} ${cy + h*0.05} L ${cx - w*0.2} ${cy + h*0.45} L ${cx + w*0.35} ${cy - h*0.05} L ${cx + w*0.05} ${cy - h*0.05} Z`} fill={color} transform={transform} />
+                </G>
+              );
+
+            case "flower": {
+              return (
+                <G key={`shape-${sh.id}`}>
+                  {dbgOutline}
+                  {[0, 60, 120, 180, 240, 300].map((a, i) => {
+                    const rad = (a * Math.PI) / 180;
+                    return <Circle key={`flower-${sh.id}-${i}`} cx={cx + Math.min(w, h) * 0.3 * Math.cos(rad)} cy={cy + Math.min(w, h) * 0.3 * Math.sin(rad)} r={Math.min(w, h) * 0.14} fill={color} />;
+                  })}
+                  <Circle cx={cx} cy={cy} r={Math.min(w, h) * 0.12} fill={color} />
+                </G>
+              );
+            }
+
+            case "mountain": {
+              return (
+                <G key={`shape-${sh.id}`}>
+                  {dbgOutline}
+                  <Polygon points={`${cx - w*0.45},${cy + h*0.45} ${cx - w*0.25},${cy - h*0.05} ${cx},${cy + h*0.45}`} fill={color} transform={transform} opacity={0.9} />
+                  <Polygon points={`${cx - w*0.35},${cy + h*0.45} ${cx + w*0.1},${cy - h*0.4} ${cx + w*0.4},${cy + h*0.45}`} fill={color} transform={transform} />
+                </G>
+              );
+            }
+
+            case "heart": {
+              const path = `M ${cx} ${cy + h * 0.12} C ${cx + w * 0.35} ${cy - h * 0.12} ${cx + w * 0.8} ${cy + h * 0.35} ${cx} ${cy + h * 0.8} C ${cx - w * 0.8} ${cy + h * 0.35} ${cx - w * 0.35} ${cy - h * 0.12} ${cx} ${cy + h * 0.12} Z`;
+              return (
+                <G key={`shape-${sh.id}`}>
+                  {dbgOutline}
+                  <Path d={path} fill={color} transform={transform} />
+                </G>
+              );
+            }
+
+            default:
+              return (
+                <G key={`shape-${sh.id}`}>
+                  {dbgOutline}
+                  <Rect x={cx - w / 2} y={cy - h / 2} width={w} height={h} fill={color} transform={transform} />
+                </G>
+              );
+          }
+        })}
+
+        {/* Images */}
+        {images.map((im) => {
+          const w = im.width ?? 100;
+          const h = im.height ?? 100;
+          const { cx, cy } = getCenter(im.position_x, im.position_y, w, h);
+          const x = cx - w / 2;
+          const y = cy - h / 2;
+          const transform = im.rotation ? `rotate(${im.rotation} ${cx} ${cy})` : undefined;
+          const src = im.uri && (im.uri.startsWith("http") || im.uri.startsWith("file")) ? { uri: im.uri } : undefined;
+          if (!src) return null;
+          return <SvgImage key={`image-${im.id}`} x={x} y={y} width={w} height={h} href={src as any} preserveAspectRatio="xMidYMid slice" transform={transform} />;
+        })}
+
+        {/* Stickers */}
+        {stickers.map((st) => {
+          const w = st.width ?? 80;
+          const h = st.height ?? 80;
+          const { cx, cy } = getCenter(st.position_x, st.position_y, w, h);
+          const x = cx - w / 2;
+          const y = cy - h / 2;
+          const transform = st.rotation ? `rotate(${st.rotation} ${cx} ${cy})` : undefined;
+          const asset = STICKER_SOURCES[st.sticker_url ?? ""];
+          if (!asset) {
+            return <Rect key={`st-placeholder-${st.id}`} x={x} y={y} width={w} height={h} fill="rgba(200,200,200,0.3)" transform={transform} />;
+          }
+          return <SvgImage key={`sticker-${st.id}`} x={x} y={y} width={w} height={h} href={asset as any} transform={transform} />;
+        })}
+
+        {/* Texts */}
+        {texts.map((t) => {
+          const fontSize = Math.max(8, t.font_size ?? 16);
+          const { cx, cy } = getCenter(t.position_x, t.position_y, 0, 0);
+          const transform = t.rotation ? `rotate(${t.rotation} ${cx} ${cy})` : undefined;
           return (
-            <Rect
-              key={`sticker-placeholder-${st.id}`}
-              x={norm(st.position_x, sourceWidth)}
-              y={norm(st.position_y, sourceHeight)}
-              width={st.width ?? 80}
-              height={st.height ?? 80}
-              fill="rgba(200,200,200,0.3)"
-            />
+            <SvgText key={`text-${t.id}`} x={cx} y={cy} fontSize={fontSize} fill={safeColor(t.color, "#111")} transform={transform}>
+              {t.content}
+            </SvgText>
           );
-        }
+        })}
+      </G>
+    );
+  };
 
-        return (
-          <SvgImage
-            key={`sticker-${st.id}`}
-            x={norm(st.position_x, sourceWidth)}
-            y={norm(st.position_y, sourceHeight)}
-            width={st.width ?? 80}
-            height={st.height ?? 80}
-            href={asset as any}
-          />
-        );
-      })}
-
-      {/* TEXTOS */}
-      {texts.map((t) => (
-        <SvgText
-          key={`text-${t.id}`}
-          x={norm(t.position_x, sourceWidth)}
-          y={norm(t.position_y, sourceHeight)}
-          fontSize={Math.max(8, t.font_size ?? 16)}
-          fill={safeColor(t.color, "#111")}
-        >
-          {t.content}
-        </SvgText>
-      ))}
-    </G>
-  );
+  const viewBox = `0 0 ${sourceWidth} ${sourceHeight}`;
 
   return (
-    <View
-      style={[
-        styles.container,
-        style,
-        fillContainer
-          ? { width: "100%", height: "100%" }
-          : { width: containerW, height: containerH },
-      ]}
-    >
-      {fillContainer ? (
-        <Svg
-          width="100%"
-          height="100%"
-          viewBox={`0 0 ${sourceWidth} ${sourceHeight}`}
-          preserveAspectRatio="xMidYMid meet"
-          style={{ position: "absolute", left: 0, top: 0 }}
-        >
-          <Rect
-            x={0}
-            y={0}
-            width={sourceWidth}
-            height={sourceHeight}
-            fill={bgColor}
-          />
-          {renderContent()}
-        </Svg>
-      ) : (
-        <Svg
-          width={svgRenderW}
-          height={svgRenderH}
-          viewBox={`0 0 ${sourceWidth} ${sourceHeight}`}
-          preserveAspectRatio="xMidYMid meet"
-          style={{ position: "absolute", left, top }}
-        >
-          <Rect
-            x={0}
-            y={0}
-            width={sourceWidth}
-            height={sourceHeight}
-            fill={bgColor}
-          />
-          {renderContent()}
-        </Svg>
-      )}
+    <View style={[localStyles.container, style]}>
+      <Svg width="100%" height="100%" viewBox={viewBox} preserveAspectRatio="xMidYMid meet">
+        <Rect x={0} y={0} width={sourceWidth} height={sourceHeight} fill={bgColor} />
+        {renderContent()}
+      </Svg>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const localStyles = StyleSheet.create({
   container: {
-    position: "relative",
+    width: "100%",
+    height: "100%",
     overflow: "hidden",
     backgroundColor: "transparent",
   },
