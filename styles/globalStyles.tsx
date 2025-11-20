@@ -1,8 +1,8 @@
-import { uiColors } from "@/constants/colors";
-import { Dimensions, Platform, StyleSheet } from "react-native";
+import { uiColors } from '@/constants/colors';
+import { Dimensions, Platform, StyleSheet } from 'react-native';
 
-// Obtener dimensiones de pantalla 
-const { width: screenWidth } = Dimensions.get("window");
+// Obtener dimensiones de pantalla
+const { width: screenWidth } = Dimensions.get('window');
 const isSmallAndroid = screenWidth < 360;
 const isMediumAndroid = screenWidth >= 360 && screenWidth < 400;
 
@@ -14,7 +14,6 @@ const getResponsiveValue = (small: number, medium: number, large: number) => {
 };
 
 const styles = StyleSheet.create({
-
   // --- Estilos Globales ---
   container: {
     flex: 1,
@@ -23,40 +22,40 @@ const styles = StyleSheet.create({
 
   content: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     marginTop: getResponsiveValue(40, 50, 60),
   },
 
   message: {
     fontSize: getResponsiveValue(16, 18, 19),
-    fontWeight: "600",
+    fontWeight: '600',
     color: uiColors.danger,
   },
 
   fab: {
-    position: "absolute",
+    position: 'absolute',
     bottom: getResponsiveValue(80, 75, 80),
     right: getResponsiveValue(12, 16, 20),
     backgroundColor: uiColors.primary,
     borderRadius: 40,
     width: 56,
     height: 56,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     elevation: 5,
   },
 
   // --- Barra de Filtros / Tabs / Home ---
-  searchButton: { 
-    padding: 6, 
-    marginLeft: getResponsiveValue(6, 8, 10) 
+  searchButton: {
+    padding: 6,
+    marginLeft: getResponsiveValue(6, 8, 10),
   },
 
   tabsWrapper: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: getResponsiveValue(12, 14, 16),
     paddingVertical: getResponsiveValue(30, 35, 40),
     marginTop: getResponsiveValue(20, 25, 30),
@@ -64,11 +63,11 @@ const styles = StyleSheet.create({
   },
 
   tabsContainer: {
-    flexDirection: "row",
+    flexDirection: 'row',
     backgroundColor: uiColors.white,
     borderRadius: 12,
-    overflow: "hidden",
-    position: "relative",
+    overflow: 'hidden',
+    position: 'relative',
     paddingVertical: 0,
     width: getResponsiveValue(220, 240, 260),
     borderWidth: 1,
@@ -76,24 +75,24 @@ const styles = StyleSheet.create({
   },
 
   tab: {
-    width: "50%",
-    alignItems: "center",
-    justifyContent: "center",
+    width: '50%',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: getResponsiveValue(10, 11, 12),
-    backgroundColor: "transparent",
+    backgroundColor: 'transparent',
     zIndex: 1,
   },
 
   tabText: {
     fontSize: getResponsiveValue(14, 15, 16),
     color: uiColors.danger,
-    fontWeight: "bold",
-    backgroundColor: "transparent",
+    fontWeight: 'bold',
+    backgroundColor: 'transparent',
   },
-  activeTabText: { fontWeight: "bold" },
+  activeTabText: { fontWeight: 'bold' },
 
   indicator: {
-    position: "absolute",
+    position: 'absolute',
     top: -2,
     bottom: -2,
     left: 2,
@@ -107,31 +106,29 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
 
-  // Franja izquierda 
+  // Franja izquierda
   bookBinding: {
-    position: "absolute",
-    left: 0,
+    position: 'absolute',
+    left: 135,
     top: 0,
     bottom: 0,
-    width: 22,
-    backgroundColor: "rgba(255,255,255,0.28)", 
-    borderTopLeftRadius: 10,
-    borderBottomLeftRadius: 10,
+    width: 4,
+    backgroundColor: 'rgba(14, 13, 13, 0.3)',
   },
   // Línea divisoria sutil
   bookDivider: {
-    position: "absolute",
+    position: 'absolute',
     left: 22,
     top: 10,
     bottom: 10,
-    width: 2,
-    backgroundColor: "rgba(0,0,0,0.08)",
+    width: 1.2,
+    backgroundColor: 'rgba(96, 93, 93, 0.3)',
     borderRadius: 1,
   },
 
   // --- filtros de tab ---
   containerTab: {
-    position: "absolute",
+    position: 'absolute',
     bottom: getResponsiveValue(15, 18, 20),
     left: getResponsiveValue(20, 25, 30),
     right: getResponsiveValue(20, 25, 30),
@@ -141,7 +138,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   indicatorTab: {
-    position: "absolute",
+    position: 'absolute',
     top: 0,
     left: 0,
     width: 18,
@@ -150,19 +147,19 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     zIndex: 0,
   },
-  rowTab: { flexDirection: "row", flex: 1, justifyContent: "space-around" },
+  rowTab: { flexDirection: 'row', flex: 1, justifyContent: 'space-around' },
   tabButton: {
     paddingVertical: getResponsiveValue(8, 9, 10),
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     zIndex: 1,
   },
   tabLabel: { marginLeft: getResponsiveValue(4, 5, 6) },
   homeRowTab: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
   },
   iconOnTop: { zIndex: 10 },
 
@@ -174,8 +171,8 @@ const styles = StyleSheet.create({
   },
   emptyContent: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: getResponsiveValue(12, 14, 16),
     paddingBottom: getResponsiveValue(100, 110, 120),
   },
@@ -184,47 +181,47 @@ const styles = StyleSheet.create({
     width: getResponsiveValue(155, 155, 140),
     height: getResponsiveValue(200, 200, 180),
     margin: getResponsiveValue(8, 10, 12),
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: getResponsiveValue(8, 9, 10),
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.15)",
-    shadowColor: "#000",
+    borderColor: 'rgba(0,0,0,0.15)',
+    shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  cardHL: { borderWidth: 2, borderColor: "#FFB300" },
+  cardHL: { borderWidth: 2, borderColor: '#FFB300' },
   cardTitle: {
-    textAlign: "center",
+    textAlign: 'center',
     color: uiColors.gray,
-    fontWeight: "600",
+    fontWeight: '600',
     fontSize: getResponsiveValue(16, 17, 18),
     fontFamily: Platform.select({
-      ios: "Times New Roman",
-      android: "serif",
-      default: "serif",
+      ios: 'Times New Roman',
+      android: 'serif',
+      default: 'serif',
     }),
   },
 
   cardWrapper: {
-    alignItems: "center",
+    alignItems: 'center',
     marginBottom: getResponsiveValue(6, 7, 8),
   },
   // --- fecha ---
   cardDate: {
-    textAlign: "center",
+    textAlign: 'center',
     fontSize: getResponsiveValue(11, 12, 13),
-    color: "rgba(0,0,0,0.65)",
-    textTransform: "lowercase",
+    color: 'rgba(0,0,0,0.65)',
+    textTransform: 'lowercase',
     marginTop: -4,
   },
 
   // --- favorito ---
   favWrap: {
-    position: "absolute",
+    position: 'absolute',
     top: getResponsiveValue(6, 7, 8),
     left: getResponsiveValue(6, 7, 8),
     zIndex: 2,
@@ -233,20 +230,20 @@ const styles = StyleSheet.create({
     width: getResponsiveValue(30, 32, 34),
     height: getResponsiveValue(30, 32, 34),
     borderRadius: 78,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "transparent",
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
     elevation: 0,
   },
   favBtnActive: {
-    backgroundColor: "rgba(230,57,70,0.22)",
+    backgroundColor: 'rgba(230,57,70,0.22)',
     borderWidth: 1,
-    borderColor: "rgba(230,57,70,0.55)",
+    borderColor: 'rgba(230,57,70,0.55)',
   },
 
   // --- Editar ---
   editWrap: {
-    position: "absolute",
+    position: 'absolute',
     top: getResponsiveValue(165, 160, 135),
     right: getResponsiveValue(120, 120, 100),
   },
@@ -255,8 +252,8 @@ const styles = StyleSheet.create({
     width: getResponsiveValue(26, 27, 28),
     height: getResponsiveValue(26, 27, 28),
     borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: uiColors.transparent,
     shadowColor: uiColors.transparent,
     shadowOpacity: 0.15,
@@ -267,22 +264,22 @@ const styles = StyleSheet.create({
 
   // --- Panel de busqueda por fechas ---
   searchPanel: {
-    overflow: "hidden",
+    overflow: 'hidden',
     paddingHorizontal: getResponsiveValue(12, 14, 16),
   },
   searchRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: getResponsiveValue(6, 7, 8),
     paddingTop: getResponsiveValue(6, 7, 8),
   },
   chip: {
     paddingHorizontal: getResponsiveValue(8, 9, 10),
     paddingVertical: getResponsiveValue(6, 7, 8),
-    backgroundColor: "#fff",
+    backgroundColor: '#fff',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.08)",
+    borderColor: 'rgba(0,0,0,0.08)',
     elevation: 1,
   },
   chipActive: {
@@ -293,8 +290,8 @@ const styles = StyleSheet.create({
     color: uiColors.brown,
   },
   rangeRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     gap: getResponsiveValue(8, 9, 10),
     paddingTop: getResponsiveValue(8, 9, 10),
   },
@@ -306,18 +303,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: getResponsiveValue(12, 13, 14),
     backgroundColor: uiColors.primary,
     borderRadius: 12,
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: getResponsiveValue(4, 5, 6),
   },
 
   searchBarRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.08)",
+    borderColor: 'rgba(0,0,0,0.08)',
     paddingHorizontal: getResponsiveValue(8, 9, 10),
     height: getResponsiveValue(40, 42, 44),
     gap: getResponsiveValue(4, 5, 6),
@@ -325,19 +322,19 @@ const styles = StyleSheet.create({
 
   inputMM: {
     width: getResponsiveValue(70, 76, 82),
-    textAlign: "center",
+    textAlign: 'center',
     paddingHorizontal: getResponsiveValue(6, 7, 8),
   },
 
   inputYYYY: {
     width: getResponsiveValue(95, 102, 110),
-    textAlign: "center",
+    textAlign: 'center',
     paddingHorizontal: getResponsiveValue(6, 7, 8),
   },
 
   slash: {
     marginHorizontal: getResponsiveValue(1, 1.5, 2),
-    color: "#777",
+    color: '#777',
   },
 
   applyBtnInline: {
@@ -345,8 +342,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: getResponsiveValue(10, 11, 12),
     backgroundColor: uiColors.primary,
     borderRadius: 10,
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: getResponsiveValue(4, 5, 6),
   },
 
@@ -355,9 +352,9 @@ const styles = StyleSheet.create({
     height: getResponsiveValue(32, 34, 36),
     width: getResponsiveValue(32, 34, 36),
     borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.05)",
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.05)',
   },
 
   // SETTINGS - RESPONSIVE PARA ANDROID
@@ -372,7 +369,7 @@ const styles = StyleSheet.create({
   headerTitlesett: {
     color: uiColors.danger,
     fontSize: getResponsiveValue(30, 33, 35),
-    fontWeight: "900",
+    fontWeight: '900',
     marginBottom: getResponsiveValue(25, 28, 30),
     marginTop: getResponsiveValue(30, 33, 35),
   },
@@ -388,7 +385,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
-    alignItems: "center",
+    alignItems: 'center',
   },
 
   profileImageContainersett: {
@@ -396,22 +393,22 @@ const styles = StyleSheet.create({
     height: getResponsiveValue(90, 95, 100),
     borderRadius: getResponsiveValue(45, 47.5, 50),
     backgroundColor: uiColors.background,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: getResponsiveValue(14, 15, 16),
-    overflow: "hidden",
+    overflow: 'hidden',
     borderWidth: 3,
-    borderColor: "#e0e0e0",
+    borderColor: '#e0e0e0',
   },
 
   profileImagesett: {
-    width: "100%",
-    height: "100%",
+    width: '100%',
+    height: '100%',
   },
 
   profileNamesett: {
     fontSize: getResponsiveValue(15, 18, 20),
-    fontWeight: "600",
+    fontWeight: '600',
     color: uiColors.gray,
     marginBottom: getResponsiveValue(3, 3.5, 4),
   },
@@ -437,22 +434,22 @@ const styles = StyleSheet.create({
 
   accountTitlesett: {
     fontSize: getResponsiveValue(16, 17, 18),
-    fontWeight: "600",
+    fontWeight: '600',
     marginBottom: getResponsiveValue(14, 15, 16),
     color: uiColors.gray,
   },
 
   accountInfoRowsett: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: getResponsiveValue(10, 11, 12),
     borderBottomWidth: 1,
     borderBottomColor: uiColors.white,
   },
 
   accountInfoRowLastsett: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingVertical: getResponsiveValue(10, 11, 12),
   },
 
@@ -460,17 +457,17 @@ const styles = StyleSheet.create({
     width: getResponsiveValue(36, 38, 40),
     height: getResponsiveValue(36, 38, 40),
     borderRadius: 5,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: getResponsiveValue(10, 11, 12),
   },
 
   accountIconBgBluesett: {
-    backgroundColor: "#eff6ff",
+    backgroundColor: '#eff6ff',
   },
 
   accountIconBgYellowsett: {
-    backgroundColor: "#fef3c7",
+    backgroundColor: '#fef3c7',
   },
 
   accountInfoContentsett: {
@@ -486,7 +483,7 @@ const styles = StyleSheet.create({
   accountInfoValuesett: {
     fontSize: getResponsiveValue(11, 11.5, 12),
     color: uiColors.gray,
-    fontWeight: "500",
+    fontWeight: '500',
   },
 
   // Centro de Ayuda
@@ -495,19 +492,19 @@ const styles = StyleSheet.create({
     borderRadius: getResponsiveValue(14, 15, 16),
     padding: getResponsiveValue(16, 18, 20),
     marginBottom: getResponsiveValue(16, 18, 20),
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
 
   helpButtonContentsett: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
   },
 
@@ -515,22 +512,22 @@ const styles = StyleSheet.create({
     width: getResponsiveValue(36, 38, 40),
     height: getResponsiveValue(36, 38, 40),
     borderRadius: getResponsiveValue(18, 19, 20),
-    backgroundColor: "#f0fdf4",
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: '#f0fdf4',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: getResponsiveValue(10, 11, 12),
   },
 
   helpTitlesett: {
     fontSize: getResponsiveValue(14, 15, 16),
-    fontWeight: "600",
+    fontWeight: '600',
     color: uiColors.gray,
     marginBottom: 2,
   },
 
   helpDescriptionsett: {
     fontSize: getResponsiveValue(12, 12.5, 13),
-    color: "#6b7280",
+    color: '#6b7280',
   },
 
   // Botón de Cerrar Sesión
@@ -539,10 +536,10 @@ const styles = StyleSheet.create({
     paddingVertical: getResponsiveValue(14, 15, 16),
     paddingHorizontal: getResponsiveValue(20, 22, 24),
     borderRadius: getResponsiveValue(10, 11, 12),
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "center",
-    shadowColor: "#ef4444",
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    shadowColor: '#ef4444',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -551,7 +548,7 @@ const styles = StyleSheet.create({
 
   logoutButtonTextsett: {
     color: uiColors.white,
-    fontWeight: "700",
+    fontWeight: '700',
     fontSize: getResponsiveValue(14, 15, 16),
   },
 
@@ -567,8 +564,8 @@ const styles = StyleSheet.create({
 
   // Header
   headerhelp: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: getResponsiveValue(16, 18, 20),
     paddingTop: getResponsiveValue(45, 48, 50),
     paddingBottom: getResponsiveValue(16, 18, 20),
@@ -582,14 +579,14 @@ const styles = StyleSheet.create({
     height: getResponsiveValue(36, 38, 40),
     borderRadius: getResponsiveValue(18, 19, 20),
     backgroundColor: uiColors.background,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: getResponsiveValue(10, 11, 12),
   },
 
   headerTitlehelp: {
     fontSize: getResponsiveValue(22, 24, 25),
-    fontWeight: "700",
+    fontWeight: '700',
     color: uiColors.danger,
   },
 
@@ -606,7 +603,7 @@ const styles = StyleSheet.create({
     borderRadius: getResponsiveValue(14, 15, 16),
     padding: getResponsiveValue(16, 18, 20),
     marginBottom: getResponsiveValue(20, 22, 24),
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -614,8 +611,8 @@ const styles = StyleSheet.create({
   },
 
   descriptionHeaderhelp: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: getResponsiveValue(10, 11, 12),
   },
 
@@ -624,14 +621,14 @@ const styles = StyleSheet.create({
     height: getResponsiveValue(44, 46, 48),
     borderRadius: getResponsiveValue(22, 23, 24),
     backgroundColor: uiColors.white,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: getResponsiveValue(10, 11, 12),
   },
 
   descriptionTitlehelp: {
     fontSize: getResponsiveValue(18, 19, 20),
-    fontWeight: "700",
+    fontWeight: '700',
     color: uiColors.gray,
     flex: 1,
     paddingLeft: getResponsiveValue(8, 9, 10),
@@ -646,7 +643,7 @@ const styles = StyleSheet.create({
   // Titulo de seccion
   sectionTitlehelp: {
     fontSize: getResponsiveValue(16, 17, 18),
-    fontWeight: "600",
+    fontWeight: '600',
     color: uiColors.gray,
     marginBottom: getResponsiveValue(14, 15, 16),
     marginLeft: getResponsiveValue(3, 3.5, 4),
@@ -663,16 +660,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 
   contactIconContainerhelp: {
     width: getResponsiveValue(48, 50, 52),
     height: getResponsiveValue(48, 50, 52),
     borderRadius: getResponsiveValue(24, 25, 26),
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: getResponsiveValue(14, 15, 16),
   },
 
@@ -682,7 +679,7 @@ const styles = StyleSheet.create({
 
   contactTitlehelp: {
     fontSize: getResponsiveValue(15, 16, 17),
-    fontWeight: "600",
+    fontWeight: '600',
     color: uiColors.gray,
     marginBottom: getResponsiveValue(3, 3.5, 4),
   },
@@ -695,22 +692,22 @@ const styles = StyleSheet.create({
 
   contactEmailhelp: {
     fontSize: getResponsiveValue(11, 12, 13),
-    fontWeight: "500",
+    fontWeight: '500',
   },
 
   // Tarjeta de Información Adicional
   infoCardhelp: {
-    backgroundColor: "#8fc58c8b",
+    backgroundColor: '#8fc58c8b',
     borderRadius: getResponsiveValue(10, 11, 12),
     padding: getResponsiveValue(14, 15, 16),
     marginTop: getResponsiveValue(7, 7.5, 8),
     borderLeftWidth: 4,
-    borderLeftColor: "#286d20ff",
+    borderLeftColor: '#286d20ff',
   },
 
   infoCardContenthelp: {
-    flexDirection: "row",
-    alignItems: "flex-start",
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
 
   infoIconhelp: {
@@ -724,17 +721,16 @@ const styles = StyleSheet.create({
 
   infoTitlehelp: {
     fontSize: getResponsiveValue(12, 13, 14),
-    fontWeight: "600",
-    color: "#5fa964ff",
+    fontWeight: '600',
+    color: '#5fa964ff',
     marginBottom: getResponsiveValue(3, 3.5, 4),
   },
 
   infoTexthelp: {
     fontSize: getResponsiveValue(11, 12, 13),
-    color: "#48794aff",
+    color: '#48794aff',
     lineHeight: getResponsiveValue(18, 19, 20),
   },
-
 } as const);
 
 export default styles;
