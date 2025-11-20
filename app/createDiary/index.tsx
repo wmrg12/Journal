@@ -78,7 +78,7 @@ export default function CrearDiario() {
           <TextInput
             style={styles.nameInput}
             placeholder="Ingresa un nombre"
-            placeholderTextColor={uiColors.gray}
+            placeholderTextColor={uiColors.grayO}
             value={diaryName}
             onChangeText={setDiaryName}
             maxLength={50}
