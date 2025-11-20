@@ -243,7 +243,7 @@ export default StyleSheet.create({
     alignItems: 'center',
     marginRight: 10,
   },
-  drawOptionsTitle: { fontSize: 16, fontWeight: '400', color: uiColors.black },
+  drawOptionsTitle: { fontSize: 16, fontWeight: '400', color: uiColors.black, flex: 1 },
 
   sizeButtonsRow: {
     flexDirection: 'row',
@@ -566,7 +566,7 @@ export default StyleSheet.create({
     marginRight: 10,
   },
   textIconLetter: { fontSize: 20, fontWeight: '600', color: uiColors.black },
-  textOptionsTitle: { fontSize: 16, fontWeight: '400', color: uiColors.black },
+  textOptionsTitle: { fontSize: 16, fontWeight: '400', color: uiColors.black, flex: 1 },
   textInput: {
     borderWidth: 1,
     borderColor: uiColors.bord,
@@ -583,14 +583,14 @@ export default StyleSheet.create({
   /* ──────────────── SECCIONES DE TEXTO ──────────────── */
   colorSection: { marginBottom: 20 },
   colorCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 35,
+    height: 35,
+    borderRadius: 20,
     marginRight: 13,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: uiColors.grayO,
   },
-  colorCircleSelected: { borderColor: uiColors.black, borderWidth: 2.5 },
+  colorCircleSelected: { borderColor: uiColors.primary, borderWidth: 2.5 },
   fontSection: { marginBottom: 20 },
   fontButton: {
     paddingHorizontal: 16,
@@ -756,7 +756,8 @@ export default StyleSheet.create({
     fontSize: 16,
     fontWeight: '400',
     color: uiColors.black,
-    marginLeft: 9,
+    flex: 1,
+    marginLeft: 8,
   },
 
   shapeToolsSection: {
@@ -874,8 +875,8 @@ export default StyleSheet.create({
   },
   audioOptionsTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
+    fontWeight: '400',
+    color: uiColors.black,
     flex: 1,
   },
   sectionLabel: {
