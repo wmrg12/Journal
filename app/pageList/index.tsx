@@ -56,7 +56,7 @@ export default function PagesList() {
       const color =
         (await getPageColor(String(journalId), i)) ?? (journalColor as string);
 
-      // Consultar contenido de la página
+      // Obtener pageId
       const pageId = await getPageId(String(journalId), i);
 
       let hasText = false;
@@ -69,30 +69,40 @@ export default function PagesList() {
       let stickers: any[] = [];
 
       if (pageId) {
-        const [texts, draws, shapes, images, stickers] = await Promise.all([
+        // pedimos todo en paralelo
+        const results = await Promise.all([
           listPageTexts(pageId),
           listPageDraws(pageId),
           listPageShapes(pageId),
           listPageImages(pageId),
-          listPageStickers(pageId),
+          typeof listPageStickers === "function"
+            ? listPageStickers(pageId)
+            : Promise.resolve([]),
         ]);
+
+        texts = results[0] ?? [];
+        draws = results[1] ?? [];
+        shapes = results[2] ?? [];
+        images = results[3] ?? [];
+        stickers = results[4] ?? [];
+
         hasText = texts.length > 0;
         hasDraw = draws.length > 0;
         hasShapes = shapes.length > 0;
-
-        list.push({
-          number: i,
-          color,
-          hasText,
-          hasDraw,
-          hasShapes,
-          texts,
-          draws,
-          shapes,
-          images,
-          stickers,
-        });
       }
+
+      list.push({
+        number: i,
+        color,
+        hasText,
+        hasDraw,
+        hasShapes,
+        texts,
+        draws,
+        shapes,
+        images,
+        stickers,
+      });
     }
 
     setPages(list);
@@ -104,7 +114,6 @@ export default function PagesList() {
 
   useFocusEffect(
     useCallback(() => {
-      // Ocultar el teclado al enfocar la pantalla para evitar desplazamientos
       Keyboard.dismiss();
       loadPages();
     }, [loadPages])
@@ -130,9 +139,7 @@ export default function PagesList() {
       String(journalId),
       String(journalColor)
     );
-
     await loadPages();
-
     router.push({
       pathname: "/page",
       params: {
@@ -151,42 +158,46 @@ export default function PagesList() {
       <TouchableOpacity
         style={S.card}
         onPress={() => openPage(item.number, item.color)}
-        activeOpacity={0.85}
+        activeOpacity={0.9}
       >
+        {/* Preview ocupa TODO el espacio del card */}
         <View style={S.pagePreviewWrap}>
-          <SmallPagePreview
-            bgColor={item.color}
-            texts={item.texts}
-            draws={item.draws}
-            shapes={item.shapes}
-            images={item.images}
-            stickers={item.stickers}
-            sourceWidth={555}
-            sourceHeight={850}
-            extraScale={1.05}
-            alignVertical="center"
-            centerNullPositions={true}
-            style={{ width: "100%", height: "100%" }}
-          />
+          <View style={S.pagePreviewPortrait}>
+            <SmallPagePreview
+              bgColor={item.color}
+              texts={item.texts}
+              draws={item.draws}
+              shapes={item.shapes}
+              images={item.images}
+              stickers={item.stickers}
+              sourceWidth={555}
+              sourceHeight={850}
+              positionMode="topleft"
+              debug={true}
+              style={{ width: "100%", height: "100%" }}
+            />
+          </View>
+
+          {/* Iconos de contenido superpuestos (abajo a la derecha) */}
           <View
             style={{
               position: "absolute",
-              bottom: 6,
-              right: 6,
+              bottom: 8,
+              right: 8,
               flexDirection: "row",
-              gap: 6,
+              gap: 8,
             }}
           >
             {item.hasText && (
-              <Ionicons name="text-outline" size={12} color={uiColors.white} />
+              <Ionicons name="text-outline" size={14} color={uiColors.white} />
             )}
             {item.hasDraw && (
-              <Ionicons name="brush-outline" size={12} color={uiColors.white} />
+              <Ionicons name="brush-outline" size={14} color={uiColors.white} />
             )}
             {item.hasShapes && (
               <Ionicons
                 name="shapes-outline"
-                size={12}
+                size={14}
                 color={uiColors.white}
               />
             )}
@@ -203,7 +214,6 @@ export default function PagesList() {
     </View>
   );
 
-  // Capturar el botón back del dispositivo para ir a tabs/home
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
       "hardwareBackPress",
@@ -212,7 +222,6 @@ export default function PagesList() {
         return true;
       }
     );
-
     return () => backHandler.remove();
   }, []);
 
