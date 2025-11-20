@@ -54,12 +54,40 @@ export const coverPalette = [
   '#8e737dff',
   '#CBE8BA',
   '#ab90b1ff',
-  '#F2C9FB',
-  '#D4E3FC',
-  '#91E4FB',
-  '#F4EB49',
-  '#a39e92ff',
-  '#AFD2D5',
+
+  // Tonos base suaves
+  '#C9EDF9',
+  '#D9D5D0',
+  '#D9E9EB',
+
+  // Clásicos elegantes pastel
+  '#D4A574',
+  '#C19A7A',
+  '#C9B896',
+
+  // Tonos juveniles suaves
+  '#F8A3C0',
+  '#D4A5DB',
+  '#FFAAC7',
+
+  // Tonos infantiles
+  '#FFD9E3',
+  '#D9F0F5',
+  '#EDD4ED',
+
+  // Tonos neutros suaves
+  '#B8C5CE',
+  '#D4A58E',
+  '#E6C49B',
+  '#B3C199',
+
+  // Pasteles premium
+  '#F8F3D4',
+
+  // Tonos maduros suaves
+  '#9A9AD9',
+  '#C68093',
+  '#9AAFAF',
 ] as const;
 
 export const textColors = [
