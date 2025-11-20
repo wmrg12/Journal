@@ -756,6 +756,7 @@ export default StyleSheet.create({
     fontSize: 16,
     fontWeight: '400',
     color: uiColors.black,
+    marginLeft: 9,
   },
 
   shapeToolsSection: {
@@ -956,6 +957,14 @@ export default StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  audioIconBackground: {
+    width: 32,
+    height: 32,
+    backgroundColor: uiColors.grayO,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   /* ──────────────── AUDIO EN CANVAS ──────────────── */
