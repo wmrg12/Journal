@@ -7,7 +7,9 @@ import {
   StatusBar,
   SafeAreaView,
   Alert,
+  ScrollView,
 } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { diaryStyles as styles } from '@/styles/createCoverStyles';
 import { useRouter } from 'expo-router';
 import { uiColors, coverPalette } from '@/constants/colors';
@@ -19,12 +21,15 @@ export default function CrearDiario() {
   const [diaryName, setDiaryName] = useState<string>('');
   const router = useRouter();
 
+  const handleBack = () => {
+    router.back();
+  };
+
   const handleSave = async () => {
     if (!diaryName.trim()) {
       Alert.alert('Nombre requerido', 'Ingresa un nombre para el diario.');
       return;
     }
-
     try {
       const { id } = await createJournal(diaryName.trim(), selectedColor);
       router.push({
@@ -43,14 +48,23 @@ export default function CrearDiario() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
-          <Text style={styles.backArrow}>←</Text>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={handleBack}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <MaterialIcons name="arrow-back" size={24} color={uiColors.danger} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Crear Diario</Text>
+        <View style={styles.headerSpacer} />
       </View>
 
-      {/* Content */}
-      <View style={styles.content}>
+      {/* Content con ScrollView */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Preview */}
         <View style={styles.diaryPreview}>
           <View style={[styles.diary, { backgroundColor: selectedColor }]}>
@@ -60,12 +74,14 @@ export default function CrearDiario() {
 
         {/* Name */}
         <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Nombre:</Text>
           <TextInput
             style={styles.nameInput}
-            placeholder="Name"
+            placeholder="Ingresa un nombre"
             placeholderTextColor={uiColors.gray}
             value={diaryName}
             onChangeText={setDiaryName}
+            maxLength={50}
           />
         </View>
 
@@ -76,12 +92,10 @@ export default function CrearDiario() {
         </View>
 
         {/* Save */}
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.8}>
           <Text style={styles.saveButtonText}>Guardar</Text>
         </TouchableOpacity>
-      </View>
-
-      {/*<View style={styles.bottomIndicator} />*/}
+      </ScrollView>
     </SafeAreaView>
   );
 }
