@@ -3,7 +3,15 @@ import { pagePalette, uiColors } from '@/constants/colors';
 import { createPage, updateJournalDefaultPattern } from '@/src/db/dao';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Image, Text, TouchableOpacity, View, ScrollView } from 'react-native';
+import {
+  Alert,
+  Text,
+  TouchableOpacity,
+  View,
+  ScrollView,
+  SafeAreaView,
+  StatusBar,
+} from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import S from '../../styles/createPageStyles';
 import {
@@ -30,6 +38,10 @@ export default function CreatePageScreen() {
       if (found) setBgColor(found as (typeof pagePalette)[number]);
     }
   }, [color]);
+
+  const handleBack = () => {
+    router.back();
+  };
 
   if (!journalId || typeof journalId !== 'string') {
     return (
@@ -61,13 +73,27 @@ export default function CreatePageScreen() {
   }
 
   return (
-    <View style={S.container} testID="create-page-screen">
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <Text style={S.title} accessibilityRole="header" testID="header-title">
-          Crear Página
-        </Text>
+    <SafeAreaView style={S.container} testID="create-page-screen">
+      <StatusBar backgroundColor={uiColors.background} barStyle="dark-content" />
 
+      {/* Header */}
+      <View style={S.header}>
+        <TouchableOpacity
+          style={S.backButton}
+          onPress={handleBack}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <MaterialIcons name="arrow-back" size={24} color={uiColors.danger} />
+        </TouchableOpacity>
+        <Text style={S.headerTitle}>Crear Página</Text>
+        <View style={S.headerSpacer} />
+      </View>
+
+      <ScrollView
+        style={S.scrollView}
+        contentContainerStyle={S.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Preview */}
         <Text style={S.label} testID="preview-label">
           Vista Previa
@@ -81,7 +107,7 @@ export default function CreatePageScreen() {
             setPreviewSize({ width, height });
           }}
         >
-          {/* Patrón de fondo - renderizar encima de la imagen */}
+          {/* Patrón de fondo */}
           {previewSize.width > 0 && selectedPattern !== 'none' && (
             <View
               style={{
@@ -105,16 +131,18 @@ export default function CreatePageScreen() {
         {/* Color Picker */}
         <View style={S.colorSection}>
           <Text style={S.colorLabel}>Color:</Text>
-          <ColorPalette
-            options={pagePalette}
-            value={bgColor}
-            onChange={(color) => {
-              const found = (pagePalette as readonly string[]).find(
-                (c) => c.toLowerCase() === color.toLowerCase(),
-              );
-              if (found) setBgColor(found as (typeof pagePalette)[number]);
-            }}
-          />
+          <View style={S.colorPaletteWrapper}>
+            <ColorPalette
+              options={pagePalette}
+              value={bgColor}
+              onChange={(color) => {
+                const found = (pagePalette as readonly string[]).find(
+                  (c) => c.toLowerCase() === color.toLowerCase(),
+                );
+                if (found) setBgColor(found as (typeof pagePalette)[number]);
+              }}
+            />
+          </View>
         </View>
 
         {/* Pattern Selector */}
@@ -150,6 +178,6 @@ export default function CreatePageScreen() {
           <Text style={S.createButtonText}>Crear</Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
