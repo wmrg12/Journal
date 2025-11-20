@@ -127,14 +127,115 @@ export const textColors = [
 ] as const;
 
 export const drawColors = [
+  // Básicos
   '#000000ff',
-  '#e71d1dff',
-  '#82d4dbff',
-  '#f160c1ff',
-  '#fbc628ff',
-  '#4caf50ff',
-  '#2196f3ff',
-  '#9c27b0ff',
-  '#ff9800ff',
+  '#FFFFFFff',
+
+  // Grises
+  '#2D3748ff',
+  '#4A5568ff',
+  '#718096ff',
+  '#A0AEC0ff',
+  '#E2E8F0ff',
+
+  // Rojos y rosas
+  '#C62828ff',
+  '#E53935ff',
+  '#EF5350ff',
+  '#EC407Aff',
+  '#F06292ff',
+  '#F48FB1ff',
+
+  // Naranjas
+  '#E65100ff',
+  '#F4511Eff',
+  '#FF6F00ff',
+  '#FB8C00ff',
+  '#FFA726ff',
+  '#FFAB91ff',
+
+  // Amarillos
+  '#F57F17ff',
+  '#F9A825ff',
+  '#FBC02Dff',
+  '#FDD835ff',
+  '#FFEB3Bff',
+  '#FFF176ff',
+
+  // Verdes
+  '#1B5E20ff',
+  '#2E7D32ff',
+  '#388E3Cff',
+  '#43A047ff',
+  '#66BB6Aff',
+  '#81C784ff',
+  '#4DB6ACff',
+  '#26A69Aff',
+
+  // Azules
+  '#0D47A1ff',
+  '#1565C0ff',
+  '#1976D2ff',
+  '#1E88E5ff',
+  '#2196F3ff',
+  '#42A5F5ff',
+  '#64B5F6ff',
+  '#5C6BC0ff',
+
+  // Morados
+  '#4A148Cff',
+  '#6A1B9Aff',
+  '#7B1FA2ff',
+  '#8E24AAff',
+  '#9C27B0ff',
+  '#AB47BCff',
+  '#BA68C8ff',
+  '#CE93D8ff',
+
+  // Marrones
+  '#3E2723ff',
+  '#4E342Eff',
+  '#5D4037ff',
+  '#6D4C41ff',
   '#795548ff',
+  '#8D6E63ff',
+  '#A1887Fff',
+
+  // Especiales
+  '#82D4DBff',
+  '#F160C1ff',
+  '#B87333ff',
+  '#CD7F32ff',
+
+  // Pasteles
+  '#FFE5F0ff',
+  '#FFF0F5ff',
+  '#FFE8E8ff',
+  '#FFE8D6ff',
+  '#FFEEF0ff',
+  '#FFD9E8ff',
+  '#FFC9C1ff',
+  '#FAD4C3ff',
+  '#FFE9A8ff',
+  '#FFF4E0ff',
+  '#E8F7D1ff',
+  '#D4F0D9ff',
+  '#D4F1E8ff',
+  '#BFE8C6ff',
+  '#E8F4F8ff',
+  '#CFEFFFff',
+  '#D4E5FFff',
+  '#E6D6FFff',
+  '#F0E5FFff',
+  '#E8D4F0ff',
+  '#F7C6D9ff',
+  '#F5E6D3ff',
+  '#F0EAE0ff',
+  '#E8DDD0ff',
+  '#E5D5C3ff',
+  '#DFD3C3ff',
+  '#D4CDB8ff',
+  '#C9B8A8ff',
+  '#B8A99Aff',
+  '#A8C5B0ff',
 ] as const;
