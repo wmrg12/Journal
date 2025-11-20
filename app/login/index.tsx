@@ -1,9 +1,19 @@
+//login/index.tsx
 import styles from "@/styles/loginStyles";
 import { useAuth, useOAuth } from "@clerk/clerk-expo";
-import * as Linking from "expo-linking";
+import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
+import * as Updates from 'expo-updates'; 
 import React from "react";
-import { ActivityIndicator, Dimensions, Image, Keyboard, Text, TouchableOpacity, View } from "react-native";
+import { 
+  ActivityIndicator, 
+  Dimensions, 
+  Image, 
+  Text, 
+  TouchableOpacity, 
+  View,
+  Alert 
+} from "react-native";
 import login1 from "../../assets/images/login1.png";
 import login2 from "../../assets/images/login2.png";
 import login3 from "../../assets/images/login3.png";
@@ -13,7 +23,9 @@ WebBrowser.maybeCompleteAuthSession();
 const useWarmUpBrowser = () => {
   React.useEffect(() => {
     void WebBrowser.warmUpAsync();
-    return () => { void WebBrowser.coolDownAsync(); };
+    return () => { 
+      void WebBrowser.coolDownAsync(); 
+    };
   }, []);
 };
 
@@ -22,55 +34,51 @@ export default function LoginScreen() {
 
   const { width } = Dimensions.get("window");
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
-  const { isSignedIn } = useAuth();
+  const router = useRouter();
 
   const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
   const isRunningRef = React.useRef(false); 
-
-  // Frecuencia de sesiones
-  React.useEffect(() => {
-    if (isSignedIn) {
-      Keyboard.dismiss();
-      const homeUrl = Linking.createURL("/tabs/home", { scheme: "myapp" });
-      Linking.openURL(homeUrl);
-    }
-  }, [isSignedIn]);
 
   const onPress = React.useCallback(async () => {
     if (isRunningRef.current || loading) return;
+    
     isRunningRef.current = true;
     setLoading(true);
-    setError(null);
 
     try {
-      const redirectUrl = Linking.createURL("/tabs/home", { scheme: "myapp" });
-      const { createdSessionId, setActive, signIn, signUp } = await startOAuthFlow({ redirectUrl });
+      const { createdSessionId, setActive } = await startOAuthFlow();
 
       if (createdSessionId) {
-        Keyboard.dismiss();
+        console.log('Sesión creada, activando...');
         await setActive?.({ session: createdSessionId });
-        const homeUrl = Linking.createURL("/tabs/home", { scheme: "myapp" });
-        Linking.openURL(homeUrl);
+        console.log('Sesión activada');
+        
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log('Recargando app...');
+        
+        //Recargar la app
+        if (__DEV__) {
+        
+          router.replace('/tabs/home');
+        } else {
+          await Updates.reloadAsync();
+        }
+        
         return;
       }
 
-      if (signIn || signUp) {
-        Keyboard.dismiss();
-        const homeUrl = Linking.createURL("/tabs/home", { scheme: "myapp" });
-        Linking.openURL(homeUrl);
-        return;
-      }
-
-      setError("No se pudo iniciar sesión directamente.");
+      Alert.alert('Error', 'No se pudo iniciar sesión. Intenta nuevamente.');
     } catch (err: any) {
-      console.error("OAuth error", err);
-      setError(err?.message || "Ocurrió un error desconocido.");
+      console.error("OAuth error:", err);
+      Alert.alert(
+        'Error de autenticación',
+        err?.message || 'Ocurrió un error desconocido. Intenta nuevamente.'
+      );
     } finally {
       setLoading(false);
       isRunningRef.current = false;
     }
-  }, [startOAuthFlow, loading]);
+  }, [startOAuthFlow, loading, router]);
 
   return (
     <View style={styles.container}>
@@ -88,15 +96,17 @@ export default function LoginScreen() {
           ¡Inicia sesión y empieza a escribir!
         </Text>
 
-        <TouchableOpacity style={styles.button} onPress={onPress} disabled={loading}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Iniciar</Text>}
+        <TouchableOpacity 
+          style={[styles.button, loading && { opacity: 0.7 }]} 
+          onPress={onPress} 
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>Iniciar con Google</Text>
+          )}
         </TouchableOpacity>
-
-        {!!error && (
-          <Text style={{ marginTop: 12, color: "#dc2626", textAlign: "center" }}>
-            {error}
-          </Text>
-        )}
       </View>
     </View>
   );
