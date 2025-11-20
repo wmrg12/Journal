@@ -5,7 +5,11 @@ import { Dimensions, StyleSheet } from "react-native";
 const { width: screenWidth } = Dimensions.get("window");
 const isSmallPhone = screenWidth < 375;
 const isMediumPhone = screenWidth >= 375 && screenWidth < 412;
-const getResponsiveValue = (small: number, medium: number, large: number): number => {
+const getResponsiveValue = (
+  small: number,
+  medium: number,
+  large: number
+): number => {
   if (isSmallPhone) return small;
   if (isMediumPhone) return medium;
   return large;
@@ -55,37 +59,38 @@ export default StyleSheet.create({
     shadowRadius: 4,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(151, 146, 146, 0.36)",
-    minHeight: getResponsiveValue(245, 220, 240),
-    maxHeight: getResponsiveValue(240, 260, 280),
+    height: 275,
+    paddingHorizontal: 0,
+    alignItems: "center",
   },
 
+
   pagePreviewWrap: {
-    padding: 10,
+    padding: 0,
+    width: "90%",          
+    aspectRatio: 3 / 4,    
+    borderRadius: 10,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    marginTop: 12,
+    marginRight: 0,
+    backgroundColor: "transparent",
   },
 
   pagePreviewPortrait: {
-    width: "80%",
+    flex: 1,
+    width: "100%",
     aspectRatio: 3 / 4,
     borderRadius: getResponsiveValue(12, 13, 15),
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(29, 23, 23, 0.07)",
     alignSelf: "center",
-    minHeight: getResponsiveValue(190, 160, 180),
-    maxHeight: getResponsiveValue(200, 220, 240),
     backgroundColor: "#ffffffff",
   },
 
-  // Badge con número de página en la miniatura
-  pageNumberBadge: {
-    position: "absolute",
-    top: 6,
-    left: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+
   pageNumberText: {
     color: uiColors.white,
     fontSize: getResponsiveValue(10, 11, 12),
@@ -105,7 +110,7 @@ export default StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 5,
     backgroundColor: uiColors.white,
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -129,7 +134,7 @@ export default StyleSheet.create({
   fab: {
     position: "absolute",
     right: getResponsiveValue(18, 22, 24),
-    bottom: getResponsiveValue(21, 12, 16), // más cerca de la barra inferior (tabs)
+    bottom: getResponsiveValue(21, 12, 16),
     backgroundColor: uiColors.primary,
     borderRadius: 28,
     width: getResponsiveValue(52, 54, 56),
@@ -143,5 +148,4 @@ export default StyleSheet.create({
     shadowRadius: 3.5,
     zIndex: 10,
   },
-
 });
