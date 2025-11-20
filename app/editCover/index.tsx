@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-} from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { coverPalette } from "@/constants/colors";
-import { listJournals, updateJournalCover, deleteJournal } from "@/src/db/dao";
-import { editCoverStyles as styles } from "@/styles/editCoverStyles";
-import ColorPalette from "@/components/ColorPalette";
+} from 'react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { coverPalette, uiColors } from '@/constants/colors';
+import { Ionicons } from '@expo/vector-icons';
+import { listJournals, updateJournalCover, deleteJournal } from '@/src/db/dao';
+import { editCoverStyles as styles } from '@/styles/editCoverStyles';
+import ColorPalette from '@/components/ColorPalette';
 
 export default function EditCover() {
   const router = useRouter();
@@ -25,31 +26,31 @@ export default function EditCover() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string>(coverPalette[0]);
-  const [diaryName, setDiaryName] = useState<string>("");
+  const [diaryName, setDiaryName] = useState<string>('');
 
   useEffect(() => {
     (async () => {
       try {
         if (!journalId) {
-          Alert.alert("Error", "journalId no recibido.");
+          Alert.alert('Error', 'journalId no recibido.');
           router.back();
           return;
         }
-        
+
         const journals = await listJournals();
-        const journal = journals.find(j => j.id === journalId);
-        
+        const journal = journals.find((j) => j.id === journalId);
+
         if (!journal) {
-          Alert.alert("Error", "No se pudo cargar el diario.");
+          Alert.alert('Error', 'No se pudo cargar el diario.');
           router.back();
           return;
         }
-        
-        setDiaryName(journal.name ?? "");
+
+        setDiaryName(journal.name ?? '');
         setSelectedColor(journal.color ?? coverPalette[0]);
       } catch (e) {
         console.error(e);
-        Alert.alert("Error", "No se pudo cargar el diario.");
+        Alert.alert('Error', 'No se pudo cargar el diario.');
         router.back();
       } finally {
         setLoading(false);
@@ -59,22 +60,22 @@ export default function EditCover() {
 
   const handleSave = async () => {
     if (!journalId || saving) return;
-    
+
     if (!diaryName.trim()) {
-      Alert.alert("Nombre requerido", "Por favor ingresa un nombre para la libreta.");
+      Alert.alert('Nombre requerido', 'Por favor ingresa un nombre para la libreta.');
       return;
     }
-    
+
     setSaving(true);
     try {
-      await updateJournalCover(journalId, { 
+      await updateJournalCover(journalId, {
         name: diaryName.trim(),
-        color: selectedColor 
+        color: selectedColor,
       });
-      router.replace("/tabs/home");
+      router.replace('/tabs/home');
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "No se pudo guardar los cambios.");
+      Alert.alert('Error', 'No se pudo guardar los cambios.');
     } finally {
       setSaving(false);
     }
@@ -82,24 +83,24 @@ export default function EditCover() {
 
   const handleDelete = () => {
     Alert.alert(
-      "Eliminar libreta",
-      "¿Estás seguro de que quieres eliminar esta libreta? Esta acción no se puede deshacer.",
+      'Eliminar libreta',
+      '¿Estás seguro de que quieres eliminar esta libreta? Esta acción no se puede deshacer.',
       [
-        { text: "Cancelar", style: "cancel" },
+        { text: 'Cancelar', style: 'cancel' },
         {
-          text: "Eliminar",
-          style: "destructive",
+          text: 'Eliminar',
+          style: 'destructive',
           onPress: async () => {
             try {
               await deleteJournal(journalId as string);
-              router.replace("/tabs/home");
+              router.replace('/tabs/home');
             } catch (e) {
               console.error(e);
-              Alert.alert("Error", "No se pudo eliminar la libreta.");
+              Alert.alert('Error', 'No se pudo eliminar la libreta.');
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -119,22 +120,22 @@ export default function EditCover() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.closeButton} onPress={() => router.back()}>
-          <Text style={styles.closeIcon}>×</Text>
+        <TouchableOpacity style={{ marginTop: 30 }} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color={uiColors.danger} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Editar portada</Text>
         <TouchableOpacity
-          style={[styles.saveButton, saving && { opacity: 0.6 }]}
+          style={[{ marginTop: 30 }, saving && { opacity: 0.6 }]}
           onPress={handleSave}
           disabled={saving}
         >
-          <Text style={styles.saveIcon}>✓</Text>
+          <Ionicons name="checkmark" size={24} color={uiColors.danger} />
         </TouchableOpacity>
       </View>
 
       {/* Content */}
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
@@ -152,7 +153,7 @@ export default function EditCover() {
               <TextInput
                 style={styles.nameInput}
                 placeholder="Nombre de la libreta"
-                placeholderTextColor="#999"
+                placeholderTextColor={uiColors.grayO}
                 value={diaryName}
                 onChangeText={setDiaryName}
                 maxLength={50}
@@ -162,10 +163,10 @@ export default function EditCover() {
             {/* Selector de color */}
             <View style={styles.colorSection}>
               <Text style={styles.colorLabel}>Color:</Text>
-              <ColorPalette 
-                options={coverPalette} 
-                value={selectedColor} 
-                onChange={setSelectedColor} 
+              <ColorPalette
+                options={coverPalette}
+                value={selectedColor}
+                onChange={setSelectedColor}
               />
             </View>
 
