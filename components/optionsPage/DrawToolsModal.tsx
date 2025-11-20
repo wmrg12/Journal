@@ -18,6 +18,7 @@ type DrawToolsModalProps = {
   eraserWidth: number;
   onEraserWidthChange: (width: number) => void;
   onStartDrawing: () => void;
+  onStopDrawing?: () => void; // nuevo: terminar dibujo explícitamente
 };
 
 // Configuración de grosores
@@ -36,20 +37,18 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
   eraserWidth,
   onEraserWidthChange,
   onStartDrawing,
+  onStopDrawing,
 }) => {
   const dotBarRef = useRef<View>(null);
   const [dotBarLayout, setDotBarLayout] = useState({ x: 0, width: 0 });
 
-  //
   const isEraser = selectedTool === 'eraser';
   const sizes = isEraser ? ERASER_SIZES : STROKE_SIZES;
   const currentValue = isEraser ? eraserWidth : strokeWidth;
 
-  //
   const currentIndex = sizes.findIndex((s) => s === currentValue);
   const safeIndex = currentIndex >= 0 ? currentIndex : 0;
 
-  //
   const progress = safeIndex / (sizes.length - 1);
   const fillWidth = Math.max(0, dotBarLayout.width * progress);
 
@@ -58,7 +57,6 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
     const localX = Math.max(0, Math.min(pageX - dotBarLayout.x, dotBarLayout.width));
     const prog = localX / dotBarLayout.width;
     const idx = Math.round(prog * (sizes.length - 1));
-
     const newSize = sizes[idx];
     if (isEraser) {
       onEraserWidthChange(newSize);
@@ -67,7 +65,6 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
     }
   };
 
-  // Vista previa del trazo/borrador
   const renderPreview = () => {
     if (isEraser) {
       return (
@@ -118,11 +115,21 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
       visible={visible}
       transparent
       animationType="slide"
-      onRequestClose={onClose}
+      onRequestClose={() => {
+        // Si existe onStopDrawing preferimos llamarla (termina el modo dibujar).
+        if (onStopDrawing) {
+          onStopDrawing();
+        } else {
+          onClose();
+        }
+      }}
       statusBarTranslucent
     >
       <View style={S.drawModalOverlay}>
-        <TouchableOpacity style={S.drawModalBackground} activeOpacity={1} onPress={onClose} />
+        <TouchableOpacity onPress={() => { onStopDrawing?.(); }}>
+          <MaterialIcons name="close" size={24} color={uiColors.gray} />
+        </TouchableOpacity>
+
         <View style={S.drawOptionsContainer}>
           <View style={S.drawOptionsHeader}>
             <View style={S.drawIconContainer}>
@@ -130,7 +137,10 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
             </View>
             <Text style={S.drawOptionsTitle}>Herramientas de dibujo</Text>
             <TouchableOpacity
-              onPress={onClose}
+              onPress={() => {
+                if (onStopDrawing) onStopDrawing();
+                else onClose();
+              }}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <MaterialIcons name="close" size={24} color={uiColors.gray} />
@@ -149,21 +159,21 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
               ].map((tool) => (
                 <TouchableOpacity
                   key={tool.id}
-                  style={[S.toolButtonLarge, selectedTool === tool.id && S.toolButtonActive]}
+                  style={[S.toolButtonLarge, selectedTool === (tool.id as DrawTool) && S.toolButtonActive]}
                   onPress={() => onToolSelect(tool.id as DrawTool)}
                   accessibilityLabel={tool.label}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: selectedTool === tool.id }}
+                  accessibilityState={{ selected: selectedTool === (tool.id as DrawTool) }}
                 >
                   <MaterialIcons
                     name={tool.icon as any}
                     size={22}
-                    color={selectedTool === tool.id ? uiColors.primary : uiColors.black}
+                    color={selectedTool === (tool.id as DrawTool) ? uiColors.primary : uiColors.black}
                   />
                   <Text
                     style={[
                       S.toolLabelLarge,
-                      selectedTool === tool.id && { color: uiColors.primary, fontWeight: '600' },
+                      selectedTool === (tool.id as DrawTool) && { color: uiColors.primary, fontWeight: '600' },
                     ]}
                   >
                     {tool.label}
@@ -200,13 +210,12 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
             </View>
           )}
 
-          {/* Control de grosor mejorado */}
+          {/* Control de grosor */}
           <View style={S.thicknessSection}>
             <Text style={S.drawSectionLabel}>
               {isEraser ? 'Tamaño del borrador' : 'Grosor del trazo'}
             </Text>
 
-            {/* Barra deslizable con puntos */}
             <View
               ref={dotBarRef}
               style={S.dotBar}
@@ -224,26 +233,19 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
               onResponderGrant={(e) => hitTestToIndex(e.nativeEvent.pageX)}
               onResponderMove={(e) => hitTestToIndex(e.nativeEvent.pageX)}
             >
-              {/* Línea de fondo */}
               <View style={S.dotBarTrack} />
-              {/* Línea de progreso */}
               <View style={[S.dotBarFill, { width: fillWidth }]} />
 
-              {/* Puntos de selección */}
               {sizes.map((size, i) => {
                 const active = i === safeIndex;
                 const passed = i < safeIndex;
                 const dotSize = 8 + i * 2;
-
                 return (
                   <TouchableOpacity
                     key={i}
                     onPress={() => {
-                      if (isEraser) {
-                        onEraserWidthChange(size);
-                      } else {
-                        onStrokeWidthChange(size);
-                      }
+                      if (isEraser) onEraserWidthChange(size);
+                      else onStrokeWidthChange(size);
                     }}
                     activeOpacity={0.85}
                     style={S.dotTap}
@@ -269,18 +271,14 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
               })}
             </View>
 
-            {/* Botones de tamaño predefinido */}
             <View style={S.sizeButtonsRow}>
               {sizes.map((size, i) => (
                 <TouchableOpacity
                   key={i}
                   style={[S.sizeButton, currentValue === size && S.sizeButtonActive]}
                   onPress={() => {
-                    if (isEraser) {
-                      onEraserWidthChange(size);
-                    } else {
-                      onStrokeWidthChange(size);
-                    }
+                    if (isEraser) onEraserWidthChange(size);
+                    else onStrokeWidthChange(size);
                   }}
                 >
                   <Text style={[S.sizeButtonText, currentValue === size && S.sizeButtonTextActive]}>
@@ -294,16 +292,42 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
           {/* Vista previa */}
           {renderPreview()}
 
-          {/* Botón de acción */}
-          <TouchableOpacity
-            style={[S.addTextButton, { marginTop: 16 }]}
-            onPress={onStartDrawing}
-            activeOpacity={0.7}
-          >
-            <Text style={S.addTextButtonText}>Empezar a dibujar</Text>
-          </TouchableOpacity>
+          {/* Botones de acción */}
+          <View style={{ marginTop: 12 }}>
+            <TouchableOpacity
+              style={S.addTextButton}
+              onPress={() => {
+                // Inicia modo dibujo y cierra modal para dibujar
+                onStartDrawing();
+                // Mantener modal abierto o cerrarlo según UX: aquí cerramos
+                if (onStopDrawing) {
+                  // no cerrar modal: onStartDrawing -> normalmente hará setDrawMode(true) y la UI de dibujo estará activa
+                  onClose(); // cerramos modal para empezar a dibujar en pantalla
+                } else {
+                  onClose();
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={S.addTextButtonText}>Empezar a dibujar</Text>
+            </TouchableOpacity>
+
+            {/* Botón explícito terminar dibujo */}
+            <TouchableOpacity
+              style={[S.addTextButton, { marginTop: 8 }]}
+              onPress={() => {
+                if (onStopDrawing) onStopDrawing();
+                else onClose();
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={S.addTextButtonText}>Terminar dibujo ✕</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
   );
 };
+
+export default DrawToolsModal;

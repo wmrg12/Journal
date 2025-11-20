@@ -1,3 +1,4 @@
+// PageView.tsx  (corregido)
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, BackHandler, LayoutChangeEvent, View } from 'react-native';
@@ -35,7 +36,7 @@ import { PageSettingsModal } from '@/components/optionsPage/PageSettingsModal';
 // Canvas Skia
 import SkiaCanvas from '@/components/optionsPage/PageCanvas';
 
-// Modals
+// Modals / Components
 import { AudioSelector } from '@/components/optionsPage/AudioSelector';
 import { DraggableShape } from '@/components/optionsPage/DraggableShape';
 import { PageStickerComponent } from '@/components/optionsPage/DraggableSticker';
@@ -87,6 +88,32 @@ export default function PageView() {
 
   // CUSTOM HOOKS
   const drawing = useSkiaDrawing(currentPageId);
+  // Desestructuro funciones/valores usados de drawing para tener referencias más claras en deps
+  const {
+    strokes,
+    setStrokes,
+    currentStroke,
+    drawMode,
+    setDrawMode,
+    selectedTool,
+    selectedColor,
+    setSelectedColor,
+    strokeWidth,
+    setStrokeWidth,
+    eraserWidth,
+    setEraserWidth,
+    onDrawStart,
+    onDrawMove,
+    onDrawEnd,
+    handleSelectTool,
+    pointsToPath,
+    clearEraserStrokes,
+    waitForPendingSaves,
+    deleteStroke,
+    clearAllStrokes,
+    stopDrawing,
+  } = drawing;
+
   const textManager = usePageText(currentPageId, canvasSize.width, canvasSize.height);
   const shapeManager = usePageShapes(currentPageId, canvasSize.width, canvasSize.height);
   const stickerManager = usePageStickers(currentPageId);
@@ -150,7 +177,7 @@ export default function PageView() {
   );
 
   // Helper para convertir path SVG a puntos
-  const parsePathDToPoints = (pathD: string): { x: number; y: number }[] => {
+  const parsePathDToPoints = useCallback((pathD: string): { x: number; y: number }[] => {
     if (!pathD) return [];
 
     const points: { x: number; y: number }[] = [];
@@ -169,21 +196,28 @@ export default function PageView() {
     }
 
     return points;
-  };
+  }, []);
 
-  // EFFECTS - CARGAR COLOR DESDE PARÁMETROS
+  // -----------------------------
+  // useEffect: color desde params (solo actualiza si cambia)
+  // -----------------------------
   useEffect(() => {
-    if (typeof color === 'string') {
-      const found = (pagePalette as readonly string[]).find(
-        (c) => c.toLowerCase() === color.toLowerCase(),
-      );
-      setBg((found ?? pagePalette[0]) as (typeof pagePalette)[number]);
-    } else {
-      setBg(pagePalette[0]);
+    if (typeof color !== 'string') {
+      if (bg !== pagePalette[0]) setBg(pagePalette[0]);
+      return;
     }
-  }, [color]);
 
-  // EFFECTS - CARGAR COLOR DESDE BASE DE DATOS
+    const found = pagePalette.find((c) => c.toLowerCase() === color.toLowerCase());
+    const newColor = found ?? pagePalette[0];
+    if (newColor !== bg) {
+      setBg(newColor);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [color]); // solo depende de `color`
+
+  // -----------------------------
+  // useEffect: cargar color desde BD (no incluye `bg` para evitar loop)
+  // -----------------------------
   useEffect(() => {
     if (!journalId) return;
     let mounted = true;
@@ -191,26 +225,27 @@ export default function PageView() {
     (async () => {
       try {
         const dbColor = await getPageColor(String(journalId), pageNum);
+        if (!mounted || !dbColor) return;
 
-        if (mounted && typeof dbColor === 'string' && dbColor.length > 0) {
-          const found = (pagePalette as readonly string[]).find(
-            (c) => c.toLowerCase() === dbColor.toLowerCase(),
-          );
-          if (found) {
-            setBg(found as (typeof pagePalette)[number]);
-          }
+        const found = pagePalette.find((c) => c.toLowerCase() === dbColor.toLowerCase());
+        if (found && found !== bg) {
+          // actualiza solo si cambia
+          setBg(found);
         }
-      } catch (error) {
-        console.error('Error loading page color:', error);
+      } catch (e) {
+        console.error('Error loading page color:', e);
       }
     })();
 
     return () => {
       mounted = false;
     };
-  }, [journalId, pageNum]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journalId, pageNum]); // evitamos incluir `bg` aquí para no provocar loops
 
-  // EFFECTS - CARGAR PATRON
+  // -----------------------------
+  // useEffect: cargar patrón (solo actualiza si cambia)
+  // -----------------------------
   useEffect(() => {
     if (!journalId) return;
     let mounted = true;
@@ -218,24 +253,26 @@ export default function PageView() {
     (async () => {
       try {
         const dbPattern = await getPagePattern(String(journalId), pageNum);
+        if (!mounted) return;
 
-        if (mounted && typeof dbPattern === 'string' && dbPattern.length > 0) {
-          setPagePattern(dbPattern as PagePattern);
-        } else {
-          setPagePattern('none');
-        }
+        const newPattern = typeof dbPattern === 'string' && dbPattern.length > 0 ? (dbPattern as PagePattern) : 'none';
+        if (newPattern !== pagePattern) setPagePattern(newPattern);
       } catch (error) {
         console.error('Error loading page pattern:', error);
-        setPagePattern('none');
+        if (mounted && pagePattern !== 'none') setPagePattern('none');
       }
     })();
 
     return () => {
       mounted = false;
     };
-  }, [journalId, pageNum]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journalId, pageNum]); // no incluimos pagePattern para evitar loops
 
-  // EFFECTS - CARGAR DATOS DE PÁGINA
+  // -----------------------------
+  // useEffect: cargar datos de página (texts, shapes, draws, etc.)
+  // NOTA: no incluimos `bg` en deps para evitar re-ejecuciones por setBg
+  // -----------------------------
   useEffect(() => {
     if (!journalId) return;
     let mounted = true;
@@ -245,9 +282,9 @@ export default function PageView() {
         let pageId = await getPageId(String(journalId), pageNum);
 
         if (!pageId) {
-          const total = await getTotalPages(String(journalId));
-
-          if (total === 0) {
+          // Si no existe página alguna, crear una con el color actual (lectura única)
+          const totalPagesDb = await getTotalPages(String(journalId));
+          if (totalPagesDb === 0) {
             await createPage(String(journalId), String(bg), 'none');
             pageId = await getPageId(String(journalId), 1);
           }
@@ -258,57 +295,47 @@ export default function PageView() {
 
           // Cargar textos
           const texts = await listPageTexts(pageId);
-          if (mounted) {
-            textManager.setPageTexts((prev) => textManager.mergeById(prev, texts));
-
-            const lockedState: Record<string, boolean> = {};
-            texts.forEach((text) => {
-              if (text.is_locked) {
-                lockedState[text.id] = true;
-              }
-            });
-            textManager.setLockedTextIds(lockedState);
-          }
+          if (!mounted) return;
+          textManager.setPageTexts((prev) => textManager.mergeById(prev, texts));
+          const lockedState: Record<string, boolean> = {};
+          texts.forEach((t) => {
+            if (t.is_locked) lockedState[t.id] = true;
+          });
+          textManager.setLockedTextIds(lockedState);
 
           // Cargar shapes
-          if (mounted) {
-            await shapeManager.loadShapes(pageId);
-          }
+          await shapeManager.loadShapes(pageId);
 
           // Cargar dibujos
           try {
             const draws = await listPageDraws(pageId);
-            if (mounted) {
-              drawing.setStrokes(
-                draws.map((d) => ({
-                  id: d.id,
-                  tool: d.tool as any,
-                  color: d.color,
-                  width: d.width,
-                  opacity: d.opacity,
-                  points: parsePathDToPoints(d.path_d),
-                  _persistedPathD: d.path_d,
-                })),
-              );
-            }
+            if (!mounted) return;
+            setStrokes(
+              draws.map((d) => ({
+                id: d.id,
+                tool: d.tool as any,
+                color: d.color,
+                width: d.width,
+                opacity: d.opacity,
+                points: parsePathDToPoints(d.path_d),
+                _persistedPathD: d.path_d,
+              })),
+            );
           } catch (e) {
             console.error('Error loading page draws:', e);
-            if (mounted) drawing.setStrokes([]);
+            if (mounted) setStrokes([]);
           }
-
-          // Cargar stickers
-          // El hook `usePageStickers` ya carga stickers cuando `pageId` cambia
         } else if (mounted) {
           setCurrentPageId(null);
           textManager.setPageTexts([]);
-          drawing.setStrokes([]);
+          setStrokes([]);
           textManager.setLockedTextIds({});
         }
       } catch (error) {
         console.error('Error loading page data:', error);
         if (mounted) {
           textManager.setPageTexts([]);
-          drawing.setStrokes([]);
+          setStrokes([]);
           textManager.setLockedTextIds({});
         }
       }
@@ -317,16 +344,19 @@ export default function PageView() {
     return () => {
       mounted = false;
     };
-  }, [journalId, pageNum, bg]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journalId, pageNum]); // importante: NO incluir `bg` para evitar loops
 
   // EFFECTS - LIMPIAR TRAZOS DE BORRADOR AL DESMONTAR
   useEffect(() => {
     return () => {
-      drawing.clearEraserStrokes();
+      clearEraserStrokes();
     };
+    // clearEraserStrokes es estable si tu hook lo memoiza; si no lo es, quizá necesites adaptarlo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // EFFECTS - VALIDAR TOTAL DE PÁGINAS
+  // EFFECTS - VALIDAR TOTAL DE PÁGINAS (sin bg ni router en deps para evitar loops)
   useEffect(() => {
     if (!journalId) return;
     let mounted = true;
@@ -335,8 +365,9 @@ export default function PageView() {
       try {
         const dbTotal = await getTotalPages(String(journalId));
         const safeTotal = Math.max(dbTotal, 1);
+        if (!mounted) return;
 
-        if (mounted && (safeTotal !== total || pageNum > safeTotal)) {
+        if (safeTotal !== total || pageNum > safeTotal) {
           router.replace({
             pathname: '/page',
             params: {
@@ -355,10 +386,12 @@ export default function PageView() {
     return () => {
       mounted = false;
     };
-  }, [journalId, pageNum, total, bg, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journalId, pageNum, total]); // no incluir bg/router
 
-  // CALLBACKS - GESTIÓN DE PÁGINAS
-
+  // -----------------------------
+  // CALLBACKS
+  // -----------------------------
   const handleDeletePage = useCallback(() => {
     if (total <= 1 || !journalId) {
       Alert.alert('No se puede eliminar', 'Debe existir al menos una página.');
@@ -373,10 +406,7 @@ export default function PageView() {
         onPress: async () => {
           setIsLoading(true);
           try {
-            const { pageNumber: target, total: newTotal } = await deletePage(
-              String(journalId),
-              pageNum,
-            );
+            const { pageNumber: target, total: newTotal } = await deletePage(String(journalId), pageNum);
 
             router.replace({
               pathname: '/page',
@@ -403,11 +433,7 @@ export default function PageView() {
 
     setIsLoading(true);
     try {
-      const { pageNumber: newNum, total: newTotal } = await createPage(
-        String(journalId),
-        bg,
-        pagePattern,
-      );
+      const { pageNumber: newNum, total: newTotal } = await createPage(String(journalId), bg, pagePattern);
 
       router.replace({
         pathname: '/page',
@@ -428,7 +454,7 @@ export default function PageView() {
 
   const navigateToPage = useCallback(
     async (newPageNum: number) => {
-      await drawing.waitForPendingSaves();
+      await waitForPendingSaves();
 
       router.replace({
         pathname: '/page',
@@ -440,48 +466,41 @@ export default function PageView() {
         },
       });
     },
-    [journalId, bg, total, router, drawing],
+    [journalId, bg, total, router, waitForPendingSaves],
   );
 
-  // CALLBACKS - GESTIÓN DE HERRAMIENTAS
-
+  // CALLBACKS - HERRAMIENTAS
   const handleOpenTextOptions = useCallback(() => {
-    drawing.setDrawMode(false);
+    setDrawMode(false);
     textManager.setEditingTextId(null);
     textManager.setTextInput('');
     setShowTextOptions(true);
-  }, [drawing, textManager]);
+  }, [setDrawMode, textManager]);
 
   const handleOpenDrawTools = useCallback(() => {
     setShowDrawTools(true);
   }, []);
 
   const handleOpenShapeOptions = useCallback(() => {
-    drawing.setDrawMode(false);
+    setDrawMode(false);
     setShowShapeOptions(true);
-  }, [drawing]);
+  }, [setDrawMode]);
 
   const handleDoublePresShape = useCallback(
     (shape: any) => {
-      drawing.setDrawMode(false);
+      setDrawMode(false);
       setSelectedShapeForColor(shape);
       setShowShapeColorModal(true);
     },
-    [drawing],
+    [setDrawMode],
   );
 
   const handleSaveShapeColor = useCallback(
     async (color: string) => {
       if (!selectedShapeForColor || !currentPageId) return;
-
       try {
         await updatePageShape(selectedShapeForColor.id, { color });
-
-        // Recargar shapes para sincronizar desde BD
-        if (currentPageId) {
-          await shapeManager.loadShapes(currentPageId);
-        }
-
+        if (currentPageId) await shapeManager.loadShapes(currentPageId);
         setShowShapeColorModal(false);
         setSelectedShapeForColor(null);
       } catch (error) {
@@ -492,9 +511,9 @@ export default function PageView() {
   );
 
   const handleOpenStickerPicker = useCallback(() => {
-    drawing.setDrawMode(false);
+    setDrawMode(false);
     setShowStickerPicker(true);
-  }, [drawing]);
+  }, [setDrawMode]);
 
   const handleConfirmText = useCallback(() => {
     textManager.handleConfirmText(() => setShowTextOptions(false));
@@ -502,28 +521,28 @@ export default function PageView() {
 
   const handleStartDrawing = useCallback(() => {
     setShowDrawTools(false);
-    drawing.setDrawMode(true);
-  }, [drawing]);
+    setDrawMode(true);
+  }, [setDrawMode]);
 
   const handleEditText = useCallback(
     (text: any) => {
-      drawing.setDrawMode(false);
+      setDrawMode(false);
       textManager.handleEditTextRequest(text);
       setShowTextOptions(true);
     },
-    [drawing, textManager],
+    [setDrawMode, textManager],
   );
 
   const handleNavigateBack = useCallback(async () => {
-    await drawing.waitForPendingSaves();
-
+    await waitForPendingSaves();
+    stopDrawing();
     router.replace({
       pathname: '/pageList',
       params: { journalId, color: String(bg) },
     });
-  }, [router, journalId, bg, drawing]);
+  }, [waitForPendingSaves, stopDrawing, router, journalId, bg]);
 
-  // Capturar el botón back del dispositivo para evitar repetición de pantallas
+  // Capturar el botón back del dispositivo
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       handleNavigateBack();
@@ -533,25 +552,18 @@ export default function PageView() {
     return () => backHandler.remove();
   }, [handleNavigateBack]);
 
-  // CALLBACKS - GESTIÓN DE STICKERS
+  // CALLBACKS - STICKERS
   const handleSelectSticker = useCallback(
     async (stickerId: string, category: string) => {
       const centerX = canvasSize.width > 0 ? canvasSize.width / 2 - 40 : 100;
       const centerY = canvasSize.height > 0 ? canvasSize.height / 2 - 40 : 100;
 
-      await stickerManager.addSticker(
-        stickerId,
-        category,
-        Number(centerX),
-        Number(centerY),
-        80,
-        80,
-      );
+      await stickerManager.addSticker(stickerId, category, Number(centerX), Number(centerY), 80, 80);
     },
     [stickerManager, canvasSize],
   );
 
-  // CALLBACKS - GESTIÓN DE AUDIO
+  // AUDIO
   const handleOpenAudioSelector = useCallback(() => {
     setIsAudioModalOpen(true);
   }, []);
@@ -562,7 +574,7 @@ export default function PageView() {
         await audioManager.handleAddAudio(audioUri, audioType);
         setIsAudioModalOpen(false);
       } catch (error) {
-        // El error ya se maneja en el hook
+        // error manejado en hook
       }
     },
     [audioManager],
@@ -579,7 +591,7 @@ export default function PageView() {
     [audioManager, textManager, shapeManager, stickerManager, setSelectedImageId],
   );
 
-  // CALLBACKS - Modal Settings
+  // SETTINGS PAGE
   const handleSavePageSettings = useCallback(
     async (newColor: string, newPattern: PagePattern, colorScope: 'current' | 'all') => {
       if (!journalId) return;
@@ -587,7 +599,6 @@ export default function PageView() {
       try {
         setIsLoading(true);
 
-        // Actualizar color según el alcance seleccionado
         if (newColor !== bg) {
           if (colorScope === 'all') {
             await updateAllPagesColor(String(journalId), newColor);
@@ -598,7 +609,6 @@ export default function PageView() {
           setBg(newColor as (typeof pagePalette)[number]);
         }
 
-        // Actualizar patrón (solo página actual)
         if (newPattern !== pagePattern) {
           await updatePagePattern(String(journalId), pageNum, newPattern);
           setPagePattern(newPattern);
@@ -613,12 +623,11 @@ export default function PageView() {
     [journalId, pageNum, bg, pagePattern],
   );
 
-  // Agregar callback para abrir modal:
   const handleOpenPageSettings = useCallback(() => {
     setShowPageSettings(true);
   }, []);
 
-  // EDIT IMAGE MODAL STATE
+  // EDIT IMAGE MODAL
   const [editingImage, setEditingImage] = useState<null | Img>(null);
 
   const openImageEditor = useCallback(
@@ -634,11 +643,7 @@ export default function PageView() {
   );
 
   const handleSaveEditedImage = useCallback(
-    async (
-      id: string,
-      newUri: string,
-      opts?: { width?: number; height?: number; rotation?: number },
-    ) => {
+    async (id: string, newUri: string, opts?: { width?: number; height?: number; rotation?: number }) => {
       await replaceImage(id, newUri, opts);
       setEditingImage(null);
     },
@@ -649,104 +654,25 @@ export default function PageView() {
     setEditingImage(null);
   }, []);
 
-  // MEMOIZED VALUES - CONFIGURACIÓN DE TOOLBAR
+  // TOOLBAR ITEMS
   const toolbarItems = useMemo(
     () => [
-      {
-        id: 'delete',
-        icon: 'delete-outline' as const,
-        label: 'Eliminar',
-        onPress: handleDeletePage,
-        disabled: isLoading,
-        isActive: false,
-      },
-      {
-        id: 'add',
-        icon: 'add' as const,
-        label: 'Nueva',
-        onPress: handleAddPage,
-        disabled: isLoading,
-        isActive: false,
-      },
-      {
-        id: 'text',
-        icon: 'text-fields' as const,
-        label: 'Texto',
-        onPress: handleOpenTextOptions,
-        disabled: isLoading,
-        isActive: showTextOptions,
-      },
-      {
-        id: 'shape',
-        icon: 'category' as const,
-        label: 'Forma',
-        onPress: handleOpenShapeOptions,
-        disabled: isLoading,
-        isActive: showShapeOptions,
-      },
-      {
-        id: 'sticker',
-        icon: 'mood' as const,
-        label: 'Sticker',
-        onPress: handleOpenStickerPicker,
-        disabled: isLoading,
-        isActive: showStickerPicker,
-      },
-      {
-        id: 'draw',
-        icon: 'edit' as const,
-        label: 'Dibujar',
-        onPress: handleOpenDrawTools,
-        disabled: isLoading,
-        isActive: showDrawTools,
-      },
-      {
-        id: 'audio',
-        icon: 'volume-up' as const,
-        label: 'Audio',
-        onPress: handleOpenAudioSelector,
-        disabled: isLoading,
-        isActive: false,
-      },
-      {
-        id: 'image',
-        icon: 'image' as const,
-        label: 'Imagen',
-        onPress: addImage,
-        disabled: isLoading,
-        isActive: false,
-      },
-      {
-        id: 'settings',
-        icon: 'palette' as const,
-        label: 'Estilo',
-        onPress: handleOpenPageSettings,
-        disabled: isLoading,
-        isActive: showPageSettings,
-      },
+      { id: 'delete', icon: 'delete-outline' as const, label: 'Eliminar', onPress: handleDeletePage, disabled: isLoading, isActive: false },
+      { id: 'add', icon: 'add' as const, label: 'Nueva', onPress: handleAddPage, disabled: isLoading, isActive: false },
+      { id: 'text', icon: 'text-fields' as const, label: 'Texto', onPress: handleOpenTextOptions, disabled: isLoading, isActive: showTextOptions },
+      { id: 'shape', icon: 'category' as const, label: 'Forma', onPress: handleOpenShapeOptions, disabled: isLoading, isActive: showShapeOptions },
+      { id: 'sticker', icon: 'mood' as const, label: 'Sticker', onPress: handleOpenStickerPicker, disabled: isLoading, isActive: showStickerPicker },
+      { id: 'draw', icon: 'edit' as const, label: 'Dibujar', onPress: handleOpenDrawTools, disabled: isLoading, isActive: showDrawTools },
+      { id: 'audio', icon: 'volume-up' as const, label: 'Audio', onPress: handleOpenAudioSelector, disabled: isLoading, isActive: false },
+      { id: 'image', icon: 'image' as const, label: 'Imagen', onPress: addImage, disabled: isLoading, isActive: false },
+      { id: 'settings', icon: 'palette' as const, label: 'Estilo', onPress: handleOpenPageSettings, disabled: isLoading, isActive: showPageSettings },
     ],
-    [
-      handleAddPage,
-      handleDeletePage,
-      handleOpenTextOptions,
-      handleOpenShapeOptions,
-      handleOpenStickerPicker,
-      handleOpenDrawTools,
-      handleOpenAudioSelector,
-      handleOpenPageSettings,
-      isLoading,
-      showTextOptions,
-      showShapeOptions,
-      showStickerPicker,
-      showDrawTools,
-      showPageSettings,
-      addImage,
-    ],
+    [handleAddPage, handleDeletePage, handleOpenTextOptions, handleOpenShapeOptions, handleOpenStickerPicker, handleOpenDrawTools, handleOpenAudioSelector, handleOpenPageSettings, isLoading, showTextOptions, showShapeOptions, showStickerPicker, showDrawTools, showPageSettings, addImage],
   );
 
-  // ORDENAMIENTO
+  // ORDENAMIENTOS (usamos referencias estables desde managers)
   const sortedPageTexts = useMemo(() => {
-    return textManager.pageTexts.sort((a, b) => {
+    return [...textManager.pageTexts].sort((a, b) => {
       if (a.id === textManager.selectedTextId) return 1;
       if (b.id === textManager.selectedTextId) return -1;
       return a.created_at - b.created_at;
@@ -754,7 +680,7 @@ export default function PageView() {
   }, [textManager.pageTexts, textManager.selectedTextId]);
 
   const sortedPageShapes = useMemo(() => {
-    return shapeManager.pageShapes.sort((a, b) => {
+    return [...shapeManager.pageShapes].sort((a, b) => {
       if (a.id === shapeManager.selectedShapeId) return 1;
       if (b.id === shapeManager.selectedShapeId) return -1;
       return a.created_at - b.created_at;
@@ -762,7 +688,7 @@ export default function PageView() {
   }, [shapeManager.pageShapes, shapeManager.selectedShapeId]);
 
   const sortedPageStickers = useMemo(() => {
-    return stickerManager.stickers.sort((a, b) => {
+    return [...stickerManager.stickers].sort((a, b) => {
       if (a.id === stickerManager.selectedStickerId) return 1;
       if (b.id === stickerManager.selectedStickerId) return -1;
       return a.created_at - b.created_at;
@@ -781,18 +707,13 @@ export default function PageView() {
 
   // RENDER
   return (
-    <SafeAreaView
-      style={[S.container, { backgroundColor: TOOLBAR_BG }]}
-      edges={['top', 'left', 'right']}
-    >
-      {/* Overlay de carga */}
+    <SafeAreaView style={[S.container, { backgroundColor: TOOLBAR_BG }]} edges={['top', 'left', 'right']}>
       {(isLoading || audioManager.isLoading) && (
         <View style={S.loadingOverlay}>
           <ActivityIndicator size="large" color={uiColors.danger} />
         </View>
       )}
 
-      {/* Toolbar superior */}
       <PageToolbar
         pageNum={pageNum}
         total={total}
@@ -803,28 +724,22 @@ export default function PageView() {
         onNextPage={() => navigateToPage(pageNum + 1)}
       />
 
-      {/* Contenido de la página */}
       <View style={S.pageContent}>
         <View style={[S.pageCard, { backgroundColor: bg }]} onLayout={handleCanvasLayout}>
-          {/* Renderizar el patrón de fondo */}
           {canvasSize.width > 0 && canvasSize.height > 0 && (
-            <PagePatternBackground
-              pattern={pagePattern}
-              width={canvasSize.width}
-              height={canvasSize.height}
-              color={uiColors.gray}
-            />
+            <PagePatternBackground pattern={pagePattern} width={canvasSize.width} height={canvasSize.height} color={uiColors.gray} />
           )}
+
           <SkiaCanvas
             width={canvasSize.width}
             height={canvasSize.height}
-            strokes={drawing.strokes}
-            currentStroke={drawing.currentStroke}
-            pointsToPath={drawing.pointsToPath}
-            drawMode={drawing.drawMode}
-            onDrawStart={drawing.onDrawStart}
-            onDrawMove={drawing.onDrawMove}
-            onDrawEnd={drawing.onDrawEnd}
+            strokes={strokes}
+            currentStroke={currentStroke}
+            pointsToPath={pointsToPath}
+            drawMode={drawMode}
+            onDrawStart={onDrawStart}
+            onDrawMove={onDrawMove}
+            onDrawEnd={onDrawEnd}
             onDeselect={() => {
               textManager.setSelectedTextId(null);
               shapeManager.setSelectedShapeId(null);
@@ -833,7 +748,6 @@ export default function PageView() {
               setSelectedImageId(null);
             }}
           >
-            {/* Textos arrastrables */}
             {sortedPageTexts.map((text) => (
               <DraggableText
                 key={text.id}
@@ -846,7 +760,10 @@ export default function PageView() {
                 isSelected={textManager.selectedTextId === text.id}
                 onToggleLock={textManager.handleToggleLock}
                 onSelect={textManager.handleSelectText}
-                onEdit={handleEditText}
+                onEdit={(t) => {
+                  setDrawMode(false);
+                  handleEditText(t);
+                }}
                 onDuplicate={textManager.handleDuplicateText}
                 onRotationChange={textManager.handleRotationChange}
                 onFontSizeChange={textManager.handleFontSizeChange}
@@ -855,7 +772,6 @@ export default function PageView() {
               />
             ))}
 
-            {/* Shapes arrastrables */}
             {sortedPageShapes.map((shape) => (
               <DraggableShape
                 key={shape.id}
@@ -875,7 +791,6 @@ export default function PageView() {
               />
             ))}
 
-            {/* Imágenes arrastrables */}
             {memoizedPageImgs.map((img) => (
               <DraggableImage
                 key={img.id}
@@ -893,15 +808,8 @@ export default function PageView() {
               />
             ))}
 
-            {/* Edit Image Modal */}
-            <EditImageModal
-              visible={!!editingImage}
-              image={editingImage}
-              onClose={handleCloseEditor}
-              onSave={handleSaveEditedImage}
-            />
+            <EditImageModal visible={!!editingImage} image={editingImage} onClose={handleCloseEditor} onSave={handleSaveEditedImage} />
 
-            {/* Stickers arrastrables */}
             {sortedPageStickers.map((sticker) => (
               <PageStickerComponent
                 key={sticker.id}
@@ -916,7 +824,6 @@ export default function PageView() {
               />
             ))}
 
-            {/* Audios arrastrables */}
             {currentPageId &&
               sortedAudios.map((audio) => (
                 <DraggableAudio
@@ -945,10 +852,8 @@ export default function PageView() {
         </View>
       </View>
 
-      {/* Toolbar inferior */}
       <BottomToolbar items={toolbarItems} />
 
-      {/* Modal de opciones de texto */}
       <TextOptionsModal
         visible={showTextOptions}
         onClose={() => setShowTextOptions(false)}
@@ -962,7 +867,6 @@ export default function PageView() {
         isEditing={!!textManager.editingTextId}
       />
 
-      {/* Modal de opciones de formas */}
       <ShapeOptionsModal
         visible={showShapeOptions}
         onClose={() => setShowShapeOptions(false)}
@@ -976,7 +880,6 @@ export default function PageView() {
         }}
       />
 
-      {/* Modal para editar color de una forma existente (doble tap) */}
       <ShapeColorEditModal
         visible={showShapeColorModal}
         onClose={() => setShowShapeColorModal(false)}
@@ -984,42 +887,29 @@ export default function PageView() {
         onSaveColor={handleSaveShapeColor}
       />
 
-      {/* Modal de herramientas de dibujo */}
       <DrawToolsModal
         visible={showDrawTools}
         onClose={() => setShowDrawTools(false)}
-        selectedTool={drawing.selectedTool}
-        onToolSelect={drawing.handleSelectTool}
-        selectedColor={drawing.selectedColor}
-        onColorSelect={drawing.setSelectedColor}
-        strokeWidth={drawing.strokeWidth}
-        onStrokeWidthChange={drawing.setStrokeWidth}
-        eraserWidth={drawing.eraserWidth}
-        onEraserWidthChange={drawing.setEraserWidth}
+        selectedTool={selectedTool}
+        onToolSelect={handleSelectTool}
+        selectedColor={selectedColor}
+        onColorSelect={setSelectedColor}
+        strokeWidth={strokeWidth}
+        onStrokeWidthChange={setStrokeWidth}
+        eraserWidth={eraserWidth}
+        onEraserWidthChange={setEraserWidth}
         onStartDrawing={handleStartDrawing}
+        onStopDrawing={() => {
+          stopDrawing();
+          setShowDrawTools(false);
+        }}
       />
 
-      {/* Modal de selector de stickers */}
-      <StickerPickerModal
-        visible={showStickerPicker}
-        onClose={() => setShowStickerPicker(false)}
-        onSelectSticker={handleSelectSticker}
-      />
+      <StickerPickerModal visible={showStickerPicker} onClose={() => setShowStickerPicker(false)} onSelectSticker={handleSelectSticker} />
 
-      {/* Modal de selector de audio */}
-      <AudioSelector
-        visible={isAudioModalOpen}
-        onClose={() => setIsAudioModalOpen(false)}
-        onAudioSelected={handleAudioSelected}
-      />
-      {/* Modal de configuración de página */}
-      <PageSettingsModal
-        visible={showPageSettings}
-        onClose={() => setShowPageSettings(false)}
-        currentColor={bg}
-        currentPattern={pagePattern}
-        onSave={handleSavePageSettings}
-      />
+      <AudioSelector visible={isAudioModalOpen} onClose={() => setIsAudioModalOpen(false)} onAudioSelected={handleAudioSelected} />
+
+      <PageSettingsModal visible={showPageSettings} onClose={() => setShowPageSettings(false)} currentColor={bg} currentPattern={pagePattern} onSave={handleSavePageSettings} />
     </SafeAreaView>
   );
 }
