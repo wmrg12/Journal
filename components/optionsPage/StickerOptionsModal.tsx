@@ -30,6 +30,11 @@ export function StickerPickerModal({ visible, onClose, onSelectSticker }: Sticke
   return (
     <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
       <View style={pageStyles.stickerModalOverlay}>
+        <TouchableOpacity
+          style={pageStyles.stickerModalBackground}
+          activeOpacity={1}
+          onPress={onClose}
+        />
         {/* Contenedor del modal */}
         <View style={pageStyles.stickerModalContainer}>
           {/* Header */}
