@@ -5,11 +5,7 @@ import { Dimensions, StyleSheet } from "react-native";
 const { width: screenWidth } = Dimensions.get("window");
 const isSmallPhone = screenWidth < 375;
 const isMediumPhone = screenWidth >= 375 && screenWidth < 412;
-const getResponsiveValue = (
-  small: number,
-  medium: number,
-  large: number
-): number => {
+const getResponsiveValue = (small: number, medium: number, large: number): number => {
   if (isSmallPhone) return small;
   if (isMediumPhone) return medium;
   return large;
@@ -59,37 +55,38 @@ export default StyleSheet.create({
     shadowRadius: 4,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(151, 146, 146, 0.36)",
-    height: 275,
+    width: 180,
+    height: 295,
     paddingHorizontal: 0,
     alignItems: "center",
   },
 
-
   pagePreviewWrap: {
     padding: 0,
-    width: "90%",          
-    aspectRatio: 3 / 4,    
+    width: "100%",
+    height: "100%",
+    flex: 1,
     borderRadius: 10,
     overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
-    alignSelf: "center",
+    alignSelf: "stretch",
     marginTop: 12,
-    marginRight: 0,
     backgroundColor: "transparent",
+
   },
 
   pagePreviewPortrait: {
     flex: 1,
-    width: "100%",
-    aspectRatio: 3 / 4,
+    height: 300,
+    width: 160,
     borderRadius: getResponsiveValue(12, 13, 15),
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "rgba(29, 23, 23, 0.07)",
     alignSelf: "center",
     backgroundColor: "#ffffffff",
+    overflow: "hidden",
   },
-
 
   pageNumberText: {
     color: uiColors.white,
@@ -111,7 +108,7 @@ export default StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     backgroundColor: uiColors.white,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(0,0,0,0.06)",
