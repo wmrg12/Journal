@@ -81,7 +81,17 @@ export const editCoverStyles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 3,
-    backgroundColor: uiColors.grayLight,
+    backgroundColor: 'rgba(96, 93, 93, 0.3)',
+  },
+  // Línea divisoria sutil
+  bookDivider: {
+    position: 'absolute',
+    left: 22,
+    top: 10,
+    bottom: 10,
+    width: 1.2,
+    backgroundColor: 'rgba(96, 93, 93, 0.3)',
+    borderRadius: 1,
   },
   inputContainer: {
     width: '100%',
