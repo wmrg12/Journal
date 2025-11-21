@@ -24,7 +24,6 @@ export class SupabaseSync {
     try {
       console.log('Syncing journals...');
       
-      // Obtener token de Clerk
       const token = await this.getToken();
       
       if (!token) {
@@ -32,7 +31,6 @@ export class SupabaseSync {
         return;
       }
 
-      // Crear cliente con auth
       const supabaseWithAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         global: {
           headers: {
@@ -41,11 +39,9 @@ export class SupabaseSync {
         },
       });
       
-      // Obtener journals locales del usuario
-      const localJournals = await dao.listJournals();
-      console.log(`Journals locales: ${localJournals.length}`);
+      const localJournals = await dao.listAllJournalsForSync();
+      console.log(`Journals locales (incluyendo eliminados): ${localJournals.length}`);
       
-      // Obtener journals de Supabase 
       const { data: remoteJournals, error } = await supabaseWithAuth
         .from('journals')
         .select('*')
@@ -58,17 +54,16 @@ export class SupabaseSync {
 
       console.log(`Journals remotos: ${remoteJournals?.length || 0}`);
 
-      // Crear mapa de journals remotos 
       const remoteMap = new Map(
         remoteJournals?.map(j => [j.id, j]) || []
       );
 
-      // Subir journals locales
+      // Subir journals locales 
       for (const local of localJournals) {
         const remote = remoteMap.get(local.id);
         
         if (!remote || local.updated_at > remote.updated_at) {
-          console.log(`⬆ Subiendo journal: ${local.name}`);
+          console.log(`Subiendo journal: ${local.name} ${local.deleted_at ? '(eliminado)' : ''}`);
           const { error: upsertError } = await supabaseWithAuth
             .from('journals')
             .upsert({
@@ -81,6 +76,7 @@ export class SupabaseSync {
               user_id: this.userId,
               default_pattern: (local as any).default_pattern || null,
               default_color: (local as any).default_color || null,
+              deleted_at: local.deleted_at || null,
             });
           
           if (upsertError) {
@@ -91,12 +87,25 @@ export class SupabaseSync {
         }
       }
 
-      // Descargar journals remotos 
-      const localIds = new Set(localJournals.map(j => j.id));
+      // Lógica de descarga
+      const localMap = new Map(localJournals.map(j => [j.id, j]));
       
       for (const remote of remoteJournals || []) {
-        if (!localIds.has(remote.id)) {
-          const journalToInsert = {
+        const local = localMap.get(remote.id);
+        
+        // Si está eliminado en remoto, eliminarlo localmente
+        if (remote.deleted_at) {
+          if (local) {
+            console.log(`🗑 Eliminando local (borrado en remoto): ${remote.name}`);
+            await dao.hardDeleteJournal(remote.id);
+          }
+          continue;
+        }
+        
+        // Si no existe localmente, descargarlo
+        if (!local) {
+          console.log(`⬇ Descargando journal: ${remote.name}`);
+          await dao.insertJournalFromRemote({
             id: remote.id,
             name: remote.name,
             color: remote.color,
@@ -104,10 +113,20 @@ export class SupabaseSync {
             created_at: remote.created_at,
             updated_at: remote.updated_at,
             user_id: remote.user_id,
-          };
-          
-          await dao.insertJournalFromRemote(journalToInsert);
-          console.log('⬇ Journal downloaded from remote:', remote.id);
+          });
+        } 
+        // Si existe localmente y el remoto es más nuevo, actualizar
+        else if (remote.updated_at > local.updated_at) {
+          console.log(`Actualizando journal: ${remote.name}`);
+          await dao.insertJournalFromRemote({
+            id: remote.id,
+            name: remote.name,
+            color: remote.color,
+            is_favorite: remote.is_favorite ?? 0,
+            created_at: remote.created_at,
+            updated_at: remote.updated_at,
+            user_id: remote.user_id,
+          });
         }
       }
 
@@ -146,7 +165,6 @@ export class SupabaseSync {
         return;
       }
 
-      // TODO: Implementar sync de page_texts
       console.log('Page texts sync (placeholder - implementar)');
     } catch (error) {
       console.error('Error syncing page texts:', error);
@@ -164,7 +182,6 @@ export class SupabaseSync {
         return;
       }
 
-      // TODO: Implementar sync de page_draws
       console.log('Page draws sync (placeholder - implementar)');
     } catch (error) {
       console.error('Error syncing page draws:', error);
@@ -182,7 +199,6 @@ export class SupabaseSync {
         return;
       }
 
-      // TODO: Implementar sync de page_shapes
       console.log('Page shapes sync (placeholder - implementar)');
     } catch (error) {
       console.error('Error syncing page shapes:', error);
@@ -200,7 +216,6 @@ export class SupabaseSync {
         return;
       }
 
-      // TODO: Implementar sync de page_stickers
       console.log('Page stickers sync (placeholder - implementar)');
     } catch (error) {
       console.error('Error syncing page stickers:', error);
@@ -218,7 +233,6 @@ export class SupabaseSync {
         return;
       }
 
-      // TODO: Implementar sync de page_images
       console.log('Page images sync (placeholder - implementar)');
     } catch (error) {
       console.error('Error syncing page images:', error);
@@ -236,7 +250,6 @@ export class SupabaseSync {
         return;
       }
 
-      // TODO: Implementar sync de page_audios
       console.log('Page audios sync (placeholder - implementar)');
     } catch (error) {
       console.error('Error syncing page audios:', error);
@@ -254,7 +267,6 @@ export class SupabaseSync {
         return;
       }
 
-      // TODO: Implementar sync de tasks
       console.log('Tasks sync (placeholder - implementar)');
     } catch (error) {
       console.error('Error syncing tasks:', error);
@@ -310,10 +322,8 @@ export class SupabaseSync {
   destroy(): void {
     console.log('SupabaseSync destroyed');
     
-    // Detener auto-sync
     this.stopAutoSync();
     
-    // Cerrar canales de Supabase
     if (this.supabase) {
       try {
         this.supabase.removeAllChannels();
