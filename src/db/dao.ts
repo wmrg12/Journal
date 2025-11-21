@@ -284,7 +284,9 @@ async function _initDbInternal(userId?: string) {
         `ALTER TABLE page_shapes ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0`,
       );
       await execTxIgnore(tx, `ALTER TABLE page_shapes ADD COLUMN rotation REAL NOT NULL DEFAULT 0`);
-
+      // borrar diarios
+      // En las migraciones (tanto legacy como async)
+      await execTxIgnore(tx, `ALTER TABLE journals ADD COLUMN deleted_at INTEGER`);
       // Índices adicionales
       await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_pages_journal ON pages(journal_id);`);
       await execTx(
@@ -462,6 +464,7 @@ async function _initDbInternal(userId?: string) {
         `ALTER TABLE pages ADD COLUMN pattern TEXT NOT NULL DEFAULT 'none'`,
         `ALTER TABLE journals ADD COLUMN default_pattern TEXT`,
         `ALTER TABLE journals ADD COLUMN default_color TEXT`,
+        `ALTER TABLE journals ADD COLUMN deleted_at INTEGER`,
       ];
 
       for (const migration of migrations) {
@@ -573,6 +576,7 @@ export async function listJournals(): Promise<Journal[]> {
     const rows = await (adb as any).getAllAsync?.(
       `SELECT id, name, color, is_favorite, created_at, updated_at
          FROM journals
+         WHERE deleted_at IS NULL
          ORDER BY created_at DESC`,
     );
     return rows ?? [];
@@ -583,6 +587,7 @@ export async function listJournals(): Promise<Journal[]> {
       tx.executeSql(
         `SELECT id, name, color, is_favorite, created_at, updated_at
            FROM journals
+           WHERE deleted_at IS NULL
            ORDER BY created_at DESC`,
         [],
         (_: any, res: any) => {
@@ -594,6 +599,35 @@ export async function listJournals(): Promise<Journal[]> {
           reject(err);
           return true;
         },
+      );
+    });
+  });
+}
+
+// Lista todos incluyendo eliminados 
+export async function listAllJournalsForSync(): Promise<(Journal & { deleted_at?: number })[]> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync?.(
+      `SELECT id, name, color, is_favorite, created_at, updated_at, deleted_at
+         FROM journals
+         ORDER BY created_at DESC`,
+    );
+    return rows ?? [];
+  }
+
+  return new Promise((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT id, name, color, is_favorite, created_at, updated_at, deleted_at
+           FROM journals
+           ORDER BY created_at DESC`,
+        [],
+        (_: any, res: any) => {
+          const out: any[] = [];
+          for (let i = 0; i < res.rows.length; i++) out.push(res.rows.item(i));
+          resolve(out);
+        },
+        (_: any, err: any) => { reject(err); return true; },
       );
     });
   });
@@ -620,7 +654,28 @@ export async function toggleFavorite(journalId: string, favorite: boolean) {
   }
 }
 
+//Eliminar journals
+
 export async function deleteJournal(journalId: string) {
+  const now = Math.floor(Date.now() / 1000);
+  
+  if (isAsync) {
+    await runAsync(
+      `UPDATE journals SET deleted_at = ?, updated_at = ? WHERE id = ?`, 
+      [now, now, journalId]
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(
+        tx, 
+        `UPDATE journals SET deleted_at = ?, updated_at = ? WHERE id = ?`, 
+        [now, now, journalId]
+      );
+    });
+  }
+}
+
+export async function hardDeleteJournal(journalId: string) {
   if (isAsync) {
     await runAsync(`DELETE FROM journals WHERE id = ?`, [journalId]);
   } else {
