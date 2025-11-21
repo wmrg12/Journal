@@ -9,6 +9,8 @@ import {
   listPageTexts,
   listPageImages,
   listPageStickers,
+  getPagePattern,
+  listPageAudios,
 } from "@/src/db/dao";
 import styles from "@/styles/globalStyles";
 import S from "@/styles/pageListStyles";
@@ -28,14 +30,19 @@ import {
 type PageItem = {
   number: number;
   color: string;
+  pattern: string;
   hasText: boolean;
   hasDraw: boolean;
   hasShapes: boolean;
+  hasImages: boolean;
+  hasStickers: boolean;
+  hasAudio: boolean;
   texts?: any[];
   draws?: any[];
   shapes?: any[];
   images?: any[];
   stickers?: any[];
+  audios?: any[];
 };
 
 export default function PagesList() {
@@ -56,20 +63,17 @@ export default function PagesList() {
       const color =
         (await getPageColor(String(journalId), i)) ?? (journalColor as string);
 
-      // Obtener pageId
+      const pattern = (await getPagePattern(String(journalId), i)) ?? "none";
       const pageId = await getPageId(String(journalId), i);
 
-      let hasText = false;
-      let hasDraw = false;
-      let hasShapes = false;
       let texts: any[] = [];
       let draws: any[] = [];
       let shapes: any[] = [];
       let images: any[] = [];
       let stickers: any[] = [];
+      let audios: any[] = [];
 
       if (pageId) {
-        // pedimos todo en paralelo
         const results = await Promise.all([
           listPageTexts(pageId),
           listPageDraws(pageId),
@@ -78,6 +82,9 @@ export default function PagesList() {
           typeof listPageStickers === "function"
             ? listPageStickers(pageId)
             : Promise.resolve([]),
+          typeof listPageAudios === "function"
+            ? listPageAudios(pageId)
+            : Promise.resolve([]),
         ]);
 
         texts = results[0] ?? [];
@@ -85,23 +92,25 @@ export default function PagesList() {
         shapes = results[2] ?? [];
         images = results[3] ?? [];
         stickers = results[4] ?? [];
-
-        hasText = texts.length > 0;
-        hasDraw = draws.length > 0;
-        hasShapes = shapes.length > 0;
+        audios = results[5] ?? [];
       }
 
       list.push({
         number: i,
         color,
-        hasText,
-        hasDraw,
-        hasShapes,
+        pattern,
+        hasText: texts.length > 0,
+        hasDraw: draws.length > 0,
+        hasShapes: shapes.length > 0,
+        hasImages: images.length > 0,
+        hasStickers: stickers.length > 0,
+        hasAudio: audios.length > 0,
         texts,
         draws,
         shapes,
         images,
         stickers,
+        audios,
       });
     }
 
@@ -160,46 +169,45 @@ export default function PagesList() {
         onPress={() => openPage(item.number, item.color)}
         activeOpacity={0.9}
       >
-        {/* Preview ocupa TODO el espacio del card */}
         <View style={S.pagePreviewWrap}>
           <View style={S.pagePreviewPortrait}>
             <SmallPagePreview
               bgColor={item.color}
+              pattern={item.pattern}
               texts={item.texts}
               draws={item.draws}
               shapes={item.shapes}
               images={item.images}
               stickers={item.stickers}
-              sourceWidth={555}
-              sourceHeight={850}
+              audios={item.audios}
+              sourceWidth={450}
+              sourceHeight={900}
+              originalCanvasWidth={310}
+              originalCanvasHeight={650}
               positionMode="topleft"
-              debug={true}
+              debug={false}
               style={{ width: "100%", height: "100%" }}
             />
           </View>
 
-          {/* Iconos de contenido superpuestos (abajo a la derecha) */}
-          <View
-            style={{
-              position: "absolute",
-              bottom: 8,
-              right: 8,
-              flexDirection: "row",
-              gap: 8,
-            }}
-          >
+          <View style={S.contentIndicators}>
             {item.hasText && (
-              <Ionicons name="text-outline" size={14} color={uiColors.white} />
+              <Ionicons name="text-outline" size={14} color={uiColors.black} />
             )}
             {item.hasDraw && (
-              <Ionicons name="brush-outline" size={14} color={uiColors.white} />
+              <Ionicons name="brush-outline" size={14} color={uiColors.black} />
             )}
             {item.hasShapes && (
-              <Ionicons
-                name="shapes-outline"
-                size={14}
-                color={uiColors.white}
-              />
+              <Ionicons name="shapes-outline" size={14} color={uiColors.black} />
+            )}
+            {item.hasImages && (
+              <Ionicons name="image-outline" size={14} color={uiColors.black} />
+            )}
+            {item.hasStickers && (
+              <Ionicons name="happy-outline" size={14} color={uiColors.black} />
+            )}
+            {item.hasAudio && (
+              <Ionicons name="musical-notes-outline" size={14} color={uiColors.black} />
             )}
           </View>
         </View>
