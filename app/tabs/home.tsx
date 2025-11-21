@@ -71,6 +71,14 @@ export default function Home() {
     }
   };
 
+const handleApplyDates = (r: { from?: number; to?: number }) => {
+  setRange(r);
+  if (!r.from || !r.to) return true;
+  const pool = tab === 'fav' ? items.filter(i => i.is_favorite === 1) : items;
+  const exists = pool.some(d => d.created_at >= r.from! && d.created_at < r.to!);
+  return exists;
+};
+
   const renderItem = ({ item }: { item: Journal }) => {
     const isHL = !!hl && item.id === hl;
     const isFav = item.is_favorite === 1;
@@ -138,18 +146,27 @@ export default function Home() {
     );
   };
 
-  const Empty = () => (
+  const Empty = () => {
+  const hasRange = !!range.from && !!range.to;
+
+  return (
     <View style={styles.content}>
       <Ionicons name="book-outline" size={80} color={uiColors.brown} />
       <Text style={styles.message}>
-        {tab === 'fav' ? 'Aun no tienes favoritos' : 'CREA UN DIARIO..!'}
+        {hasRange
+          ? 'No existen diarios en esta fecha'
+          : tab === 'fav'
+            ? 'Aun no tienes favoritos'
+            : 'CREA UN DIARIO..!'}
       </Text>
     </View>
   );
+};
+
 
   return (
     <View style={styles.container}>
-      <HeaderDiarios active={tab} onChangeTab={(t) => setTab(t)} onApplyDates={setRange} />
+      <HeaderDiarios active={tab} onChangeTab={(t) => setTab(t)} onApplyDates={handleApplyDates} />
 
       <FlatList
         data={filtered}

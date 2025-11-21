@@ -65,7 +65,7 @@ export default StyleSheet.create({
   pagePreviewWrap: {
     flex: 1,
     width: "100%",
-    borderRadius: getResponsiveValue(16, 18, 20),
+    //borderRadius: getResponsiveValue(16, 18, 20),
     overflow: "hidden",
     backgroundColor: "transparent",
     position: "relative",

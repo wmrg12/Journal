@@ -47,6 +47,68 @@ const styles = StyleSheet.create({
   },
 
   // --- Barra de Filtros / Tabs / Home ---
+
+   searchModalOverlay: {
+    marginTop:10,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  searchModalBackdrop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+  },
+  searchModalContent: {
+    width: '88%',
+    maxWidth: 520,
+    backgroundColor: uiColors.white,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    zIndex: 41,
+    elevation: 0,
+    shadowColor: '#ffffffff',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  searchModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  searchModalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: uiColors.gray,
+  },
+  modalCloseBtn: {
+    padding: 6,
+    borderRadius: 8,
+  },
+   modalMessageWrap: {
+    marginTop: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+  },
+  modalMessageText: {
+    fontSize: 13,
+    color: uiColors.danger,
+    textAlign: 'center',
+  },
+
   searchButton: {
     padding: 6,
     marginLeft: getResponsiveValue(6, 8, 10),
