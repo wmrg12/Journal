@@ -27,7 +27,7 @@ export default StyleSheet.create({
   headerTitle: {
     fontSize: getResponsiveValue(18, 20, 22),
     fontWeight: "700",
-    color: uiColors.brown,
+    color: uiColors.white,
     letterSpacing: 0.3,
   },
 
@@ -58,7 +58,7 @@ export default StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 12,
     width: "100%",
-    aspectRatio: 0.55, 
+    aspectRatio: 0.50, 
     borderWidth: 0,
   },
 
@@ -79,7 +79,7 @@ export default StyleSheet.create({
     borderTopRightRadius: getResponsiveValue(16, 18, 20),
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#ffffffff",
     overflow: "hidden",
   },
 
@@ -108,7 +108,7 @@ export default StyleSheet.create({
     paddingVertical: 5,
     backgroundColor: uiColors.white,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.04)",
+    borderTopColor: "rgba(0, 0, 0, 0.04)",
   },
   footerText: {
     fontSize: getResponsiveValue(12, 13, 14),
