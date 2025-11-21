@@ -22,10 +22,6 @@ interface DrawingCanvasProps {
   children?: React.ReactNode;
 }
 
-/**
- * Canvas para dibujar con Skia + overlay con responder events
- * Compatible con versiones donde NO existe TouchHandler ni useTouchHandler.
- */
 const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   width,
   height,
