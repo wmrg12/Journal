@@ -1,9 +1,8 @@
-// PageView.tsx  (corregido)
+// PageView.tsx 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, BackHandler, LayoutChangeEvent, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import React from 'react';
 
 // Constants
 import { pagePalette, uiColors } from '@/constants/colors';
