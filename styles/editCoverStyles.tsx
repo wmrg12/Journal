@@ -142,7 +142,7 @@ export const editCoverStyles = StyleSheet.create({
     marginBottom: getResponsiveValue(10, 12, 14),
   },
   deleteSection: {
-    position: 'absolute',
+    marginTop: getResponsiveValue(20, 24, 28),
     bottom: getResponsiveValue(40, 48, 56),
     width: '100%',
     alignItems: 'center',
