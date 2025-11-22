@@ -4,7 +4,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { ClerkProvider, useUser, useAuth } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
 import { initDb, setCurrentUserId, updateUserIdForExistingData, closeDatabase } from '@/src/db/dao';
-import { initSync, getSyncInstance} from '../src/service/supabaseSync';
+import { initSync, getSyncInstance } from '../src/service/supabaseSync';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { Audio } from 'expo-av';
@@ -55,12 +55,12 @@ function SyncManager() {
   useEffect(() => {
     if (prevIsSignedInRef.current === true && isSignedIn === false) {
       console.log('Sesión cerrada, limpiando estado...');
-      
+
       const syncService = getSyncInstance();
       if (syncService) {
         syncService.destroy();
       }
-      
+
       // Limpiar completamente
       setSyncInitialized(false);
       setDbReady(false);
@@ -76,9 +76,9 @@ function SyncManager() {
   useEffect(() => {
     if (user?.id && prevUserIdRef.current && prevUserIdRef.current !== user.id) {
       console.log('Usuario cambió de', prevUserIdRef.current, 'a', user.id);
-      
+
       isSwitchingUserRef.current = true;
-      
+
       (async () => {
         try {
           // Destruir sync del usuario anterior
@@ -87,22 +87,21 @@ function SyncManager() {
             console.log('Destruyendo sync del usuario anterior...');
             syncService.destroy();
           }
-          
+
           // Cerrar base de datos anterior
           console.log('Cerrando base de datos anterior...');
           await closeDatabase();
-          
+
           // Resetear todo el estado
           setSyncInitialized(false);
           setDbReady(false);
           hasNavigatedRef.current = false;
           isInitializingRef.current = false;
-          
+
           // Esperar un momento para que todo se limpie
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
           console.log('Limpieza completa, listo para nuevo usuario');
-          
         } catch (error) {
           console.error('Error durante cambio de usuario:', error);
         } finally {
@@ -113,7 +112,7 @@ function SyncManager() {
     prevUserIdRef.current = user?.id || null;
   }, [user?.id]);
 
-  // Establecer currentUserId 
+  // Establecer currentUserId
   useEffect(() => {
     if (user?.id) {
       console.log('Estableciendo currentUserId:', user.id);
@@ -124,34 +123,34 @@ function SyncManager() {
   // Sincronización cuando el usuario está autenticado
   useEffect(() => {
     if (
-      userLoaded && 
-      user?.id && 
-      !syncInitialized && 
-      isSignedIn && 
+      userLoaded &&
+      user?.id &&
+      !syncInitialized &&
+      isSignedIn &&
       !isInitializingRef.current &&
-      !isSwitchingUserRef.current 
+      !isSwitchingUserRef.current
     ) {
       isInitializingRef.current = true;
-      
+
       (async () => {
         console.log('Inicializando para usuario:', user.id);
-        
+
         setDbReady(false);
-        
+
         try {
           // Inicializar base de datos
           await initDb(user.id);
           console.log('Base de datos del usuario lista');
-          
+
           // Actualizar user_id en datos existentes
           await updateUserIdForExistingData().catch((error) => {
             console.error('Error actualizando user_id:', error);
           });
-          
+
           // Configurar función para obtener token
           const getSupabaseToken = async () => {
             try {
-              console.log('Slicitando token de Clerk');
+              console.log('Solicitando token de Clerk');
               const token = await getToken({ template: 'supabase' });
               console.log('Token obtenido:', token ? 'Sí' : 'No');
               return token;
@@ -160,10 +159,10 @@ function SyncManager() {
               return null;
             }
           };
-          
+
           // Inicializar servicio de sincronización
           initSync(user.id, getSupabaseToken);
-          
+
           // Iniciar sincronización en background
           const syncService = getSyncInstance();
           if (syncService) {
@@ -173,15 +172,14 @@ function SyncManager() {
           }
 
           // Marcar como listo
-          console.log('Macando como listo para navegación...');
+          console.log('Marcando como listo para navegación...');
           setSyncInitialized(true);
           setDbReady(true);
-          
+
           // Pequeño delay para estabilidad
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
           console.log('Inicialización completa');
-          
         } catch (error) {
           console.error('Error en inicialización:', error);
           setDbReady(false);
@@ -195,32 +193,49 @@ function SyncManager() {
   // Navegacion automatica
   useEffect(() => {
     if (!authLoaded || !userLoaded) {
+      console.log('⏳ Esperando auth/user loaded...');
       return;
     }
 
     const inAuthGroup = segments[0] === 'login';
+
+    console.log('📍 Estado de navegación:', {
+      isSignedIn,
+      userId: user?.id,
+      inAuthGroup,
+      dbReady,
+      syncInitialized,
+      hasNavigated: hasNavigatedRef.current,
+      isSwitching: isSwitchingUserRef.current,
+      segments: segments.join('/'),
+    });
+
+    // Si está autenticado, DB listo, y sync inicializado
     if (
-      isSignedIn && 
-      user?.id && 
-      inAuthGroup && 
-      dbReady && 
-      syncInitialized && 
+      isSignedIn &&
+      user?.id &&
+      dbReady &&
+      syncInitialized &&
       !hasNavigatedRef.current &&
-      !isSwitchingUserRef.current 
+      !isSwitchingUserRef.current
     ) {
-      console.log('Todas las condiciones cumplidas, navegando a home...');
+      console.log('✅ Condiciones cumplidas, navegando a /tabs/home...');
       hasNavigatedRef.current = true;
-      
-      router.replace('/tabs/home');
-      
+
+      // Navegar después de un pequeño delay
+      setTimeout(() => {
+        console.log('🚀 Ejecutando navegación a /tabs/home');
+        router.replace('/tabs/home');
+      }, 200);
     } else if (!isSignedIn && !inAuthGroup) {
-      console.log('Usuario no autenticado, navegando a login...');
+      // Si no está autenticado y no está en login
+      console.log('❌ No autenticado, navegando a /login...');
       hasNavigatedRef.current = false;
       router.replace('/login');
     }
   }, [isSignedIn, user?.id, segments, authLoaded, userLoaded, dbReady, syncInitialized, router]);
 
-  return null;
+  return <></>;
 }
 
 function AppContent() {

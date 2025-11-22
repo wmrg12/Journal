@@ -65,12 +65,10 @@
         "reactCompiler": true
       }
     },
-    "plugins": [
-      "expo-audio"
-    ],
+    "plugins": ["expo-audio"],
     "extra": {
       "eas": {
-        "projectId": "8f963475-4d20-4c5c-8f41-ead859c69357"
+        "projectId": "001b6013-c9e6-4fa4-9e53-ab4977b78292"
       }
     }
   }
