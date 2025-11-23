@@ -199,7 +199,7 @@ function SyncManager() {
 
     const inAuthGroup = segments[0] === 'login';
 
-    console.log('📍 Estado de navegación:', {
+    console.log('Estado de navegación:', {
       isSignedIn,
       userId: user?.id,
       inAuthGroup,
@@ -219,17 +219,17 @@ function SyncManager() {
       !hasNavigatedRef.current &&
       !isSwitchingUserRef.current
     ) {
-      console.log('✅ Condiciones cumplidas, navegando a /tabs/home...');
+      console.log('Condiciones cumplidas, navegando a /tabs/home...');
       hasNavigatedRef.current = true;
 
       // Navegar después de un pequeño delay
       setTimeout(() => {
-        console.log('🚀 Ejecutando navegación a /tabs/home');
+        console.log('Ejecutando navegación a /tabs/home');
         router.replace('/tabs/home');
       }, 200);
     } else if (!isSignedIn && !inAuthGroup) {
       // Si no está autenticado y no está en login
-      console.log('❌ No autenticado, navegando a /login...');
+      console.log('No autenticado, navegando a /login...');
       hasNavigatedRef.current = false;
       router.replace('/login');
     }
