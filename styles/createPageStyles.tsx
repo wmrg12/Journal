@@ -1,21 +1,13 @@
-import { StyleSheet, Dimensions } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { uiColors } from '../constants/colors';
-
-const { width: screenWidth } = Dimensions.get('window');
-
-const isSmallPhone = screenWidth < 375;
-const isMediumPhone = screenWidth >= 375 && screenWidth < 412;
-
-const getResponsiveValue = (small: number, medium: number, large: number): number => {
-  if (isSmallPhone) return small;
-  if (isMediumPhone) return medium;
-  return large;
-};
+import { rw, rh, rf } from '@/utils/responsive';
 
 export default StyleSheet.create({
   container: {
-    backgroundColor: uiColors.background,
     flex: 1,
+    backgroundColor: uiColors.background,
+    paddingHorizontal: rw(10),
+    paddingTop: 0,
   },
 
   // Header
@@ -23,27 +15,28 @@ export default StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: getResponsiveValue(16, 20, 24),
-    paddingVertical: getResponsiveValue(12, 14, 16),
+    paddingHorizontal: rw(16),
+    paddingVertical: rh(12),
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    paddingTop: rh(28),
+    
   },
   backButton: {
-    padding: getResponsiveValue(8, 10, 12),
-    width: getResponsiveValue(40, 44, 48),
-    alignItems: 'flex-start',
-    marginTop: getResponsiveValue(30, 34, 38),
+    padding: rw(7),
+    width: rw(44),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: getResponsiveValue(18, 20, 22),
+    fontSize: rf(18),
     fontWeight: '600',
     color: uiColors.danger,
     flex: 1,
     textAlign: 'center',
-    marginTop: getResponsiveValue(30, 34, 38),
   },
   headerSpacer: {
-    width: getResponsiveValue(40, 44, 48),
+    width: rw(44),  
   },
 
   // Scroll View
@@ -51,24 +44,24 @@ export default StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: getResponsiveValue(50, 55, 60),
-    paddingTop: getResponsiveValue(20, 24, 28),
-    paddingBottom: getResponsiveValue(10, 12, 14),
+    paddingHorizontal: rw(20),
+    paddingTop: rh(20),
+    paddingBottom: rh(20),
   },
 
   // Title
   title: {
     color: uiColors.accent,
     textAlign: 'center',
-    fontSize: getResponsiveValue(23, 25, 27),
+    fontSize: rf(18),
     fontWeight: '700',
-    marginBottom: getResponsiveValue(20, 24, 28),
+    marginBottom: rh(20),
   },
 
   // Labels
   label: {
     color: uiColors.accent,
-    fontSize: getResponsiveValue(16, 17, 18),
+    fontSize: rf(20),
     fontWeight: '600',
     marginTop: 0,
   },
@@ -77,65 +70,65 @@ export default StyleSheet.create({
   preview: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: '98%',
-    aspectRatio: getResponsiveValue(0.9, 0.92, 0.95),
+    width: '100%',
+    aspectRatio: 0.92,
     borderColor: uiColors.grayO,
-    borderRadius: getResponsiveValue(12, 14, 16),
+    borderRadius: rw(14),
     borderWidth: 1.5,
     overflow: 'hidden',
-    marginTop: getResponsiveValue(10, 12, 14),
-    marginBottom: getResponsiveValue(20, 24, 28),
+    marginTop: rh(10),
+    marginBottom: rh(20),
   },
 
   // Color Section
   colorSection: {
-    marginBottom: 0,
-    margin: 2,
+    marginBottom: rh(10),
     marginLeft: 0,
     marginTop: 0,
   },
   colorLabel: {
-    fontSize: getResponsiveValue(16, 17, 18),
+    fontSize: rf(16),
     fontWeight: '600',
     color: uiColors.danger,
-    marginBottom: getResponsiveValue(10, 12, 14),
+    marginBottom: rh(10),
   },
   colorPaletteWrapper: {
-    marginLeft: getResponsiveValue(-18, -20, -22),
+    marginLeft: rw(7),
   },
 
   // Pattern Section
   patternSection: {
     width: '100%',
-    marginBottom: getResponsiveValue(15, 18, 20),
-    marginTop: 2,
+    marginBottom: rh(15),
+    marginTop: rh(5),
   },
   patternLabel: {
-    fontSize: getResponsiveValue(16, 17, 18),
+    fontSize: rf(16),
     fontWeight: '600',
     color: uiColors.danger,
-    marginBottom: getResponsiveValue(16, 18, 20),
+    marginBottom: rh(12),
   },
   patternGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: getResponsiveValue(9, 11, 13),
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',  
+    gap: rh(10),                       
   },
   patternPreview: {
-    width: getResponsiveValue(58, 64, 70),
-    height: getResponsiveValue(58, 64, 70),
-    borderRadius: getResponsiveValue(10, 12, 14),
+    width: '22%',                     
+    aspectRatio: 1,                    
+    borderRadius: rw(10),
     backgroundColor: '#F9FAFB',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: '#E5E7EB',
+    marginBottom: rh(5),
   },
   patternPreviewSelected: {
     borderColor: uiColors.primary,
-    borderWidth: 1.5,
+    borderWidth: 2,
     shadowColor: uiColors.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -147,13 +140,13 @@ export default StyleSheet.create({
   createButton: {
     alignSelf: 'center',
     backgroundColor: uiColors.primary,
-    borderRadius: getResponsiveValue(16, 18, 20),
+    borderRadius: rw(16),
     elevation: 4,
-    marginBottom: getResponsiveValue(20, 24, 28),
-    marginTop: getResponsiveValue(20, 24, 28),
-    minWidth: getResponsiveValue(120, 135, 150),
-    paddingHorizontal: getResponsiveValue(40, 45, 50),
-    paddingVertical: getResponsiveValue(15, 17, 19),
+    marginBottom: rh(20),
+    marginTop: rh(15),
+    minWidth: rw(140),
+    paddingHorizontal: rw(40),
+    paddingVertical: rh(14),
     shadowColor: uiColors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
@@ -161,7 +154,7 @@ export default StyleSheet.create({
   },
   createButtonText: {
     color: uiColors.white,
-    fontSize: getResponsiveValue(16, 17, 18),
+    fontSize: rf(16),
     fontWeight: '600',
     textAlign: 'center',
   },

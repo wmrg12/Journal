@@ -1,18 +1,6 @@
 import { uiColors } from "@/constants/colors";
-import { Dimensions, StyleSheet } from "react-native";
-
-const { height, width } = Dimensions.get("window");
-
-// Breakpoints SOLO para Android 
-const isSmallAndroid = width < 360;  
-const isMediumAndroid = width >= 360 && width < 400;  
-
-// Función responsiva con valores estables
-const getResponsiveValue = (small: number, medium: number, large: number): number => {
-  if (isSmallAndroid) return small;
-  if (isMediumAndroid) return medium;
-  return large;
-};
+import { StyleSheet } from "react-native";
+import { rw, rh, rf } from "@/utils/responsive";
 
 export default StyleSheet.create({
  
@@ -28,43 +16,43 @@ export default StyleSheet.create({
   },
 
   image: {
-    height: height / 3, 
+    height: rh(267),
     resizeMode: "cover",
   },
 
   // Imagen vertical izquierda
   imageVertical: {
     width: undefined,
-    height: getResponsiveValue(330, 340, 350),
+    height: rh(360),
     aspectRatio: 1 / 1.5,
     resizeMode: "contain",
     position: "absolute",
-    left: getResponsiveValue(-22, -20, -18),
+    left: rw(-20),
     top: 0,
-    marginTop: getResponsiveValue(180, 180, 110),
+    marginTop: rh(180),
   },
 
   // Imagen vertical derecha
   imageVertical2: {
     width: undefined,
-    height: getResponsiveValue(280, 290, 280),
+    height: rh(350),
     aspectRatio: 1 / 1.5,
     resizeMode: "contain",
     position: "absolute",
-    left: getResponsiveValue(85, 88, 100),
+    left: rw(88),
     top: 0,
-    marginTop: getResponsiveValue(180, 250, 190),
+    marginTop: rh(210),
   },
 
   // Card principal
   card: {
     flex: 1,
     backgroundColor: "white",
-    borderTopLeftRadius: getResponsiveValue(32, 36, 40),
-    borderTopRightRadius: getResponsiveValue(32, 36, 40),
-    padding: getResponsiveValue(35, 40, 45),
-    paddingVertical: getResponsiveValue(28, 32, 35),
-    paddingHorizontal: getResponsiveValue(28, 35, 40),
+    borderTopLeftRadius: rw(36),
+    borderTopRightRadius: rw(36),
+    padding: rw(40),
+    paddingVertical: rh(32),
+    paddingHorizontal: rw(32),
     shadowColor: uiColors.black,
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
@@ -75,7 +63,7 @@ export default StyleSheet.create({
 
   // Titulo principal
   title: {
-    fontSize: getResponsiveValue(36, 38, 40),
+    fontSize: rf(38),
     fontWeight: "bold",
     color: uiColors.primary,
     textAlign: "left",
@@ -85,18 +73,18 @@ export default StyleSheet.create({
 
   // Subtitulo
   subtitle: {
-    fontSize: getResponsiveValue(12, 12, 13),
+    fontSize: rf(12),
     color: uiColors.gray,
     textAlign: "left",
-    marginTop: getResponsiveValue(8, 10, 10),
-    marginBottom: getResponsiveValue(22, 24, 25),
+    marginTop: rh(10),
+    marginBottom: rh(24),
   },
 
   // Boton principal
   button: {
     backgroundColor: uiColors.primary,
-    paddingVertical: getResponsiveValue(13, 14, 15),
-    borderRadius: 8,
+    paddingVertical: rh(14),
+    borderRadius: rw(8),
     alignItems: "center",
   },
 
@@ -104,7 +92,7 @@ export default StyleSheet.create({
   buttonText: {
     color: "white",
     fontWeight: "bold",
-    fontSize: getResponsiveValue(15, 15, 16),
+    fontSize: rf(15),
   },
 
 });

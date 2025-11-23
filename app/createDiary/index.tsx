@@ -26,21 +26,20 @@ export default function CrearDiario() {
   };
 
   const handleSave = async () => {
-    if (!diaryName.trim()) {
-      Alert.alert('Nombre requerido', 'Ingresa un nombre para el diario.');
-      return;
-    }
-    try {
-      const { id } = await createJournal(diaryName.trim(), selectedColor);
-      router.push({
-        pathname: '/createPage',
-        params: { journalId: id, color: selectedColor },
-      });
-    } catch (e) {
-      console.error(e);
-      Alert.alert('Error', 'No se pudo crear el diario.');
-    }
-  };
+  if (!diaryName.trim()) {
+    Alert.alert('Nombre requerido', 'Ingresa un nombre para el diario.');
+    return;
+  }
+  
+  router.push({
+    pathname: '/createPage',
+    params: { 
+      color: selectedColor,
+      name: diaryName.trim(),  
+      isNew: 'true'            
+    },
+  });
+};
 
   return (
     <SafeAreaView style={styles.container}>

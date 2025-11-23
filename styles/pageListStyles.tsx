@@ -1,55 +1,43 @@
 import { uiColors } from "@/constants/colors";
-import { Dimensions, StyleSheet } from "react-native";
-
-const { width: screenWidth } = Dimensions.get("window");
-const isSmallPhone = screenWidth < 375;
-const isMediumPhone = screenWidth >= 375 && screenWidth < 412;
-
-const getResponsiveValue = (small: number, medium: number, large: number): number => {
-  if (isSmallPhone) return small;
-  if (isMediumPhone) return medium;
-  return large;
-};
-
-const cardWidth = (screenWidth - 48) / 2; 
-const cardHeight = cardWidth * 1.45; 
+import { StyleSheet } from "react-native";
+import { rw, rh, rf } from "@/utils/responsive";
 
 export default StyleSheet.create({
-  // Header mejorado
+  // Header 
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingTop: getResponsiveValue(44, 40, 52),
-    paddingBottom: 16,
+    paddingHorizontal: rw(20),
+    paddingTop: rh(44),
+    paddingBottom: rh(16),
   },
   headerTitle: {
-    fontSize: getResponsiveValue(18, 20, 22),
+    fontSize: rf(20),
     fontWeight: "700",
     color: uiColors.white,
     letterSpacing: 0.3,
   },
 
   list: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 120,
+    paddingHorizontal: rw(16),
+    paddingTop: rh(8),
+    paddingBottom: rh(120),
   },
   columns: {
     justifyContent: "space-between",
-    gap: 16,
-    paddingVertical: 8,
+    gap: rw(16),
+    paddingVertical: rh(8),
   },
   item: {
     flexBasis: "47%",
     maxWidth: "47%",
     flexGrow: 0,
-    marginBottom: 8,
+    marginBottom: rh(8),
   },
 
   card: {
-    borderRadius: getResponsiveValue(16, 18, 20),
+    borderRadius: rw(18),
     backgroundColor: uiColors.white,
     overflow: "hidden",
     elevation: 4,
@@ -58,14 +46,13 @@ export default StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 12,
     width: "100%",
-    aspectRatio: 0.50, 
+    aspectRatio: 0.50,
     borderWidth: 0,
   },
 
   pagePreviewWrap: {
     flex: 1,
     width: "100%",
-    //borderRadius: getResponsiveValue(16, 18, 20),
     overflow: "hidden",
     backgroundColor: "transparent",
     position: "relative",
@@ -75,8 +62,8 @@ export default StyleSheet.create({
     flex: 1,
     width: "100%",
     height: "100%",
-    borderTopLeftRadius: getResponsiveValue(16, 18, 20),
-    borderTopRightRadius: getResponsiveValue(16, 18, 20),
+    borderTopLeftRadius: rw(18),
+    borderTopRightRadius: rw(18),
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
     backgroundColor: "#ffffffff",
@@ -85,7 +72,7 @@ export default StyleSheet.create({
 
   pageNumberText: {
     color: uiColors.white,
-    fontSize: getResponsiveValue(10, 11, 12),
+    fontSize: rf(11),
     fontWeight: "700",
     textShadowColor: "rgba(0,0,0,0.3)",
     textShadowOffset: { width: 0, height: 1 },
@@ -104,22 +91,22 @@ export default StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 5,
+    paddingHorizontal: rw(14),
+    paddingVertical: rh(5),
     backgroundColor: uiColors.white,
     borderTopWidth: 1,
     borderTopColor: "rgba(0, 0, 0, 0.04)",
   },
   footerText: {
-    fontSize: getResponsiveValue(12, 13, 14),
+    fontSize: rf(13),
     fontWeight: "600",
     color: uiColors.brown,
     letterSpacing: 0.2,
   },
   footerIcon: {
-    width: getResponsiveValue(28, 28, 30),
-    height: getResponsiveValue(26, 28, 30),
-    borderRadius: 15,
+    width: rw(28),
+    height: rw(28),
+    borderRadius: rw(15),
     backgroundColor: "#FFF4E0",
     alignItems: "center",
     justifyContent: "center",
@@ -129,24 +116,24 @@ export default StyleSheet.create({
 
   contentIndicators: {
     position: "absolute",
-    bottom: 5,
-    right: 1,
+    bottom: rh(5),
+    right: rw(1),
     flexDirection: "row",
-    gap: 6,
+    gap: rw(6),
     backgroundColor: "transparent",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: rw(8),
+    paddingVertical: rh(4),
+    borderRadius: rw(12),
   },
 
   fab: {
     position: "absolute",
-    right: getResponsiveValue(20, 24, 28),
-    bottom: getResponsiveValue(24, 28, 32),
+    right: rw(24),
+    bottom: rh(28),
     backgroundColor: uiColors.primary,
-    borderRadius: 30,
-    width: getResponsiveValue(56, 58, 60),
-    height: getResponsiveValue(56, 58, 60),
+    borderRadius: rw(30),
+    width: rw(58),
+    height: rw(58),
     alignItems: "center",
     justifyContent: "center",
     elevation: 8,
@@ -161,13 +148,13 @@ export default StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 60,
-    gap: 16,
+    paddingVertical: rh(60),
+    gap: rw(16),
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: rf(16),
     color: uiColors.gray,
     textAlign: "center",
-    marginTop: 12,
+    marginTop: rh(12),
   },
 });

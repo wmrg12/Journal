@@ -1,6 +1,6 @@
 import ColorPalette from '@/components/ColorPalette';
 import { pagePalette, uiColors } from '@/constants/colors';
-import { createPage, updateJournalDefaultPattern } from '@/src/db/dao';
+import { createJournal, createPage, updateJournalDefaultPattern } from '@/src/db/dao';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -21,11 +21,16 @@ import {
   PagePatternBackground,
 } from '@/components/optionsCreatePage/PagePatterns';
 
-type Params = { journalId?: string; color?: string; name?: string };
+type Params = { 
+  journalId?: string; 
+  color?: string; 
+  name?: string;   
+  isNew?: string;    
+};
 
 export default function CreatePageScreen() {
   const router = useRouter();
-  const { journalId, color } = useLocalSearchParams<Params>();
+  const { journalId, color, name, isNew } = useLocalSearchParams<Params>();
   const [bgColor, setBgColor] = useState<(typeof pagePalette)[number]>(pagePalette[0]);
   const [selectedPattern, setSelectedPattern] = useState<PagePattern>('none');
   const [previewSize, setPreviewSize] = useState({ width: 0, height: 0 });
@@ -43,24 +48,44 @@ export default function CreatePageScreen() {
     router.back();
   };
 
-  if (!journalId || typeof journalId !== 'string') {
+  // Si no hay journalId ni isNew, mostrar error
+  if (!journalId && isNew !== 'true') {
     return (
       <View style={[S.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text>Falta journalId. Vuelve a Crear Diario.</Text>
+        <Text>Faltan parámetros. Vuelve atrás.</Text>
       </View>
     );
   }
 
   async function handleCreatePage() {
     try {
-      const { pageNumber, total } = await createPage(journalId as string, bgColor, selectedPattern);
-      if (pageNumber === 1) {
-        await updateJournalDefaultPattern(journalId as string, selectedPattern);
+      let finalJournalId = journalId;
+      
+      // Si es nuevo, crear el diario ahora
+      if (isNew === 'true' && name) {
+        const { id } = await createJournal(name, bgColor);
+        finalJournalId = id;
       }
+      
+      if (!finalJournalId) {
+        Alert.alert('Error', 'No se pudo crear el diario.');
+        return;
+      }
+      
+      const { pageNumber, total } = await createPage(
+        finalJournalId, 
+        bgColor, 
+        selectedPattern
+      );
+      
+      if (pageNumber === 1) {
+        await updateJournalDefaultPattern(finalJournalId, selectedPattern);
+      }
+      
       router.push({
         pathname: '/page',
         params: {
-          journalId,
+          journalId: finalJournalId,
           color: bgColor,
           pageNumber: String(pageNumber),
           totalPages: String(total),

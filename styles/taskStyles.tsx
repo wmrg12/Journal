@@ -1,11 +1,12 @@
 import { uiColors } from "../constants/colors";
 import { StyleSheet } from "react-native";
+import { rw, rh, rf } from "@/utils/responsive";
 
 export const stylest = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: uiColors.background,
-    paddingHorizontal: 20,
+    paddingHorizontal: rw(20),
     paddingTop: 0,
   },
 
@@ -14,67 +15,66 @@ export const stylest = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    paddingTop: 23,
-    paddingBottom: 18,
+    paddingTop: rh(23),
+    paddingBottom: rh(18),
   },
   title: {
-    fontSize: 46,
+    fontSize: rf(46),
     fontWeight: "800",
     color: uiColors.danger,
     letterSpacing: -0.5,
   },
   subtitle: {
-    marginTop: 20,
-    fontSize: 15,
+    marginTop: rh(20),
+    fontSize: rf(15),
     color: uiColors.gray,
-    marginBottom: 8,
+    marginBottom: rh(8),
     fontWeight: "600",
   },
   addBtn: {
-    marginTop: 15,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    marginTop: rh(15),
+    paddingHorizontal: rw(18),
+    paddingVertical: rh(10),
     backgroundColor: uiColors.buttont,
-    borderRadius: 10,
+    borderRadius: rw(10),
     borderWidth: 1,
     borderColor: uiColors.bord,
   },
   addBtnText: {
-    fontSize: 14,
+    fontSize: rf(14),
     color: uiColors.gray,
     fontWeight: "600",
   },
 
   // listas
-
   scroll: {
     flex: 1,
   },
 
   scrollContent: {
-    paddingBottom: 25, 
+    paddingBottom: rh(25),
   },
 
-  listBlock: { marginBottom: 1 },
+  listBlock: { marginBottom: rh(1) },
   completedBlock: {
-    marginTop: 6,
-    paddingTop: 15,
+    marginTop: rh(6),
+    paddingTop: rh(15),
     borderTopWidth: 1,
     borderTopColor: "transparent",
   },
   sectionTitle: {
-    fontSize: 15,
+    fontSize: rf(15),
     color: uiColors.gray,
-    marginBottom: 25,
+    marginBottom: rh(25),
     fontWeight: "600",
   },
-  separator: { height: 12 },
+  separator: { height: rh(12) },
   emptyText: {
     textAlign: "center",
     color: uiColors.gray,
-    fontSize: 16,
-    marginTop: 14,
-    marginVertical: 30,
+    fontSize: rf(16),
+    marginTop: rh(14),
+    marginVertical: rh(30),
   },
 
   // Cards
@@ -82,26 +82,26 @@ export const stylest = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: uiColors.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
+    borderRadius: rw(14),
+    paddingVertical: rh(14),
+    paddingHorizontal: rw(14),
   },
   cardPending: {
     backgroundColor: uiColors.cards,
   },
   cardCompleted: {
     backgroundColor: uiColors.cards,
-    borderRadius: 14,
+    borderRadius: rw(14),
   },
   cardPressed: { opacity: 0.85 },
-  leftIcon: { marginRight: 12 },
-  cardText: { flex: 1, fontSize: 16, color: uiColors.gray},
+  leftIcon: { marginRight: rw(12) },
+  cardText: { flex: 1, fontSize: rf(16), color: uiColors.gray },
 
   // Circulo checkbox 
   checkboxCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: rw(24),
+    height: rw(24),
+    borderRadius: rw(12),
     backgroundColor: uiColors.white,
     borderWidth: 2,
     borderColor: uiColors.gray,
@@ -112,25 +112,25 @@ export const stylest = StyleSheet.create({
     borderColor: uiColors.white,
   },
   checkmark: {
-    fontSize: 15,
+    fontSize: rf(15),
     fontWeight: "bold",
     color: uiColors.gray,
   },
 
   // Botón eliminar
   deleteCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: rw(26),
+    height: rw(26),
+    borderRadius: rw(13),
     backgroundColor: uiColors.danger,
     alignItems: "center",
     justifyContent: "center",
   },
   deleteX: {
     color: uiColors.white,
-    fontSize: 16,
+    fontSize: rf(16),
     fontWeight: "700",
-    marginTop: -1,
+    marginTop: rh(-1),
   },
 
   // Boton guardar 
@@ -138,50 +138,49 @@ export const stylest = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(29, 29, 29, 0.35)",
     justifyContent: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: rw(24),
   },
   modalCard: {
     backgroundColor: uiColors.white,
-    borderRadius: 14,
-    padding: 16,
-    gap: 20,
+    borderRadius: rw(14),
+    padding: rw(16),
+    gap: rh(20),
   },
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: rw(8),
     justifyContent: "space-between",
   },
   modalTitle: {
     color: uiColors.gray,
     fontWeight: "800",
-    fontSize: 16,
+    fontSize: rf(16),
   },
   modalClose: {
-    fontSize: 20,
+    fontSize: rf(20),
     color: uiColors.gray,
-    paddingHorizontal: 6,
+    paddingHorizontal: rw(6),
   },
   modalInput: {
     backgroundColor: uiColors.white,
-    borderRadius: 10,
+    borderRadius: rw(10),
     borderWidth: 1,
     borderColor: uiColors.bord,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
+    paddingHorizontal: rw(12),
+    paddingVertical: rh(10),
+    fontSize: rf(15),
   },
   saveBtn: {
     alignSelf: "flex-end",
     backgroundColor: uiColors.danger,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: rw(16),
+    paddingVertical: rh(10),
+    borderRadius: rw(8),
   },
   saveBtnText: {
     color: uiColors.bord,
     fontWeight: "700",
-    fontSize: 13,
+    fontSize: rf(13),
   },
 });
-

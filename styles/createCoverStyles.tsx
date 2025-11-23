@@ -1,69 +1,62 @@
-import { StyleSheet, Dimensions } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { uiColors } from '@/constants/colors';
-
-const { width: screenWidth } = Dimensions.get('window');
-
-const isSmallPhone = screenWidth < 375;
-const isMediumPhone = screenWidth >= 375 && screenWidth < 412;
-
-const getResponsiveValue = (small: number, medium: number, large: number): number => {
-  if (isSmallPhone) return small;
-  if (isMediumPhone) return medium;
-  return large;
-};
+import { rw, rh, rf } from '@/utils/responsive';
 
 export const diaryStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: uiColors.background,
+    paddingHorizontal: rw(10),
+
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: getResponsiveValue(16, 20, 24),
-    paddingVertical: getResponsiveValue(12, 14, 16),
+    paddingHorizontal: rw(16),
+    paddingVertical: rh(12),
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
+    paddingTop: rh(28),
+    
   },
   backButton: {
-    padding: getResponsiveValue(8, 10, 12),
-    width: getResponsiveValue(40, 44, 48),
-    alignItems: 'flex-start',
-    marginTop: getResponsiveValue(30, 34, 38),
+    padding: rw(8),
+    width: rw(44),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: getResponsiveValue(18, 20, 22),
+    fontSize: rf(18),
     fontWeight: '600',
     color: uiColors.danger,
     flex: 1,
     textAlign: 'center',
-    marginTop: getResponsiveValue(30, 34, 38),
   },
   headerSpacer: {
-    width: getResponsiveValue(40, 44, 48),
+    width: rw(44),
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: getResponsiveValue(24, 28, 32),
-    paddingTop: getResponsiveValue(32, 36, 40),
-    paddingBottom: getResponsiveValue(24, 28, 32),
+    paddingHorizontal: rw(20),
+    paddingTop: rh(20),
+    paddingBottom: rh(20),
   },
   content: {
     flex: 1,
-    paddingHorizontal: getResponsiveValue(24, 28, 32),
-    paddingTop: getResponsiveValue(32, 36, 40),
+    paddingHorizontal: rw(20),
+    paddingTop: rh(20),
   },
   diaryPreview: {
     alignItems: 'center',
-    marginBottom: getResponsiveValue(40, 46, 52),
+    marginBottom: rh(30),
   },
   diary: {
-    width: getResponsiveValue(160, 180, 200),
-    height: getResponsiveValue(200, 225, 250),
-    borderRadius: 8,
+    width: rw(160),
+    height: rh(200),
+    borderRadius: rw(8),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -73,41 +66,39 @@ export const diaryStyles = StyleSheet.create({
   },
   diaryBinding: {
     position: 'absolute',
-    right: getResponsiveValue(12, 14, 16),
+    right: rw(12),
     top: 0,
     bottom: 0,
-    width: 3,
+    width: rw(3),
     backgroundColor: 'rgba(14, 13, 13, 0.3)',
   },
   bookDivider: {
     position: 'absolute',
-    left: getResponsiveValue(22, 26, 30),
-    top: 10,
-    bottom: 10,
-    width: 1.2,
+    left: rw(22),
+    top: rh(10),
+    bottom: rh(10),
+    width: rw(1.2),
     backgroundColor: 'rgba(96, 93, 93, 0.3)',
-    borderRadius: 1,
+    borderRadius: rw(1),
   },
   inputContainer: {
-    marginBottom: getResponsiveValue(32, 36, 40),
-    width: getResponsiveValue(280, 310, 340),
-    marginLeft: getResponsiveValue(8, 10, 12),
+    marginBottom: rh(20),
+    width: '100%',
+    paddingHorizontal: rw(10),
   },
   inputLabel: {
-    fontSize: getResponsiveValue(16, 17, 18),
+    fontSize: rf(16),
     fontWeight: '600',
     color: uiColors.danger,
-    marginBottom: getResponsiveValue(8, 10, 12),
+    marginBottom: rh(10),
   },
   nameInput: {
     backgroundColor: uiColors.white,
-    width: getResponsiveValue(280, 310, 340),
-    borderRadius: 12,
-    paddingHorizontal: getResponsiveValue(16, 18, 20),
-    paddingVertical: getResponsiveValue(14, 16, 18),
-    marginLeft: getResponsiveValue(11, 13, 15),
-    marginBottom: -20,
-    fontSize: getResponsiveValue(16, 17, 18),
+    width: '100%',
+    borderRadius: rw(12),
+    paddingHorizontal: rw(16),
+    paddingVertical: rh(14),
+    fontSize: rf(16),
     color: uiColors.gray,
     borderWidth: 2,
     borderColor: uiColors.grayO,
@@ -118,31 +109,28 @@ export const diaryStyles = StyleSheet.create({
     elevation: 2,
   },
   colorSection: {
-    marginBottom: getResponsiveValue(45, 50, 55),
-    margin: 7,
-    gap: 5,
-    marginLeft: 7,
-    marginRight: 7,
+    marginBottom: rh(20),
+    paddingHorizontal: rw(10),
   },
   colorLabel: {
-    fontSize: getResponsiveValue(16, 17, 18),
+    fontSize: rf(16),
     fontWeight: '600',
     color: uiColors.danger,
-    marginBottom: getResponsiveValue(10, 12, 14),
+    marginBottom: rh(10),
   },
   saveButton: {
+    alignSelf: 'center',
     backgroundColor: uiColors.primary,
-    height: getResponsiveValue(50, 54, 58),
-    width: getResponsiveValue(120, 135, 150),
-    borderRadius: 16,
+    height: rh(50),
+    width: rw(140),
+    borderRadius: rw(16),
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -25,
-    marginBottom: 10,
-    marginLeft: getResponsiveValue(100, 115, 130),
+    marginTop: rh(10),
+    marginBottom: rh(20),
   },
   saveButtonText: {
-    fontSize: getResponsiveValue(16, 17, 18),
+    fontSize: rf(16),
     fontWeight: '600',
     color: '#FFFFFF',
   },
