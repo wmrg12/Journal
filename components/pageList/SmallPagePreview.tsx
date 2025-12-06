@@ -1,19 +1,19 @@
-import React from "react";
-import { View, StyleSheet } from "react-native";
-import Svg, {
-  Rect,
-  Path,
-  Image as SvgImage,
-  Text as SvgText,
-  G,
-  Circle,
-  Polygon,
-  Line,
-  Ellipse,
-} from "react-native-svg";
-import { STICKER_SOURCES } from "@/constants/stickers";
 import { PagePatternBackground } from "@/components/optionsCreatePage/PagePatterns";
 import { fontFamilyMap, TextFont } from "@/constants/fonts";
+import { STICKER_SOURCES } from "@/constants/stickers";
+import React from "react";
+import { StyleSheet, View } from "react-native";
+import Svg, {
+  Circle,
+  Ellipse,
+  G,
+  Line,
+  Path,
+  Polygon,
+  Rect,
+  Image as SvgImage,
+  Text as SvgText,
+} from "react-native-svg";
 
 type TextItem = {
   id: string;
@@ -116,9 +116,9 @@ export default function SmallPagePreview({
   stickers = [],
   audios = [],
   sourceWidth = 400,
-  sourceHeight = 700,
-  originalCanvasWidth = 400,
-  originalCanvasHeight = 700,
+  sourceHeight = 780,
+  originalCanvasWidth = 450,
+  originalCanvasHeight = 790,
   positionMode = "topleft",
   debug = false,
 }: Props) {
@@ -191,7 +191,6 @@ export default function SmallPagePreview({
       const upperCmd = cmd.toUpperCase();
       const isRelative = cmd === cmd.toLowerCase() && cmd !== "z" && cmd !== "Z";
 
-      // Si es relativo, no escalamos (ya son deltas)
       if (isRelative) {
         return match;
       }
@@ -202,7 +201,6 @@ export default function SmallPagePreview({
         case "M":
         case "L":
         case "T":
-          // (x, y)
           for (let i = 0; i < nums.length; i += 2) {
             scaled.push(parseFloat(nums[i]) * scaleX);
             scaled.push(parseFloat(nums[i + 1]) * scaleY);
@@ -210,17 +208,15 @@ export default function SmallPagePreview({
           break;
 
         case "H":
-          // Solo x
           scaled = nums.map((n) => parseFloat(n) * scaleX);
           break;
 
         case "V":
-          // Solo y
           scaled = nums.map((n) => parseFloat(n) * scaleY);
           break;
 
         case "C":
-          // (x1, y1, x2, y2, x, y)
+        
           for (let i = 0; i < nums.length; i += 6) {
             scaled.push(parseFloat(nums[i]) * scaleX);
             scaled.push(parseFloat(nums[i + 1]) * scaleY);
@@ -233,7 +229,6 @@ export default function SmallPagePreview({
 
         case "S":
         case "Q":
-          // (x1, y1, x, y)
           for (let i = 0; i < nums.length; i += 4) {
             scaled.push(parseFloat(nums[i]) * scaleX);
             scaled.push(parseFloat(nums[i + 1]) * scaleY);
@@ -243,15 +238,14 @@ export default function SmallPagePreview({
           break;
 
         case "A":
-          // (rx, ry, x-axis-rotation, large-arc, sweep, x, y)
           for (let i = 0; i < nums.length; i += 7) {
-            scaled.push(parseFloat(nums[i]) * scaleX); // rx
-            scaled.push(parseFloat(nums[i + 1]) * scaleY); // ry
-            scaled.push(parseFloat(nums[i + 2])); // rotation (no scale)
-            scaled.push(parseFloat(nums[i + 3])); // large-arc (flag)
-            scaled.push(parseFloat(nums[i + 4])); // sweep (flag)
-            scaled.push(parseFloat(nums[i + 5]) * scaleX); // x
-            scaled.push(parseFloat(nums[i + 6]) * scaleY); // y
+            scaled.push(parseFloat(nums[i]) * scaleX);
+            scaled.push(parseFloat(nums[i + 1]) * scaleY); 
+            scaled.push(parseFloat(nums[i + 2])); 
+            scaled.push(parseFloat(nums[i + 3])); 
+            scaled.push(parseFloat(nums[i + 4])); 
+            scaled.push(parseFloat(nums[i + 5]) * scaleX); 
+            scaled.push(parseFloat(nums[i + 6]) * scaleY); 
           }
           break;
 
@@ -455,16 +449,35 @@ export default function SmallPagePreview({
           />
         );
 
-      case "heart": {
-        const scale = Math.min(w, h) / 100;
-        const path = `
-          M ${cx} ${cy + 40 * scale * 0.5}
-          C ${cx + 35 * scale} ${cy - 12 * scale} ${cx + 80 * scale} ${cy + 35 * scale} ${cx} ${cy + 80 * scale * 0.5}
-          C ${cx - 80 * scale} ${cy + 35 * scale} ${cx - 35 * scale} ${cy - 12 * scale} ${cx} ${cy + 40 * scale * 0.5}
-          Z
-        `;
-        return <Path key={`shape-${sh.id}`} d={path} fill={color} transform={transform} />;
-      }
+    case "heart": {
+    const scale = Math.min(w, h) / 100;
+  
+    const path = `
+    M ${cx} ${cy - 18 * scale}
+    C ${cx + 22 * scale} ${cy - 55 * scale},
+      ${cx + 70 * scale} ${cy - 25 * scale},
+      ${cx + 45 * scale} ${cy + 10 * scale}
+    C ${cx + 28 * scale} ${cy + 35 * scale},
+      ${cx + 12 * scale} ${cy + 48 * scale},
+      ${cx} ${cy + 53 * scale}    
+    C ${cx - 12 * scale} ${cy + 48 * scale},
+      ${cx - 28 * scale} ${cy + 35 * scale},
+      ${cx - 45 * scale} ${cy + 10 * scale}
+    C ${cx - 70 * scale} ${cy - 25 * scale},
+      ${cx - 22 * scale} ${cy - 55 * scale},
+      ${cx} ${cy - 18 * scale}
+    Z
+  `;
+  
+    return (
+      <Path 
+        key={`shape-${sh.id}`} 
+        d={path} 
+        fill={color} 
+        transform={rotation ? `rotate(${rotation} ${cx} ${cy})` : undefined}
+      />
+    );
+  }
 
       case "sun":
         return (
@@ -574,10 +587,32 @@ export default function SmallPagePreview({
 
     return (
       <G>
-        {/* Draws - filtrar erasers */}
-        {draws
-          .filter((d) => d.tool !== "eraser")
-          .map((d) => (
+        {/* Draws - filtrar trazos que tienen segmentos (no mostrar el padre si existen segmentos) */}
+        {(() => {
+          // Detectar trazos que son segmentos (formato: parentId_seg_index_timestamp)
+          const segments = new Set<string>();
+          const parentIds = new Set<string>();
+          
+          for (const draw of draws) {
+            const match = draw.id.match(/^(.+?)_seg_\d+_\d+$/);
+            if (match) {
+              // Este es un segmento
+              segments.add(draw.id);
+              parentIds.add(match[1]); // Guardar el ID del padre
+            }
+          }
+          
+          // Filtrar: mostrar segmentos + draws que no sean padres de segmentos
+          const filteredDraws = draws.filter((d) => {
+            // Si es segmento, mostrar
+            if (segments.has(d.id)) return true;
+            // Si es padre de segmentos, no mostrar
+            if (parentIds.has(d.id)) return false;
+            // Si no es ni segmento ni padre, mostrar
+            return true;
+          });
+          
+          return filteredDraws.map((d) => (
             <Path
               key={`draw-${d.id}`}
               d={scalePathD(d.path_d)}
@@ -588,7 +623,8 @@ export default function SmallPagePreview({
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-          ))}
+          ));
+        })()}
 
         {/* Shapes */}
         {shapes.map((sh) => renderShape(sh))}
@@ -685,31 +721,39 @@ export default function SmallPagePreview({
         })}
 
         {/* Texts */}
-        {texts.map((t) => {
-          const fontSize = Math.max(6, (t.font_size ?? 16) * uniformScale);
-          const { cx, cy } = getCenter(t.position_x, t.position_y, 0, 0);
-          const transform = t.rotation ? `rotate(${t.rotation} ${cx} ${cy})` : undefined;
+{texts.map((t) => {
+  const fontSize = Math.max(6, (t.font_size ?? 16) * uniformScale);
+  const { cx, cy } = getCenter(t.position_x, t.position_y, 0, 0);
+  const rotation = t.rotation ?? 0;
+  const transform = rotation ? `rotate(${rotation} ${cx} ${cy})` : undefined;
 
-          // Obtener font family
-          const fontFamily =
-            fontFamilyMap[t.font_family as TextFont] ?? t.font_family ?? undefined;
+  // Obtener font family
+  const fontFamily =
+    fontFamilyMap[t.font_family as TextFont] ?? t.font_family ?? undefined;
 
-          return (
-            <SvgText
-              key={`text-${t.id}`}
-              x={cx}
-              y={cy}
-              fontSize={fontSize}
-              fill={safeColor(t.color, "#111")}
-              fontFamily={fontFamily}
-              textAnchor="start"
-              alignmentBaseline="hanging"
-              transform={transform}
-            >
-              {t.content}
-            </SvgText>
-          );
-        })}
+  // Dividir el texto en líneas
+  const lines = t.content.split('\n');
+  const lineHeight = fontSize * 1.2; // Espacio entre líneas
+
+  return (
+    <G key={`text-${t.id}`} transform={transform}>
+      {lines.map((line, index) => (
+        <SvgText
+          key={`${t.id}-line-${index}`}
+          x={cx}
+          y={cy + (index * lineHeight)}
+          fontSize={fontSize}
+          fill={safeColor(t.color, "#111")}
+          fontFamily={fontFamily}
+          textAnchor="start"
+          alignmentBaseline="hanging"
+        >
+          {line}
+        </SvgText>
+      ))}
+    </G>
+  );
+})}
       </G>
     );
   };
@@ -766,11 +810,11 @@ const localStyles = StyleSheet.create({
   },
   patternLayer: {
     position: "absolute",
-    top: 1,
+    top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 1,
+    zIndex: 0,
   },
   contentLayer: {
     position: "absolute",
@@ -778,6 +822,6 @@ const localStyles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 2,
+    zIndex: 1,
   },
 });

@@ -46,7 +46,7 @@ export default StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 12,
     width: "100%",
-    aspectRatio: 0.50,
+    aspectRatio: 0.45,
     borderWidth: 0,
   },
 

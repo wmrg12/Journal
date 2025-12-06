@@ -1,10 +1,10 @@
 // components/optionsPage/DrawingCanvasProps.tsx
 
-import React, { memo, useMemo } from 'react';
-import { View, StyleSheet, TouchableOpacity, GestureResponderEvent } from 'react-native';
-import { Canvas, Path, Group, Skia } from '@shopify/react-native-skia';
-import type { Stroke } from '@/types';
 import S from '@/styles/pageViewStyles';
+import type { Stroke } from '@/types';
+import { Canvas, Group, Path, Skia } from '@shopify/react-native-skia';
+import React, { memo, useMemo } from 'react';
+import { GestureResponderEvent, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 type Point = { x: number; y: number };
 
@@ -36,12 +36,13 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   children,
 }) => {
 
-  // Separamos trazos normales y de borrador
+  // Separamos trazos normales y de borrador, filtramos _pendingDelete
   const { normalStrokes, eraserStrokes } = useMemo(() => {
     const normal: Stroke[] = [];
     const eraser: Stroke[] = [];
 
     for (const s of strokes) {
+      if ((s as any)._pendingDelete) continue; // Filtrar pendientes de borrado
       if (s.tool === 'eraser') eraser.push(s);
       else normal.push(s);
     }
@@ -144,17 +145,17 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             />
           ))}
 
-          {/* Trazos de borrador */}
+          {/* Trazos de borrador - mostrar como líneas rojas semitransparentes */}
           {eraserPaths.map((item) => (
             <Path
               key={item.id}
               path={item.path}
-              color="#000"
+              color="#FF6B6B"
               style="stroke"
               strokeWidth={item.width}
               strokeCap="round"
               strokeJoin="round"
-              blendMode="clear"
+              opacity={0.4}
             />
           ))}
 
@@ -162,13 +163,12 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
           {currentPath && (
             <Path
               path={currentPath.path}
-              color={currentPath.isEraser ? '#000' : currentPath.color}
+              color={currentPath.isEraser ? '#FF6B6B' : currentPath.color}
               style="stroke"
               strokeWidth={currentPath.width}
-              opacity={currentPath.opacity}
+              opacity={currentPath.isEraser ? 0.6 : currentPath.opacity}
               strokeCap="round"
               strokeJoin="round"
-              blendMode={currentPath.isEraser ? 'clear' : 'srcOver'}
             />
           )}
 

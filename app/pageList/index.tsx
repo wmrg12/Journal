@@ -1,20 +1,20 @@
+import SmallPagePreview from "@/components/pageList/SmallPagePreview";
 import { uiColors } from "@/constants/colors";
 import {
   createPage,
   getPageColor,
   getPageId,
-  getTotalPages,
-  listPageDraws,
-  listPageShapes,
-  listPageTexts,
-  listPageImages,
-  listPageStickers,
   getPagePattern,
+  getTotalPages,
   listPageAudios,
+  listPageDraws,
+  listPageImages,
+  listPageShapes,
+  listPageStickers,
+  listPageTexts,
 } from "@/src/db/dao";
 import styles from "@/styles/globalStyles";
 import S from "@/styles/pageListStyles";
-import SmallPagePreview from "@/components/pageList/SmallPagePreview";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -93,6 +93,25 @@ export default function PagesList() {
         images = results[3] ?? [];
         stickers = results[4] ?? [];
         audios = results[5] ?? [];
+
+        // Filtrar draws: si un trazo tiene segmentos (son hijos), no mostrar el padre
+        const segments = new Set<string>();
+        const parentIds = new Set<string>();
+        for (const draw of draws) {
+          const match = draw.id.match(/^(.+?)_seg_\d+_\d+$/);
+          if (match) {
+            segments.add(draw.id);
+            parentIds.add(match[1]); // ID del padre
+          }
+        }
+        draws = draws.filter((d) => {
+          // Si es segmento, mantener
+          if (segments.has(d.id)) return true;
+          // Si es padre de segmentos, filtrar
+          if (parentIds.has(d.id)) return false;
+          // Si no es ni segmento ni padre, mantener
+          return true;
+        });
       }
 
       list.push({
@@ -180,9 +199,9 @@ export default function PagesList() {
               images={item.images}
               stickers={item.stickers}
               audios={item.audios}
-              sourceWidth={450}
-              sourceHeight={900}
-              originalCanvasWidth={310}
+              sourceWidth={400}
+              sourceHeight={800}
+              originalCanvasWidth={330}
               originalCanvasHeight={650}
               positionMode="topleft"
               debug={false}

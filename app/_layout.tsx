@@ -120,75 +120,81 @@ function SyncManager() {
     }
   }, [user?.id]);
 
-  // Sincronización cuando el usuario está autenticado
-  useEffect(() => {
-    if (
-      userLoaded &&
-      user?.id &&
-      !syncInitialized &&
-      isSignedIn &&
-      !isInitializingRef.current &&
-      !isSwitchingUserRef.current
-    ) {
-      isInitializingRef.current = true;
+  // En _layout.tsx, dentro del useEffect de sincronización:
 
-      (async () => {
-        console.log('Inicializando para usuario:', user.id);
+useEffect(() => {
+  if (
+    userLoaded &&
+    user?.id &&
+    !syncInitialized &&
+    isSignedIn &&
+    !isInitializingRef.current &&
+    !isSwitchingUserRef.current
+  ) {
+    isInitializingRef.current = true;
 
-        setDbReady(false);
+    (async () => {
+      console.log('Inicializando para usuario:', user.id);
 
-        try {
-          // Inicializar base de datos
-          await initDb(user.id);
-          console.log('Base de datos del usuario lista');
+      setDbReady(false);
 
-          // Actualizar user_id en datos existentes
-          await updateUserIdForExistingData().catch((error) => {
-            console.error('Error actualizando user_id:', error);
-          });
+      try {
+        // Inicializar base de datos
+        await initDb(user.id);
+        console.log('Base de datos del usuario lista');
 
-          // Configurar función para obtener token
-          const getSupabaseToken = async () => {
-            try {
-              console.log('Solicitando token de Clerk');
-              const token = await getToken({ template: 'supabase' });
-              console.log('Token obtenido:', token ? 'Sí' : 'No');
-              return token;
-            } catch (error) {
-              console.error('Error obteniendo token:', error);
-              return null;
-            }
-          };
+        // Actualizar user_id en datos existentes
+        await updateUserIdForExistingData().catch((error) => {
+          console.error('Error actualizando user_id:', error);
+        });
 
-          // Inicializar servicio de sincronización
-          initSync(user.id, getSupabaseToken);
+        // Configurar función para obtener token
+        const getSupabaseToken = async () => {
+          try {
+            console.log('Solicitando token de Clerk');
+            const token = await getToken({ template: 'supabase' });
+            console.log('Token obtenido:', token ? 'Sí' : 'No');
+            return token;
+          } catch (error) {
+            console.error('Error obteniendo token:', error);
+            return null;
+          }
+        };
 
-          // Iniciar sincronización en background
+        // Inicializar servicio de sincronización
+        initSync(user.id, getSupabaseToken);
+
+        // Marcar como listo ANTES de sincronizar
+        console.log('Marcando como listo para navegación...');
+        setSyncInitialized(true);
+        setDbReady(true);
+
+        // Pequeño delay para estabilidad
+        await new Promise((resolve) => setTimeout(resolve, 300));
+
+        // Iniciar sincronización en background DESPUÉS de navegar
+        setTimeout(() => {
           const syncService = getSyncInstance();
           if (syncService) {
+            console.log('Iniciando sincronización en background...');
             syncService.performFullSync().catch((error: unknown) => {
               console.error('Error en sincronización completa:', error);
+              // No bloqueamos la app por errores de sync
             });
           }
+        }, 1000); // Dar tiempo para que la navegación complete
 
-          // Marcar como listo
-          console.log('Marcando como listo para navegación...');
-          setSyncInitialized(true);
-          setDbReady(true);
-
-          // Pequeño delay para estabilidad
-          await new Promise((resolve) => setTimeout(resolve, 500));
-
-          console.log('Inicialización completa');
-        } catch (error) {
-          console.error('Error en inicialización:', error);
-          setDbReady(false);
-          setSyncInitialized(false);
-          isInitializingRef.current = false;
-        }
-      })();
-    }
-  }, [user?.id, userLoaded, syncInitialized, getToken, isSignedIn]);
+        console.log('Inicialización completa');
+      } catch (error) {
+        console.error('Error en inicialización:', error);
+        // Aún así marcamos como listo para que el usuario pueda usar la app
+        setDbReady(true);
+        setSyncInitialized(true);
+        isInitializingRef.current = false;
+      }
+    })();
+  }
+}, [user?.id, userLoaded, syncInitialized, getToken, isSignedIn]);
 
   // Navegacion automatica
   useEffect(() => {
@@ -243,6 +249,7 @@ function AppContent() {
     <>
       <SyncManager />
       <Stack>
+        <Stack.Screen name="index" options={{ headerShown: false, animation: 'none' }} />
         <Stack.Screen name="login/index" options={{ headerShown: false }} />
         <Stack.Screen name="createPage/index" options={{ headerShown: false }} />
         <Stack.Screen name="page/index" options={{ headerShown: false }} />

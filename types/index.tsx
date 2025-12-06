@@ -18,6 +18,7 @@ export type Stroke = {
   _persistedPathD?: string;
   _needsSave?: boolean; // Agregamos esta propiedad opcional
   _isFragment?: boolean;
+  _pendingDelete?: boolean; // Marca si está esperando ser borrado de la BD
 };
 
 export type CanvasSize = {

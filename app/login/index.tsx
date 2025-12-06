@@ -1,9 +1,7 @@
 //login/index.tsx
 import styles from "@/styles/loginStyles";
-import { useAuth, useOAuth } from "@clerk/clerk-expo";
-import { useRouter } from "expo-router";
+import { useOAuth } from "@clerk/clerk-expo";
 import * as WebBrowser from "expo-web-browser";
-import * as Updates from 'expo-updates'; 
 import React from "react";
 import { 
   ActivityIndicator, 
@@ -34,7 +32,6 @@ export default function LoginScreen() {
 
   const { width } = Dimensions.get("window");
   const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
-  const router = useRouter();
 
   const [loading, setLoading] = React.useState(false);
   const isRunningRef = React.useRef(false); 
@@ -51,34 +48,24 @@ export default function LoginScreen() {
       if (createdSessionId) {
         console.log('Sesión creada, activando...');
         await setActive?.({ session: createdSessionId });
-        console.log('Sesión activada');
-        
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        console.log('Recargando app...');
-        
-        //Recargar la app
-        if (__DEV__) {
-        
-          router.replace('/tabs/home');
-        } else {
-          await Updates.reloadAsync();
-        }
-        
+        console.log('Sesión activada - La navegación será manejada automáticamente');
         return;
       }
 
       Alert.alert('Error', 'No se pudo iniciar sesión. Intenta nuevamente.');
+      setLoading(false);
+      isRunningRef.current = false;
     } catch (err: any) {
       console.error("OAuth error:", err);
       Alert.alert(
         'Error de autenticación',
         err?.message || 'Ocurrió un error desconocido. Intenta nuevamente.'
       );
-    } finally {
       setLoading(false);
       isRunningRef.current = false;
     }
-  }, [startOAuthFlow, loading, router]);
+
+  }, [startOAuthFlow, loading]);
 
   return (
     <View style={styles.container}>

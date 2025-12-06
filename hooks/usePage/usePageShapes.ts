@@ -161,11 +161,11 @@ export const usePageShapes = (
                     newY + shapeHeight > canvasHeight
                 ) {
                     const alternatives = [
-                        { x: shape.position_x - offsetX, y: shape.position_y + offsetY }, // Izquierda-abajo
-                        { x: shape.position_x + offsetX, y: shape.position_y - offsetY }, // Derecha-arriba
-                        { x: shape.position_x - offsetX, y: shape.position_y - offsetY }, // Izquierda-arriba
-                        { x: shape.position_x, y: shape.position_y + offsetY },          // Centro-abajo
-                        { x: shape.position_x + offsetX, y: shape.position_y },          // Derecha-centro
+                        { x: shape.position_x - offsetX, y: shape.position_y + offsetY }, 
+                        { x: shape.position_x + offsetX, y: shape.position_y - offsetY }, 
+                        { x: shape.position_x - offsetX, y: shape.position_y - offsetY }, 
+                        { x: shape.position_x, y: shape.position_y + offsetY },          
+                        { x: shape.position_x + offsetX, y: shape.position_y },          
                     ];
 
                     let foundValid = false;

@@ -14,7 +14,6 @@ import { diaryStyles as styles } from '@/styles/createCoverStyles';
 import { useRouter } from 'expo-router';
 import { uiColors, coverPalette } from '@/constants/colors';
 import ColorPalette from '@/components/ColorPalette';
-import { createJournal } from '@/src/db/dao';
 
 export default function CrearDiario() {
   const [selectedColor, setSelectedColor] = useState<string>(coverPalette[0]);

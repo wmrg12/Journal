@@ -1,9 +1,9 @@
 // components/SkiaCanvas.tsx
-import React, { memo, useMemo } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Canvas, Path, Group, Skia } from '@shopify/react-native-skia';
-import type { Stroke } from '@/types';
 import S from '@/styles/pageViewStyles';
+import type { Stroke } from '@/types';
+import { Canvas, Group, Path, Skia } from '@shopify/react-native-skia';
+import React, { memo, useMemo } from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 interface SkiaCanvasProps {
   width: number;
@@ -32,12 +32,13 @@ const SkiaCanvas: React.FC<SkiaCanvasProps> = ({
   onDeselect,
   children,
 }) => {
-  // Separar trazos normales de trazos de borrador
+  // Separar trazos normales de trazos de borrador, filtrar _pendingDelete
   const { normalStrokes, eraserStrokes } = useMemo(() => {
     const normal: Stroke[] = [];
     const eraser: Stroke[] = [];
 
     strokes.forEach((stroke) => {
+      if ((stroke as any)._pendingDelete) return; // Filtrar pendientes de borrado
       if (stroke.tool === 'eraser') eraser.push(stroke);
       else normal.push(stroke);
     });
@@ -140,30 +141,30 @@ const SkiaCanvas: React.FC<SkiaCanvasProps> = ({
             />
           )}
 
-          {/* Trazos de borrador (blend clear para cortar) */}
+          {/* Trazos de borrador guardados - mostrar como líneas rojas */}
           {eraserPaths.map((item) => (
             <Path
               key={item.id}
               path={item.path}
-              color="#000000"
+              color="#FF6B6B"
               style="stroke"
               strokeWidth={item.width}
               strokeCap="round"
               strokeJoin="round"
-              blendMode="clear"
+              opacity={0.4}
             />
           ))}
 
-          {/* Trazo actual del borrador */}
+          {/* Trazo actual del borrador - línea roja mientras dibujas */}
           {currentPath && currentPath.isEraser && (
             <Path
               path={currentPath.path}
-              color="#000000"
+              color="#FF6B6B"
               style="stroke"
               strokeWidth={currentPath.width}
               strokeCap="round"
               strokeJoin="round"
-              blendMode="clear"
+              opacity={0.6}
             />
           )}
         </Group>

@@ -314,7 +314,7 @@ export class SupabaseSync {
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
       this.syncInterval = null;
-      console.log('⏸Auto-sync stopped');
+      console.log('Auto-sync stopped');
     }
   }
 

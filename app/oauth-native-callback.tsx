@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useRouter, useSegments } from "expo-router";
+import { useRouter} from "expo-router";
 
 export default function OAuthNativeCallback() {
   const router = useRouter();

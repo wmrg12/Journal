@@ -1,7 +1,7 @@
 // src/hooks/useSkiaDrawing.ts
-import { useState, useCallback, useRef } from 'react';
 import { createPageDraw, deletePageDraw } from '@/src/db/dao';
 import type { DrawTool, Stroke } from '@/types';
+import { useCallback, useRef, useState } from 'react';
 
 /**
  * Hook para dibujo con Skia (mejorado: suavizado Catmull-Rom -> Bézier,
@@ -17,7 +17,7 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
   const [selectedTool, setSelectedTool] = useState<DrawTool>('pencil');
   const [selectedColor, setSelectedColor] = useState('#000000');
   const [strokeWidth, setStrokeWidth] = useState(2);
-  const [eraserWidth, setEraserWidth] = useState(20);
+  const [eraserWidth, setEraserWidth] = useState(45); // Aumentado de 20 a 45 para mejor cobertura
 
   
   // Track de operaciones pendientes a la hora de persistir trazos
@@ -72,13 +72,65 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
   // Split de un stroke cuando el borrador lo corta
   // --------------------
   const splitStrokeByEraser = useCallback((stroke: Stroke, eraserPoints: { x: number; y: number }[], eraserRadius: number): Stroke[] => {
+    // Densificar puntos del stroke AGRESIVAMENTE para mejor detección
+    const densifyPoints = (pts: { x: number; y: number }[], maxSeg: number) => {
+      if (!pts || pts.length <= 1) return pts.slice();
+      const out: { x: number; y: number }[] = [];
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        out.push(p1);
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const dist = Math.hypot(dx, dy);
+        // Generar más puntos intermedios (división más pequeña)
+        const steps = Math.max(2, Math.ceil(dist / maxSeg));
+        for (let s = 1; s <= steps; s++) {
+          const t = s / (steps + 1);
+          out.push({ x: p1.x + dx * t, y: p1.y + dy * t });
+        }
+      }
+      out.push(pts[pts.length - 1]);
+      return out;
+    };
+
+    // Crear un área de búsqueda expandida alrededor del eraser para mejor detección
+    const createEraserBounds = (pts: { x: number; y: number }[]) => {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const p of pts) {
+        minX = Math.min(minX, p.x);
+        minY = Math.min(minY, p.y);
+        maxX = Math.max(maxX, p.x);
+        maxY = Math.max(maxY, p.y);
+      }
+      return { minX: minX - eraserRadius, minY: minY - eraserRadius, maxX: maxX + eraserRadius, maxY: maxY + eraserRadius };
+    };
+
+    const eraserBounds = createEraserBounds(eraserPoints);
+
+    // Densificar más agresivamente (cada 2-3 píxeles)
+    const maxSeg = Math.max(2, Math.round(eraserRadius * 0.5));
+    const dense = densifyPoints(stroke.points, maxSeg);
+
+    // Función mejorada: detectar si un punto está dentro del radio (expandido)
+    const isPointErasedByEraser = (point: { x: number; y: number }) => {
+      // Primero revisar bounds para optimizar
+      if (point.x < eraserBounds.minX || point.x > eraserBounds.maxX ||
+          point.y < eraserBounds.minY || point.y > eraserBounds.maxY) {
+        return false;
+      }
+
+      // Revisar distancia a todos los puntos del eraser
+      return eraserPoints.some(ep => isPointNearPoint(point, ep, eraserRadius * 1.2)); // Expandir radio 20%
+    };
+
     const segments: { x: number; y: number }[][] = [];
     let currentSegment: { x: number; y: number }[] = [];
 
-    for (const point of stroke.points) {
-      const isErased = eraserPoints.some(ep => isPointNearPoint(point, ep, eraserRadius));
+    for (const point of dense) {
+      const isErased = isPointErasedByEraser(point);
       if (isErased) {
-        if (currentSegment.length > 1) {
+        if (currentSegment.length > 0) {
           segments.push([...currentSegment]);
         }
         currentSegment = [];
@@ -87,12 +139,15 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
       }
     }
 
-    if (currentSegment.length > 1) {
+    if (currentSegment.length > 0) {
       segments.push(currentSegment);
     }
 
-    // map a objetos Stroke nuevos
-    return segments.map((points, index) => ({
+    // Filtrar segmentos muy pequeños (menos de 2 puntos no tienen sentido)
+    const validSegments = segments.filter(seg => seg.length >= 2);
+
+    // Mapear a objetos Stroke nuevos
+    return validSegments.map((points, index) => ({
       id: `${stroke.id}_seg_${index}_${Date.now()}`,
       tool: stroke.tool,
       color: stroke.color,
@@ -103,61 +158,6 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
   }, [isPointNearPoint]);
 
   // --------------------
-  // Procesa el eraser: recorta, guarda segmentos y borra persistidos
-  // --------------------
-  const processEraser = useCallback((eraserStroke: Stroke, allStrokes: Stroke[]) => {
-    const eraserRadius = eraserStroke.width / 2;
-    const newStrokes: Stroke[] = [];
-    const strokesToDelete: string[] = [];
-
-    for (const stroke of allStrokes) {
-      // Ignorar trazos temporales o borradores
-      if (stroke.id.startsWith('temp_') || stroke.tool === 'eraser') {
-        newStrokes.push(stroke);
-        continue;
-      }
-
-      const hasIntersection = stroke.points.some(pt =>
-        eraserStroke.points.some(ep => isPointNearPoint(pt, ep, eraserRadius))
-      );
-
-      if (hasIntersection) {
-        const segments = splitStrokeByEraser(stroke, eraserStroke.points, eraserRadius);
-        if (segments.length > 0) {
-          newStrokes.push(...segments);
-          if (!stroke.id.startsWith('temp_')) strokesToDelete.push(stroke.id);
-
-          // Guardar segmentos nuevos (async)
-          if (currentPageId) {
-            segments.forEach(segment => {
-              const pathD = pointsToPath(segment.points);
-              createPageDraw(
-                currentPageId,
-                pathD,
-                segment.color,
-                segment.width,
-                segment.opacity,
-                segment.tool as 'pencil' | 'pen' | 'marker',
-              ).catch(e => console.error('Error guardando segmento:', e));
-            });
-          }
-        } else {
-          // Todo borrado -> eliminar persistido
-          if (!stroke.id.startsWith('temp_')) strokesToDelete.push(stroke.id);
-        }
-      } else {
-        newStrokes.push(stroke);
-      }
-    }
-
-    // borrar persistidos
-    strokesToDelete.forEach(id => {
-      deletePageDraw(id).catch(e => console.error('Error eliminando trazo:', e));
-    });
-
-    return newStrokes;
-  }, [splitStrokeByEraser, isPointNearPoint, pointsToPath, currentPageId]);
-
   // --------------------
   // Estilo según herramienta
   // --------------------
@@ -187,7 +187,7 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
       tool: selectedTool,
       color: selectedTool === 'eraser' ? '#FF0000' : selectedColor,
       width,
-      opacity: selectedTool === 'eraser' ? 0.3 : opacity,
+      opacity: selectedTool === 'eraser' ? 0.5 : opacity,
       points: [{ x, y }],
     };
     setCurrentStroke(newStroke);
@@ -204,13 +204,17 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
       const dy = y - last.y;
       const distSq = dx * dx + dy * dy;
 
-      // Ajusta este umbral: 16 => 4px, 36 => 6px
-      const MIN_DIST_SQ = 16;
+      // Ajusta este umbral: para eraser ser más denso (muestreo cada ~3px)
+      // Para otros herramientas: ~4px (16)
+      const MIN_DIST_SQ = prev.tool === 'eraser' ? 9 : 16;
       if (distSq < MIN_DIST_SQ) return prev;
 
       return { ...prev, points: [...prev.points, { x, y }] };
     });
   }, []);
+
+  // Track si el eraser está procesando
+  const eraserProcessingRef = useRef(false);
 
   // --------------------
   // Termina trazo
@@ -221,15 +225,102 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
       const finalStroke = { ...prev };
 
       if (finalStroke.tool === 'eraser') {
-        // procesar borrado contra todos los trazos
-        setStrokes(current => processEraser(finalStroke, current));
+        eraserProcessingRef.current = true;
+
+        try {
+          const eraserRadius = finalStroke.width / 2;
+          const currentStrokes = strokes;
+          const newStrokes: Stroke[] = [];
+          const strokesToDelete: { id: string; tool: DrawTool }[] = [];
+          const segmentsToCreate: { segment: Stroke; pathD?: string }[] = [];
+
+          for (const stroke of currentStrokes) {
+            if (stroke.id.startsWith('temp_') || stroke.tool === 'eraser') {
+              newStrokes.push(stroke);
+              continue;
+            }
+
+            const hasIntersection = stroke.points.some(pt =>
+              finalStroke.points.some(ep => isPointNearPoint(pt, ep, eraserRadius))
+            );
+
+            if (hasIntersection) {
+              const segments = splitStrokeByEraser(stroke, finalStroke.points, eraserRadius);
+              if (segments.length > 0) {
+                newStrokes.push(...segments);
+                if (!stroke.id.startsWith('temp_')) {
+                  strokesToDelete.push({ id: stroke.id, tool: stroke.tool });
+                }
+
+                if (currentPageId) {
+                  for (const segment of segments) {
+                    segmentsToCreate.push({ segment });
+                  }
+                }
+              } else {
+                if (!stroke.id.startsWith('temp_')) {
+                  strokesToDelete.push({ id: stroke.id, tool: stroke.tool });
+                }
+              }
+            } else {
+              newStrokes.push(stroke);
+            }
+          }
+
+          setStrokes(newStrokes);
+
+          (async () => {
+            try {
+              if (strokesToDelete.length > 0) {
+                const deletePromises = strokesToDelete.map(item =>
+                  deletePageDraw(item.id).catch(e => console.error('Error eliminando trazo:', e))
+                );
+                await Promise.allSettled(deletePromises);
+              }
+
+              if (segmentsToCreate.length > 0 && currentPageId) {
+                const createPromises: Promise<any>[] = [];
+                for (const entry of segmentsToCreate) {
+                  try {
+                    const pathD = pointsToPath(entry.segment.points);
+                    if (typeof pathD === 'string' && pathD.length > 200000) {
+                      console.warn('Omitiendo guardado de segmento: pathD demasiado grande', pathD.length);
+                      continue;
+                    }
+                    createPromises.push(
+                      createPageDraw(
+                        currentPageId,
+                        pathD,
+                        entry.segment.color,
+                        entry.segment.width,
+                        entry.segment.opacity,
+                        entry.segment.tool as 'pencil' | 'pen' | 'marker',
+                      ).catch(e => console.error('Error guardando segmento:', e))
+                    );
+                  } catch (e) {
+                    console.error('Error generando pathD para segmento:', e);
+                  }
+                }
+                if (createPromises.length > 0) await Promise.allSettled(createPromises);
+              }
+            } finally {
+              eraserProcessingRef.current = false;
+            }
+          })();
+
+        } catch (e) {
+          console.error('Error procesando eraser (síncrono):', e);
+          eraserProcessingRef.current = false;
+        }
+
+        setCurrentStroke(null);
         return null;
       }
 
-      // agregar al estado
+      // Para otros herramientas: agregar trazo al estado
       setStrokes(s => [...s, finalStroke]);
 
-      // persistir en DB (async) y actualizar id temp cuando la DB responda
+      // Persistir en DB (async)
       if (currentPageId) {
         const pathD = pointsToPath(finalStroke.points);
 
@@ -242,8 +333,7 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
           finalStroke.tool as 'pencil' | 'pen' | 'marker',
         )
           .then((result) => {
-            // reemplazar id temporal por id persistido
-            setStrokes(strokes => strokes.map(s =>
+            setStrokes(allStrokes => allStrokes.map(s =>
               s.id === finalStroke.id ? { ...s, id: result.id, _persistedPathD: pathD } : s
             ));
             pendingSaves.current.delete(finalStroke.id);
@@ -258,26 +348,20 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
 
       return null;
     });
-  }, [currentPageId, pointsToPath, processEraser]);
+  }, [currentPageId, pointsToPath, splitStrokeByEraser, isPointNearPoint, strokes]);
 
-  // --------------------
   // Stop drawing explícito (desactiva modo y descarta trazo temporal)
-  // --------------------
   const stopDrawing = useCallback(() => {
     setDrawMode(false);
     setCurrentStroke(null);
   }, []);
 
-  // --------------------
   // Limpia trazos de tipo 'eraser' (cuando desmontas)
-  // --------------------
   const clearEraserStrokes = useCallback(() => {
     setStrokes(prev => prev.filter(s => s.tool !== 'eraser'));
   }, []);
 
-  // --------------------
   // Espera a que terminen saves pendientes
-  // --------------------
   const waitForPendingSaves = useCallback(async () => {
     const promises = Array.from(pendingSaves.current.values());
     if (promises.length > 0) {
@@ -286,9 +370,7 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
     }
   }, []);
 
-  // --------------------
   // Eliminar trazo específico
-  // --------------------
   const deleteStroke = useCallback(async (strokeId: string) => {
     setStrokes(prev => prev.filter(s => s.id !== strokeId));
     if (!strokeId.startsWith('temp_')) {
@@ -300,9 +382,7 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
     }
   }, []);
 
-  // --------------------
-  // Borrar todos los trazos (persistidos también)
-  // --------------------
+  // Borrar todos los trazos 
   const clearAllStrokes = useCallback(async () => {
     if (!currentPageId) {
       setStrokes([]);
