@@ -50,8 +50,8 @@ const DraggableShapeBase = ({
   const rotationRef = useRef(rotation);
 
   // Tamaño
-  const [width, setWidth] = useState(shape.width ?? 200);
-  const [height, setHeight] = useState(shape.height ?? 100);
+  const [width, setWidth] = useState(shape.width ?? 300);
+  const [height, setHeight] = useState(shape.height ?? 800);
   const sizeStartRef = useRef({ width, height });
   const sizeRef = useRef({ width, height });
 
