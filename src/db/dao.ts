@@ -31,13 +31,12 @@ export async function closeDatabase() {
       console.error('Error cerrando BD legacy:', error);
     }
   }
-  
+
   // Resetear flags
   isInitialized = false;
   currentDbUserId = null;
   initPromise = null;
 }
-
 
 export async function initDb(userId?: string) {
   if (isInitialized && currentDbUserId === userId) {
@@ -46,7 +45,7 @@ export async function initDb(userId?: string) {
 
   if (isInitialized && currentDbUserId !== userId && userId) {
     console.log('Cambiando de base de datos de usuario...');
-     await closeDatabase();
+    await closeDatabase();
     isInitializing = true;
     initPromise = null;
   }
@@ -64,7 +63,6 @@ export async function initDb(userId?: string) {
     isInitializing = false;
     currentDbUserId = userId || null;
   } catch (error) {
-
     initPromise = null;
     isInitializing = false;
     throw error;
@@ -73,22 +71,22 @@ export async function initDb(userId?: string) {
 
 async function _initDbInternal(userId?: string) {
   const anySQLite = SQLite as any;
-  
+
   const dbName = userId ? `journal_${userId}.db` : 'journal.db';
   console.log('Abriendo base de datos:', dbName);
 
   // -------- LEGACY (openDatabase) --------
   if (typeof anySQLite.openDatabase === 'function') {
-    const newDb = anySQLite.openDatabase(dbName); 
+    const newDb = anySQLite.openDatabase(dbName);
     isAsync = false;
 
     // PRAGMA FK
     await new Promise<void>((resolve) => {
-  (newDb as any).exec?.([{ sql: 'PRAGMA foreign_keys = ON;', args: [] }], false, () =>
-    resolve(),
-  ) ?? resolve();
-});
-    
+      (newDb as any).exec?.([{ sql: 'PRAGMA foreign_keys = ON;', args: [] }], false, () =>
+        resolve(),
+      ) ?? resolve();
+    });
+
     legacyDb = newDb;
 
     // Tablas sql
@@ -465,13 +463,13 @@ async function _initDbInternal(userId?: string) {
         `ALTER TABLE journals ADD COLUMN default_pattern TEXT`,
         `ALTER TABLE journals ADD COLUMN default_color TEXT`,
         `ALTER TABLE journals ADD COLUMN deleted_at INTEGER`,
+        `ALTER TABLE page_texts ADD COLUMN text_width`,
       ];
 
       for (const migration of migrations) {
         try {
           await (newAdb as any).execAsync(migration);
-        } catch (error) {
-        }
+        } catch (error) {}
       }
     } catch (error) {
       console.error('Error initializing database:', error);
@@ -520,8 +518,7 @@ async function runAsync(sql: string, params: any[] = []): Promise<void> {
 async function runAsyncIgnore(sql: string, params: any[] = []): Promise<void> {
   try {
     await runAsync(sql, params);
-  } catch {
-  }
+  } catch {}
 }
 
 function txLegacy<T>(fn: (tx: any) => Promise<T>): Promise<T> {
@@ -604,7 +601,7 @@ export async function listJournals(): Promise<Journal[]> {
   });
 }
 
-// Lista todos incluyendo eliminados 
+// Lista todos incluyendo eliminados
 export async function listAllJournalsForSync(): Promise<(Journal & { deleted_at?: number })[]> {
   if (isAsync) {
     const rows = await (adb as any).getAllAsync?.(
@@ -627,7 +624,10 @@ export async function listAllJournalsForSync(): Promise<(Journal & { deleted_at?
           for (let i = 0; i < res.rows.length; i++) out.push(res.rows.item(i));
           resolve(out);
         },
-        (_: any, err: any) => { reject(err); return true; },
+        (_: any, err: any) => {
+          reject(err);
+          return true;
+        },
       );
     });
   });
@@ -658,19 +658,20 @@ export async function toggleFavorite(journalId: string, favorite: boolean) {
 
 export async function deleteJournal(journalId: string) {
   const now = Math.floor(Date.now() / 1000);
-  
+
   if (isAsync) {
-    await runAsync(
-      `UPDATE journals SET deleted_at = ?, updated_at = ? WHERE id = ?`, 
-      [now, now, journalId]
-    );
+    await runAsync(`UPDATE journals SET deleted_at = ?, updated_at = ? WHERE id = ?`, [
+      now,
+      now,
+      journalId,
+    ]);
   } else {
     await txLegacy(async (tx) => {
-      await execTx(
-        tx, 
-        `UPDATE journals SET deleted_at = ?, updated_at = ? WHERE id = ?`, 
-        [now, now, journalId]
-      );
+      await execTx(tx, `UPDATE journals SET deleted_at = ?, updated_at = ? WHERE id = ?`, [
+        now,
+        now,
+        journalId,
+      ]);
     });
   }
 }
@@ -1081,6 +1082,7 @@ export type PageText = {
   position_x: number;
   position_y: number;
   font_size: number;
+  text_width?: number;
   created_at: number;
   updated_at: number;
   is_locked?: number;
@@ -1097,14 +1099,15 @@ export async function createPageText(
   fontSize: number = 16,
   rotation?: number,
   isLocked?: number,
+  textWidth?: number,
 ) {
   const id = await Crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
 
   if (isAsync) {
     await runAsync(
-      `INSERT INTO page_texts(id, page_id, content, font_family, color, position_x, position_y, font_size, rotation, is_locked, created_at, updated_at, user_id)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      `INSERT INTO page_texts(id, page_id, content, font_family, color, position_x, position_y, font_size, rotation, is_locked, text_width, created_at, updated_at, user_id)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         id,
         pageId,
@@ -1116,17 +1119,18 @@ export async function createPageText(
         fontSize,
         rotation ?? 0,
         isLocked ?? 0,
+        textWidth ?? 200,
         now,
         now,
-        currentUserId
+        currentUserId,
       ],
     );
   } else {
     await txLegacy(async (tx) => {
       await execTx(
         tx,
-        `INSERT INTO page_texts(id, page_id, content, font_family, color, position_x, position_y, font_size, rotation, is_locked, created_at, updated_at, user_id)
-         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO page_texts(id, page_id, content, font_family, color, position_x, position_y, font_size, rotation, is_locked, text_width, created_at, updated_at, user_id)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           id,
           pageId,
@@ -1138,6 +1142,7 @@ export async function createPageText(
           fontSize,
           rotation ?? 0,
           isLocked ?? 0,
+          textWidth ?? 200,
           now,
           now,
           currentUserId,
@@ -1148,10 +1153,11 @@ export async function createPageText(
   return { id };
 }
 
+// Actualizar listPageTexts
 export async function listPageTexts(pageId: string): Promise<PageText[]> {
   if (isAsync) {
     const rows = await (adb as any).getAllAsync?.(
-      `SELECT id, page_id, content, font_family, color, position_x, position_y, font_size, created_at, updated_at, is_locked, rotation
+      `SELECT id, page_id, content, font_family, color, position_x, position_y, font_size, text_width, created_at, updated_at, is_locked, rotation
          FROM page_texts
         WHERE page_id = ?
         ORDER BY created_at ASC`,
@@ -1163,7 +1169,7 @@ export async function listPageTexts(pageId: string): Promise<PageText[]> {
   return new Promise<PageText[]>((resolve, reject) => {
     legacyDb.readTransaction((tx: any) => {
       tx.executeSql(
-        `SELECT id, page_id, content, font_family, color, position_x, position_y, font_size, created_at, updated_at, is_locked, rotation
+        `SELECT id, page_id, content, font_family, color, position_x, position_y, font_size, text_width, created_at, updated_at, is_locked, rotation
            FROM page_texts
           WHERE page_id = ?
           ORDER BY created_at ASC`,
@@ -1193,6 +1199,7 @@ export async function updatePageText(
     font_size?: number;
     is_locked?: number;
     rotation?: number;
+    text_width?: number;
   },
 ) {
   const now = Math.floor(Date.now() / 1000);
@@ -1230,6 +1237,10 @@ export async function updatePageText(
   if (updates.rotation !== undefined) {
     fields.push('rotation = ?');
     values.push(updates.rotation);
+  }
+  if (updates.text_width !== undefined) {
+    fields.push('text_width = ?');
+    values.push(updates.text_width);
   }
 
   if (fields.length === 0) return;
@@ -1307,7 +1318,21 @@ export async function createPageShape(
     await runAsync(
       `INSERT INTO page_shapes(id, page_id, shape_type, color, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at, user_id)
           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [id, pageId, shapeType, color, positionX, positionY, width, height, 0, 0, now, now, currentUserId],
+      [
+        id,
+        pageId,
+        shapeType,
+        color,
+        positionX,
+        positionY,
+        width,
+        height,
+        0,
+        0,
+        now,
+        now,
+        currentUserId,
+      ],
     );
   } else {
     await txLegacy(async (tx) => {
@@ -1315,7 +1340,21 @@ export async function createPageShape(
         tx,
         `INSERT INTO page_shapes(id, page_id, shape_type, color, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at, user_id)
           VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [id, pageId, shapeType, color, positionX, positionY, width, height, 0, 0, now, now,currentUserId],
+        [
+          id,
+          pageId,
+          shapeType,
+          color,
+          positionX,
+          positionY,
+          width,
+          height,
+          0,
+          0,
+          now,
+          now,
+          currentUserId,
+        ],
       );
     });
   }
@@ -1432,7 +1471,7 @@ export async function deletePageShape(shapeId: string) {
 export type PageDraw = {
   id: string;
   page_id: string;
-  path_d: string; 
+  path_d: string;
   color: string;
   width: number;
   opacity: number;
@@ -1607,7 +1646,7 @@ export async function createPageSticker(
           0,
           now,
           now,
-          currentUserId
+          currentUserId,
         ],
       );
     });
@@ -2295,10 +2334,9 @@ export async function getPageSnapshot(
   journalId: string,
   pageNumber: number,
 ): Promise<PageSnapshot | null> {
-
   const pageId = await getPageId(journalId, pageNumber);
   if (!pageId) {
-    return null; 
+    return null;
   }
 
   const bg_color = await getPageColor(journalId, pageNumber);
@@ -2342,35 +2380,96 @@ export async function updateUserIdForExistingData() {
     console.log('No user ID set, skipping update');
     return;
   }
-  
+
   const now = Math.floor(Date.now() / 1000);
-  
+
   console.log('Updating user_id for existing data...');
-  
+
   if (isAsync) {
-    await runAsyncIgnore(`UPDATE journals SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
-    await runAsyncIgnore(`UPDATE pages SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
-    await runAsyncIgnore(`UPDATE page_texts SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
-    await runAsyncIgnore(`UPDATE page_draws SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
-    await runAsyncIgnore(`UPDATE page_shapes SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
-    await runAsyncIgnore(`UPDATE page_stickers SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
-    await runAsyncIgnore(`UPDATE page_images SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
-    await runAsyncIgnore(`UPDATE page_audios SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
-    await runAsyncIgnore(`UPDATE tasks SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+    await runAsyncIgnore(`UPDATE journals SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [
+      currentUserId,
+      now,
+    ]);
+    await runAsyncIgnore(`UPDATE pages SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [
+      currentUserId,
+      now,
+    ]);
+    await runAsyncIgnore(
+      `UPDATE page_texts SET user_id = ?, updated_at = ? WHERE user_id IS NULL`,
+      [currentUserId, now],
+    );
+    await runAsyncIgnore(
+      `UPDATE page_draws SET user_id = ?, updated_at = ? WHERE user_id IS NULL`,
+      [currentUserId, now],
+    );
+    await runAsyncIgnore(
+      `UPDATE page_shapes SET user_id = ?, updated_at = ? WHERE user_id IS NULL`,
+      [currentUserId, now],
+    );
+    await runAsyncIgnore(
+      `UPDATE page_stickers SET user_id = ?, updated_at = ? WHERE user_id IS NULL`,
+      [currentUserId, now],
+    );
+    await runAsyncIgnore(
+      `UPDATE page_images SET user_id = ?, updated_at = ? WHERE user_id IS NULL`,
+      [currentUserId, now],
+    );
+    await runAsyncIgnore(
+      `UPDATE page_audios SET user_id = ?, updated_at = ? WHERE user_id IS NULL`,
+      [currentUserId, now],
+    );
+    await runAsyncIgnore(`UPDATE tasks SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [
+      currentUserId,
+      now,
+    ]);
   } else {
     await txLegacy(async (tx) => {
-      await execTxIgnore(tx, `UPDATE journals SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
-      await execTxIgnore(tx, `UPDATE pages SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
-      await execTxIgnore(tx, `UPDATE page_texts SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
-      await execTxIgnore(tx, `UPDATE page_draws SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
-      await execTxIgnore(tx, `UPDATE page_shapes SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
-      await execTxIgnore(tx, `UPDATE page_stickers SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
-      await execTxIgnore(tx, `UPDATE page_images SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
-      await execTxIgnore(tx, `UPDATE page_audios SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
-      await execTxIgnore(tx, `UPDATE tasks SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [currentUserId, now]);
+      await execTxIgnore(
+        tx,
+        `UPDATE journals SET user_id = ?, updated_at = ? WHERE user_id IS NULL`,
+        [currentUserId, now],
+      );
+      await execTxIgnore(tx, `UPDATE pages SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [
+        currentUserId,
+        now,
+      ]);
+      await execTxIgnore(
+        tx,
+        `UPDATE page_texts SET user_id = ?, updated_at = ? WHERE user_id IS NULL`,
+        [currentUserId, now],
+      );
+      await execTxIgnore(
+        tx,
+        `UPDATE page_draws SET user_id = ?, updated_at = ? WHERE user_id IS NULL`,
+        [currentUserId, now],
+      );
+      await execTxIgnore(
+        tx,
+        `UPDATE page_shapes SET user_id = ?, updated_at = ? WHERE user_id IS NULL`,
+        [currentUserId, now],
+      );
+      await execTxIgnore(
+        tx,
+        `UPDATE page_stickers SET user_id = ?, updated_at = ? WHERE user_id IS NULL`,
+        [currentUserId, now],
+      );
+      await execTxIgnore(
+        tx,
+        `UPDATE page_images SET user_id = ?, updated_at = ? WHERE user_id IS NULL`,
+        [currentUserId, now],
+      );
+      await execTxIgnore(
+        tx,
+        `UPDATE page_audios SET user_id = ?, updated_at = ? WHERE user_id IS NULL`,
+        [currentUserId, now],
+      );
+      await execTxIgnore(tx, `UPDATE tasks SET user_id = ?, updated_at = ? WHERE user_id IS NULL`, [
+        currentUserId,
+        now,
+      ]);
     });
   }
-  
+
   console.log('user_id updated for existing data');
 }
 // ----------- FUNCION AUXILIAR PARA SYNC ----------
