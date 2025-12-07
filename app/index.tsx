@@ -1,24 +1,34 @@
 // app/index.tsx
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { View } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
 
 export default function Index() {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     if (!isLoaded) return;
 
-    // Redirigir INMEDIATAMENTE sin setTimeout
+    const t = setTimeout(() => setReady(true), 250);
+    return () => clearTimeout(t);
+  }, [isLoaded]);
+
+  useEffect(() => {
+    if (!ready) return;
+
     if (isSignedIn) {
       router.replace('/tabs/home');
     } else {
       router.replace('/login');
     }
-  }, [isLoaded, isSignedIn]);
+  }, [ready, isSignedIn]);
 
-  // Solo vista blanca, sin ActivityIndicator para que sea más rápido
-  return <View style={{ flex: 1, backgroundColor: '#fff' }} />;
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <ActivityIndicator size="large" />
+    </View>
+  );
 }
