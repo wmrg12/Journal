@@ -3,11 +3,6 @@ import { createPageDraw, deletePageDraw } from '@/src/db/dao';
 import type { DrawTool, Stroke } from '@/types';
 import { useCallback, useRef, useState } from 'react';
 
-/**
- * Hook para dibujo con Skia (mejorado: suavizado Catmull-Rom -> Bézier,
- * manejo de saves pendientes, eraser splitting y stopDrawing).
- */
-
 type Point = { x: number; y: number };
 
 export const useSkiaDrawing = (currentPageId: string | null) => {
@@ -17,31 +12,24 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
   const [selectedTool, setSelectedTool] = useState<DrawTool>('pencil');
   const [selectedColor, setSelectedColor] = useState('#000000');
   const [strokeWidth, setStrokeWidth] = useState(2);
-  const [eraserWidth, setEraserWidth] = useState(45); // Aumentado de 20 a 45 para mejor cobertura
+  const [eraserWidth, setEraserWidth] = useState(45); 
 
   
-  // Track de operaciones pendientes a la hora de persistir trazos
   const pendingSaves = useRef<Map<string, Promise<any>>>(new Map());
 
-  // --------------------
-  // UTIL: convertir puntos a path suave (Catmull-Rom -> Bézier)
-  // --------------------
   const pointsToPath = useCallback((pts: { x: number; y: number }[]) => {
     if (!pts || pts.length === 0) return '';
 
-    // Para pocos puntos, linea simple
     if (pts.length <= 2) {
       return `M ${pts[0].x} ${pts[0].y} ` + pts.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
     }
-
-    // Helper que convierte un tramo Catmull-Rom a control points Bezier
     const catmullRom2bezier = (p0: Point, p1: Point, p2: Point, p3: Point) => {
       const b1 = { x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6 };
       const b2 = { x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6 };
       return [b1, b2, p2] as const;
     };    
 
-    // Pad endpoints (replicar primer y último punto) para buenos extremos
+    // Pad endpoints 
     const points = [{ ...pts[0] }, ...pts, { ...pts[pts.length - 1] }];
 
     let d = `M ${points[1].x} ${points[1].y} `;
@@ -59,20 +47,14 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
     return d.trim();
   }, []);
 
-  // --------------------
   // UTIL: distancia al cuadrado
-  // --------------------
   const isPointNearPoint = useCallback((p1: { x: number; y: number }, p2: { x: number; y: number }, radius: number) => {
     const dx = p1.x - p2.x;
     const dy = p1.y - p2.y;
     return dx * dx + dy * dy <= radius * radius;
   }, []);
 
-  // --------------------
-  // Split de un stroke cuando el borrador lo corta
-  // --------------------
   const splitStrokeByEraser = useCallback((stroke: Stroke, eraserPoints: { x: number; y: number }[], eraserRadius: number): Stroke[] => {
-    // Densificar puntos del stroke AGRESIVAMENTE para mejor detección
     const densifyPoints = (pts: { x: number; y: number }[], maxSeg: number) => {
       if (!pts || pts.length <= 1) return pts.slice();
       const out: { x: number; y: number }[] = [];
@@ -83,7 +65,6 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
         const dx = p2.x - p1.x;
         const dy = p2.y - p1.y;
         const dist = Math.hypot(dx, dy);
-        // Generar más puntos intermedios (división más pequeña)
         const steps = Math.max(2, Math.ceil(dist / maxSeg));
         for (let s = 1; s <= steps; s++) {
           const t = s / (steps + 1);
@@ -94,7 +75,6 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
       return out;
     };
 
-    // Crear un área de búsqueda expandida alrededor del eraser para mejor detección
     const createEraserBounds = (pts: { x: number; y: number }[]) => {
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       for (const p of pts) {
@@ -108,11 +88,10 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
 
     const eraserBounds = createEraserBounds(eraserPoints);
 
-    // Densificar más agresivamente (cada 2-3 píxeles)
+    // Densificar más agresivamente 
     const maxSeg = Math.max(2, Math.round(eraserRadius * 0.5));
     const dense = densifyPoints(stroke.points, maxSeg);
 
-    // Función mejorada: detectar si un punto está dentro del radio (expandido)
     const isPointErasedByEraser = (point: { x: number; y: number }) => {
       // Primero revisar bounds para optimizar
       if (point.x < eraserBounds.minX || point.x > eraserBounds.maxX ||
@@ -120,8 +99,7 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
         return false;
       }
 
-      // Revisar distancia a todos los puntos del eraser
-      return eraserPoints.some(ep => isPointNearPoint(point, ep, eraserRadius * 1.2)); // Expandir radio 20%
+      return eraserPoints.some(ep => isPointNearPoint(point, ep, eraserRadius * 1.2)); 
     };
 
     const segments: { x: number; y: number }[][] = [];
@@ -143,7 +121,7 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
       segments.push(currentSegment);
     }
 
-    // Filtrar segmentos muy pequeños (menos de 2 puntos no tienen sentido)
+    // Filtrar segmentos muy pequeños
     const validSegments = segments.filter(seg => seg.length >= 2);
 
     // Mapear a objetos Stroke nuevos
@@ -157,10 +135,8 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
     }));
   }, [isPointNearPoint]);
 
-  // --------------------
-  // --------------------
+
   // Estilo según herramienta
-  // --------------------
   const getToolStyle = useCallback((tool: DrawTool) => {
     const base = strokeWidth;
     switch (tool) {
@@ -177,9 +153,7 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
     }
   }, [strokeWidth, eraserWidth]);
 
-  // --------------------
   // Inicia trazo
-  // --------------------
   const onDrawStart = useCallback((x: number, y: number) => {
     const { width, opacity } = getToolStyle(selectedTool);
     const newStroke: Stroke = {
@@ -193,9 +167,7 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
     setCurrentStroke(newStroke);
   }, [getToolStyle, selectedTool, selectedColor]);
 
-  // --------------------
-  // Mover trazo (muestreo / reducción de puntos)
-  // --------------------
+  // Mover trazo 
   const onDrawMove = useCallback((x: number, y: number) => {
     setCurrentStroke(prev => {
       if (!prev) return prev;
@@ -203,9 +175,6 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
       const dx = x - last.x;
       const dy = y - last.y;
       const distSq = dx * dx + dy * dy;
-
-      // Ajusta este umbral: para eraser ser más denso (muestreo cada ~3px)
-      // Para otros herramientas: ~4px (16)
       const MIN_DIST_SQ = prev.tool === 'eraser' ? 9 : 16;
       if (distSq < MIN_DIST_SQ) return prev;
 
@@ -213,12 +182,9 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
     });
   }, []);
 
-  // Track si el eraser está procesando
   const eraserProcessingRef = useRef(false);
 
-  // --------------------
   // Termina trazo
-  // --------------------
   const onDrawEnd = useCallback(() => {
     setCurrentStroke(prev => {
       if (!prev || prev.points.length < 2) return null;
@@ -236,6 +202,11 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
 
           for (const stroke of currentStrokes) {
             if (stroke.id.startsWith('temp_') || stroke.tool === 'eraser') {
+              newStrokes.push(stroke);
+              continue;
+            }
+
+            if (stroke.id.match(/^(.+?)_seg_\d+_\d+$/)) {
               newStrokes.push(stroke);
               continue;
             }
@@ -317,10 +288,8 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
         return null;
       }
 
-      // Para otros herramientas: agregar trazo al estado
       setStrokes(s => [...s, finalStroke]);
 
-      // Persistir en DB (async)
       if (currentPageId) {
         const pathD = pointsToPath(finalStroke.points);
 
@@ -350,13 +319,13 @@ export const useSkiaDrawing = (currentPageId: string | null) => {
     });
   }, [currentPageId, pointsToPath, splitStrokeByEraser, isPointNearPoint, strokes]);
 
-  // Stop drawing explícito (desactiva modo y descarta trazo temporal)
+  // Stop drawing explícito 
   const stopDrawing = useCallback(() => {
     setDrawMode(false);
     setCurrentStroke(null);
   }, []);
 
-  // Limpia trazos de tipo 'eraser' (cuando desmontas)
+  // Limpia trazos de tipo 
   const clearEraserStrokes = useCallback(() => {
     setStrokes(prev => prev.filter(s => s.tool !== 'eraser'));
   }, []);
