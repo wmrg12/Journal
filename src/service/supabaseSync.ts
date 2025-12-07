@@ -9,7 +9,7 @@ let syncInstance: SupabaseSync | null = null;
 export class SupabaseSync {
   private supabase: SupabaseClient;
   private userId: string;
-  private syncInterval: NodeJS.Timeout | null = null;
+  private syncInterval: ReturnType<typeof setInterval> | null = null;
   private getToken: () => Promise<string | null>;
 
   constructor(userId: string, getToken: () => Promise<string | null>) {
