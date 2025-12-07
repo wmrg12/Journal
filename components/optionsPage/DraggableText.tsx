@@ -52,12 +52,18 @@ const DraggableTextBase = ({
   const rotationStartRef = useRef(rotation);
   const rotationRef = useRef(rotation);
 
-  // Font size (resize)
+  // Font size (resize vertical)
   const [fontSize, setFontSize] = useState(text.font_size ?? 16);
   const fontSizeRef = useRef(fontSize);
   const fontSizeStartRef = useRef(fontSize);
+
+  // Ancho máximo del texto (resize horizontal)
+  const [maxWidth, setMaxWidth] = useState(text.text_width ?? 300);
+  const maxWidthRef = useRef(maxWidth);
+  const maxWidthStartRef = useRef(maxWidth);
+
   const [isResizing, setIsResizing] = useState(false);
-  const resizeStartYRef = useRef(0);
+  const resizeStartRef = useRef({ x: 0, y: 0 });
 
   const lockedRef = useRef(locked);
   const textBoxRef = useRef<View>(null);
@@ -69,7 +75,7 @@ const DraggableTextBase = ({
   const lastTapRef = useRef(0);
   const DOUBLE_TAP_DELAY = 300;
 
-  // Validación de posición 
+  // Validación de posición
   const hasValidatedPosition = useRef(false);
 
   // EFFECTS - SYNC
@@ -91,6 +97,18 @@ const DraggableTextBase = ({
   useEffect(() => {
     fontSizeRef.current = fontSize;
   }, [fontSize]);
+
+  useEffect(() => {
+    maxWidthRef.current = maxWidth;
+  }, [maxWidth]);
+
+  // Sincronizar ancho desde la BD
+  useEffect(() => {
+    if (text.text_width !== undefined && text.text_width !== maxWidth) {
+      setMaxWidth(text.text_width);
+      maxWidthRef.current = text.text_width;
+    }
+  }, [text.text_width]);
 
   useEffect(() => {
     const vx = (pan.x as any)._value;
@@ -129,7 +147,7 @@ const DraggableTextBase = ({
       if (validX !== currentX || validY !== currentY) {
         console.log('Corrigiendo texto fuera de límites:', text.id);
         pan.setValue({ x: validX, y: validY });
-        
+
         if (currentPageId) {
           updatePageText(text.id, {
             position_x: validX,
@@ -245,7 +263,7 @@ const DraggableTextBase = ({
     }),
   ).current;
 
-  // PAN RESPONDER - RESIZE 
+  // PAN RESPONDER - RESIZE (diagonal: ancho + altura)
   const resizePanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !lockedRef.current,
@@ -255,57 +273,46 @@ const DraggableTextBase = ({
         toolbarButtonPressed.current = true;
         setIsResizing(true);
         fontSizeStartRef.current = fontSizeRef.current;
-        resizeStartYRef.current = evt.nativeEvent.pageY;
+        maxWidthStartRef.current = maxWidthRef.current;
+        resizeStartRef.current = {
+          x: evt.nativeEvent.pageX,
+          y: evt.nativeEvent.pageY,
+        };
       },
       onPanResponderMove: (evt) => {
         if (lockedRef.current) return;
-        
-        const deltaY = evt.nativeEvent.pageY - resizeStartYRef.current;
-        let nextSize = Math.max(8, fontSizeStartRef.current + deltaY / 4);
-        
-        if (canvasWidth > 0 && canvasHeight > 0) {
+
+        const deltaX = evt.nativeEvent.pageX - resizeStartRef.current.x;
+        const deltaY = evt.nativeEvent.pageY - resizeStartRef.current.y;
+
+        let nextWidth = Math.max(80, maxWidthStartRef.current + deltaX);
+
+        let nextFontSize = Math.max(8, fontSizeStartRef.current + deltaY / 4);
+
+        if (canvasWidth > 0) {
           const currentX = (pan.x as any)._value;
-          const currentY = (pan.y as any)._value;
-          
-          // Estimar nuevas dimensiones 
-          const charWidth = nextSize * 0.6;
-          const lineHeight = nextSize * 1.5;
-          const maxCharsPerLine = 30;
-          const lines = Math.ceil(text.content.length / maxCharsPerLine);
-          
-          const newWidth = Math.min(text.content.length * charWidth, maxCharsPerLine * charWidth);
-          const newHeight = lines * lineHeight;
-          
-          // Limitar tamaño derecha
-          if (currentX + newWidth > canvasWidth) {
-            const maxAllowedWidth = canvasWidth - currentX;
-            const maxSizeByWidth = (maxAllowedWidth / (Math.min(text.content.length, maxCharsPerLine) * 0.6));
-            nextSize = Math.min(nextSize, maxSizeByWidth);
-          }
-          
-          // Limitar tamaño abajo
-          if (currentY + newHeight > canvasHeight) {
-            const maxAllowedHeight = canvasHeight - currentY;
-            const maxSizeByHeight = (maxAllowedHeight / (lines * 1.5));
-            nextSize = Math.min(nextSize, maxSizeByHeight);
-          }
+          nextWidth = Math.min(nextWidth, canvasWidth - currentX - 10);
         }
-        
-        // límites de tamaño 
-        nextSize = Math.max(8, Math.min(72, nextSize));
-        
-        setFontSize(nextSize);
-        fontSizeRef.current = nextSize;
+
+        nextFontSize = Math.max(8, Math.min(72, nextFontSize));
+
+        setMaxWidth(nextWidth);
+        setFontSize(nextFontSize);
+        maxWidthRef.current = nextWidth;
+        fontSizeRef.current = nextFontSize;
       },
       onPanResponderRelease: async () => {
         toolbarButtonPressed.current = false;
         setIsResizing(false);
         if (lockedRef.current || !currentPageId) return;
         try {
-          await updatePageText(text.id, { font_size: fontSizeRef.current });
+          await updatePageText(text.id, {
+            font_size: fontSizeRef.current,
+            text_width: maxWidthRef.current,
+          });
           onFontSizeChange?.(text.id, fontSizeRef.current);
         } catch (e) {
-          console.error('Error updating font size:', e);
+          console.error('Error updating text:', e);
         }
       },
       onPanResponderTerminate: () => {
@@ -339,11 +346,7 @@ const DraggableTextBase = ({
       style={[
         S.textContainer,
         {
-          transform: [
-            { translateX: pan.x },
-            { translateY: pan.y },
-            { rotate: `${rotation}deg` },
-          ],
+          transform: [{ translateX: pan.x }, { translateY: pan.y }, { rotate: `${rotation}deg` }],
           opacity: isDragging ? 0.7 : 1,
           zIndex: isSelected ? 1000 : 1,
         },
@@ -357,6 +360,9 @@ const DraggableTextBase = ({
           }}
           style={[
             S.textBox,
+            {
+              maxWidth: maxWidth,
+            },
             isSelected && { borderWidth: 2, borderColor: uiColors.primary, borderStyle: 'dashed' },
             locked && S.textBoxLocked,
           ]}
@@ -365,9 +371,7 @@ const DraggableTextBase = ({
             style={[
               S.textContent,
               {
-                fontFamily:
-                  fontFamilyMap[text.font_family as TextFont] ??
-                  text.font_family,
+                fontFamily: fontFamilyMap[text.font_family as TextFont] ?? text.font_family,
                 color: text.color,
                 fontSize: fontSize,
               },
@@ -404,16 +408,9 @@ const DraggableTextBase = ({
             onToggleLock(text.id);
             toolbarButtonPressed.current = false;
           }}
-          style={[
-            S.shapeControlButton,
-            S.shapeLockButton,
-            locked && S.shapeLockButtonLocked,
-          ]}
+          style={[S.shapeControlButton, S.shapeLockButton, locked && S.shapeLockButtonLocked]}
         >
-          <MaterialIcons
-            name={locked ? 'lock' : 'lock-open'}
-            size={16}
-            color="#fff" />
+          <MaterialIcons name={locked ? 'lock' : 'lock-open'} size={16} color="#fff" />
         </TouchableOpacity>
       )}
 
@@ -430,11 +427,7 @@ const DraggableTextBase = ({
             onDuplicate(text);
             toolbarButtonPressed.current = false;
           }}
-          style={[
-            S.shapeControlButton,
-            S.shapeDuplicateButton,
-            locked && { opacity: 0.4 },
-          ]}
+          style={[S.shapeControlButton, S.shapeDuplicateButton, locked && { opacity: 0.4 }]}
         >
           <MaterialIcons name="content-copy" size={16} color="#fff" />
         </TouchableOpacity>
@@ -450,16 +443,9 @@ const DraggableTextBase = ({
       )}
 
       {isSelected && !locked && (
-        <View
-          {...resizePanResponder.panHandlers}
-          style={S.shapeResizeHandle}
-          pointerEvents="auto"
-        >
+        <View {...resizePanResponder.panHandlers} style={S.shapeResizeHandle} pointerEvents="auto">
           <View
-            style={[
-              S.shapeResizeHandleInner,
-              isResizing && { backgroundColor: uiColors.primary },
-            ]}
+            style={[S.shapeResizeHandleInner, isResizing && { backgroundColor: uiColors.primary }]}
           />
         </View>
       )}
