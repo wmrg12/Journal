@@ -1,5 +1,5 @@
 // components/TextOptionsModal.tsx
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal,
   View,
@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   ScrollView,
   KeyboardAvoidingView,
-  Platform,
+  Keyboard,
 } from 'react-native';
 import { textColors, uiColors } from '@/constants/colors';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -28,6 +28,8 @@ type TextOptionsModalProps = {
   isEditing: boolean;
 };
 
+const MAX_CHARACTERS = 500;
+
 export const TextOptionsModal: React.FC<TextOptionsModalProps> = ({
   visible,
   onClose,
@@ -40,20 +42,47 @@ export const TextOptionsModal: React.FC<TextOptionsModalProps> = ({
   onConfirm,
   isEditing,
 }) => {
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showListener = Keyboard.addListener('keyboardDidShow', () => {
+      setIsKeyboardVisible(true);
+    });
+    const hideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setIsKeyboardVisible(false);
+    });
+
+    return () => {
+      showListener.remove();
+      hideListener.remove();
+    };
+  }, []);
+
+  const handleClose = () => {
+    Keyboard.dismiss();
+    onClose();
+  };
+
+  const handleTextChange = (text: string) => {
+    if (text.length <= MAX_CHARACTERS) {
+      onTextChange(text);
+    }
+  };
+
+  const remainingChars = MAX_CHARACTERS - textInput.length;
+  const isNearLimit = remainingChars <= 50;
+
   return (
     <Modal
       visible={visible}
       transparent
       animationType="slide"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
       statusBarTranslucent
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
+      <KeyboardAvoidingView behavior="height" style={{ flex: 1 }} enabled={isKeyboardVisible}>
         <View style={S.textModalOverlay}>
-          <TouchableOpacity style={S.textModalBackground} activeOpacity={1} onPress={onClose} />
+          <TouchableOpacity style={S.textModalBackground} activeOpacity={1} onPress={handleClose} />
           <View style={S.textOptionsContainer}>
             <View style={S.textOptionsHeader}>
               <View style={S.textIconContainer}>
@@ -61,28 +90,42 @@ export const TextOptionsModal: React.FC<TextOptionsModalProps> = ({
               </View>
               <Text style={S.textOptionsTitle}>Escribir texto</Text>
               <TouchableOpacity
-                onPress={onClose}
+                onPress={handleClose}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <MaterialIcons name="close" size={24} color={uiColors.gray} />
               </TouchableOpacity>
             </View>
 
-            <TextInput
-              style={S.textInput}
-              placeholder="Escribe aquí..."
-              value={textInput}
-              onChangeText={onTextChange}
-              multiline
-              autoFocus
-              accessibilityLabel="Campo de texto"
-            />
+            <View>
+              <TextInput
+                style={[S.textInput]}
+                placeholder="Escribe aquí..."
+                placeholderTextColor={uiColors.gray}
+                value={textInput}
+                onChangeText={handleTextChange}
+                multiline
+                autoFocus
+                maxLength={MAX_CHARACTERS}
+                accessibilityLabel="Campo de texto"
+              />
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: isNearLimit ? '#FF6B6B' : uiColors.gray,
+                  textAlign: 'right',
+                  marginBottom: 12,
+                }}
+              >
+                {remainingChars} caracteres restantes
+              </Text>
+            </View>
 
             <View style={S.colorSection}>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                keyboardShouldPersistTaps="always"
+                keyboardShouldPersistTaps="handled"
               >
                 {textColors.map((colorOption) => (
                   <TouchableOpacity
@@ -107,7 +150,7 @@ export const TextOptionsModal: React.FC<TextOptionsModalProps> = ({
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                keyboardShouldPersistTaps="always"
+                keyboardShouldPersistTaps="handled"
               >
                 {textFonts.map((font) => (
                   <TouchableOpacity
