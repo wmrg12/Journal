@@ -81,24 +81,20 @@ function SyncManager() {
 
       (async () => {
         try {
-          // Destruir sync del usuario anterior
           const syncService = getSyncInstance();
           if (syncService) {
             console.log('Destruyendo sync del usuario anterior...');
             syncService.destroy();
           }
 
-          // Cerrar base de datos anterior
           console.log('Cerrando base de datos anterior...');
           await closeDatabase();
 
-          // Resetear todo el estado
           setSyncInitialized(false);
           setDbReady(false);
           hasNavigatedRef.current = false;
           isInitializingRef.current = false;
 
-          // Esperar un momento para que todo se limpie
           await new Promise((resolve) => setTimeout(resolve, 500));
 
           console.log('Limpieza completa, listo para nuevo usuario');
@@ -112,7 +108,6 @@ function SyncManager() {
     prevUserIdRef.current = user?.id || null;
   }, [user?.id]);
 
-  // Establecer currentUserId
   useEffect(() => {
     if (user?.id) {
       console.log('Estableciendo currentUserId:', user.id);
@@ -120,8 +115,7 @@ function SyncManager() {
     }
   }, [user?.id]);
 
-  // En _layout.tsx, dentro del useEffect de sincronización:
-
+  // Inicialización de DB y Sync al iniciar sesión
 useEffect(() => {
   if (
     userLoaded &&
@@ -164,30 +158,25 @@ useEffect(() => {
         // Inicializar servicio de sincronización
         initSync(user.id, getSupabaseToken);
 
-        // Marcar como listo ANTES de sincronizar
         console.log('Marcando como listo para navegación...');
         setSyncInitialized(true);
         setDbReady(true);
 
-        // Pequeño delay para estabilidad
         await new Promise((resolve) => setTimeout(resolve, 300));
 
-        // Iniciar sincronización en background DESPUÉS de navegar
         setTimeout(() => {
           const syncService = getSyncInstance();
           if (syncService) {
             console.log('Iniciando sincronización en background...');
             syncService.performFullSync().catch((error: unknown) => {
               console.error('Error en sincronización completa:', error);
-              // No bloqueamos la app por errores de sync
             });
           }
-        }, 1000); // Dar tiempo para que la navegación complete
+        }, 1000); 
 
         console.log('Inicialización completa');
       } catch (error) {
         console.error('Error en inicialización:', error);
-        // Aún así marcamos como listo para que el usuario pueda usar la app
         setDbReady(true);
         setSyncInitialized(true);
         isInitializingRef.current = false;
@@ -216,7 +205,6 @@ useEffect(() => {
       segments: segments.join('/'),
     });
 
-    // Si está autenticado, DB listo, y sync inicializado
     if (
       isSignedIn &&
       user?.id &&
@@ -234,7 +222,6 @@ useEffect(() => {
         router.replace('/tabs/home');
       }, 200);
     } else if (!isSignedIn && !inAuthGroup) {
-      // Si no está autenticado y no está en login
       console.log('No autenticado, navegando a /login...');
       hasNavigatedRef.current = false;
       router.replace('/login');
