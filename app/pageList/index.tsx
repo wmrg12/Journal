@@ -162,24 +162,48 @@ export default function PagesList() {
   };
 
   const handleCreatePage = async () => {
-    if (!journalId) return;
+  if (!journalId) return;
+  
+  try {
+    const currentTotal = await getTotalPages(String(journalId));
+    
+    let newPageColor = String(journalColor); 
+    let newPagePattern = 'none'; 
+      if (currentTotal > 0) {
+      const lastColor = await getPageColor(String(journalId), currentTotal);
+      if (lastColor) {
+        newPageColor = lastColor;
+      }
+      const lastPattern = await getPagePattern(String(journalId), currentTotal);
+      if (lastPattern && typeof lastPattern === 'string' && lastPattern.length > 0) {
+        newPagePattern = lastPattern;
+      }
+    }
+    
     const { pageNumber: newNum, total: newTotal } = await createPage(
       String(journalId),
-      String(journalColor)
+      newPageColor,
+      newPagePattern  
     );
+    
     await loadPages();
+    
     router.push({
       pathname: "/page",
       params: {
         journalId,
-        color: String(journalColor),
+        color: newPageColor,
         pageNumber: String(newNum),
         totalPages: String(newTotal),
         journalName,
         journalColor,
       },
     });
-  };
+    
+  } catch (error) {
+    console.error('Error al crear página:', error);
+  }
+};
 
   const renderPage = ({ item }: { item: PageItem }) => (
     <View style={S.item}>
