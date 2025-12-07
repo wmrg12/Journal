@@ -432,8 +432,9 @@ export default function PageView() {
 
     setIsLoading(true);
     try {
+      
       const { pageNumber: newNum, total: newTotal } = await createPage(String(journalId), bg, pagePattern);
-
+      
       router.replace({
         pathname: '/page',
         params: {
@@ -730,8 +731,6 @@ export default function PageView() {
           )}
 
           <SkiaCanvas
-            width={canvasSize.width}
-            height={canvasSize.height}
             strokes={strokes}
             currentStroke={currentStroke}
             pointsToPath={pointsToPath}
@@ -747,29 +746,6 @@ export default function PageView() {
               setSelectedImageId(null);
             }}
           >
-            {sortedPageTexts.map((text) => (
-              <DraggableText
-                key={text.id}
-                text={text}
-                currentPageId={currentPageId}
-                handleDeleteText={textManager.handleDeleteText}
-                getPanFor={textManager.getPanFor}
-                onPositionCommit={textManager.commitTextPosition}
-                locked={!!textManager.lockedTextIds[text.id]}
-                isSelected={textManager.selectedTextId === text.id}
-                onToggleLock={textManager.handleToggleLock}
-                onSelect={textManager.handleSelectText}
-                onEdit={(t) => {
-                  setDrawMode(false);
-                  handleEditText(t);
-                }}
-                onDuplicate={textManager.handleDuplicateText}
-                onRotationChange={textManager.handleRotationChange}
-                onFontSizeChange={textManager.handleFontSizeChange}
-                canvasWidth={canvasSize.width}
-                canvasHeight={canvasSize.height}
-              />
-            ))}
 
             {sortedPageShapes.map((shape) => (
               <DraggableShape
@@ -809,17 +785,27 @@ export default function PageView() {
 
             <EditImageModal visible={!!editingImage} image={editingImage} onClose={handleCloseEditor} onSave={handleSaveEditedImage} />
 
-            {sortedPageStickers.map((sticker) => (
-              <PageStickerComponent
-                key={sticker.id}
-                sticker={sticker}
-                isSelected={stickerManager.selectedStickerId === sticker.id}
-                onSelect={() => stickerManager.setSelectedStickerId(sticker.id)}
-                onUpdate={(updates) => stickerManager.updateSticker(sticker.id, updates)}
-                onDelete={() => stickerManager.removeSticker(sticker.id)}
-                onDuplicate={() => stickerManager.duplicateSticker(sticker.id)}
-                onToggleLock={() => stickerManager.toggleLock(sticker.id, !sticker.is_locked)}
-                scale={1}
+            {sortedPageTexts.map((text) => (
+              <DraggableText
+                key={text.id}
+                text={text}
+                currentPageId={currentPageId}
+                handleDeleteText={textManager.handleDeleteText}
+                getPanFor={textManager.getPanFor}
+                onPositionCommit={textManager.commitTextPosition}
+                locked={!!textManager.lockedTextIds[text.id]}
+                isSelected={textManager.selectedTextId === text.id}
+                onToggleLock={textManager.handleToggleLock}
+                onSelect={textManager.handleSelectText}
+                onEdit={(t) => {
+                  setDrawMode(false);
+                  handleEditText(t);
+                }}
+                onDuplicate={textManager.handleDuplicateText}
+                onRotationChange={textManager.handleRotationChange}
+                onFontSizeChange={textManager.handleFontSizeChange}
+                canvasWidth={canvasSize.width}
+                canvasHeight={canvasSize.height}
               />
             ))}
 
@@ -847,6 +833,20 @@ export default function PageView() {
                   isSelected={audioManager.selectedAudioId === audio.id}
                 />
               ))}
+
+              {sortedPageStickers.map((sticker) => (
+              <PageStickerComponent
+                key={sticker.id}
+                sticker={sticker}
+                isSelected={stickerManager.selectedStickerId === sticker.id}
+                onSelect={() => stickerManager.setSelectedStickerId(sticker.id)}
+                onUpdate={(updates) => stickerManager.updateSticker(sticker.id, updates)}
+                onDelete={() => stickerManager.removeSticker(sticker.id)}
+                onDuplicate={() => stickerManager.duplicateSticker(sticker.id)}
+                onToggleLock={() => stickerManager.toggleLock(sticker.id, !sticker.is_locked)}
+                scale={1}
+              />
+            ))}
           </SkiaCanvas>
         </View>
       </View>
