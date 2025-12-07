@@ -713,27 +713,28 @@ export default function SmallPagePreview({
         })}
 
         {/* Texts */}
-{texts.map((t) => {
-  const fontSize = Math.max(6, (t.font_size ?? 16) * uniformScale);
-  const { cx, cy } = getCenter(t.position_x, t.position_y, 0, 0);
-  const rotation = t.rotation ?? 0;
-  const transform = rotation ? `rotate(${rotation} ${cx} ${cy})` : undefined;
+        {texts.map((t) => {
+        const fontSize = Math.max(6, (t.font_size ?? 16) * uniformScale);
+        const x = normX(t.position_x);
+        const y = normY(t.position_y);
+        const paddingOffset = 8 * uniformScale;
+        const yOffset = paddingOffset;
+        const rotation = t.rotation ?? 0;
+        const transform = rotation ? `rotate(${rotation} ${x} ${y + yOffset})` : undefined;
 
-  // Obtener font family
-  const fontFamily =
-    fontFamilyMap[t.font_family as TextFont] ?? t.font_family ?? undefined;
+        const fontFamily =
+        fontFamilyMap[t.font_family as TextFont] ?? t.font_family ?? undefined;
 
-  // Dividir el texto en líneas
-  const lines = t.content.split('\n');
-  const lineHeight = fontSize * 1.2; // Espacio entre líneas
+        const lines = t.content.split('\n');
+        const lineHeight = fontSize * 1.2; 
 
   return (
     <G key={`text-${t.id}`} transform={transform}>
       {lines.map((line, index) => (
         <SvgText
           key={`${t.id}-line-${index}`}
-          x={cx}
-          y={cy + (index * lineHeight)}
+          x={x}
+          y={y + (index * lineHeight)}
           fontSize={fontSize}
           fill={safeColor(t.color, "#111")}
           fontFamily={fontFamily}
