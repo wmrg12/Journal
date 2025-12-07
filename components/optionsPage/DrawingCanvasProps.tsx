@@ -1,6 +1,5 @@
 // components/optionsPage/DrawingCanvasProps.tsx
 
-import S from '@/styles/pageViewStyles';
 import type { Stroke } from '@/types';
 import { Canvas, Group, Path, Skia } from '@shopify/react-native-skia';
 import React, { memo, useMemo } from 'react';
@@ -9,8 +8,6 @@ import { GestureResponderEvent, StyleSheet, TouchableOpacity, View } from 'react
 type Point = { x: number; y: number };
 
 interface DrawingCanvasProps {
-  width: number;
-  height: number;
   strokes: Stroke[];
   currentStroke: Stroke | null;
   pointsToPath: (points: Point[]) => string;
@@ -23,8 +20,6 @@ interface DrawingCanvasProps {
 }
 
 const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
-  width,
-  height,
   strokes,
   currentStroke,
   pointsToPath,
@@ -36,13 +31,13 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   children,
 }) => {
 
-  // Separamos trazos normales y de borrador, filtramos _pendingDelete
+
   const { normalStrokes, eraserStrokes } = useMemo(() => {
     const normal: Stroke[] = [];
     const eraser: Stroke[] = [];
 
     for (const s of strokes) {
-      if ((s as any)._pendingDelete) continue; // Filtrar pendientes de borrado
+      if ((s as any)._pendingDelete) continue; 
       if (s.tool === 'eraser') eraser.push(s);
       else normal.push(s);
     }
@@ -71,7 +66,7 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
       .filter((p): p is NonNullable<typeof p> => p !== null);
   }, [normalStrokes, pointsToPath]);
 
-  // Trazos de borrador → blendMode clear
+  // Trazos de borrador
   const eraserPaths = useMemo(() => {
     return eraserStrokes
       .map((stroke) => {
@@ -125,10 +120,10 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
   };
 
   return (
-    <View style={[S.containerD, { width, height }]}>
+    <View style={StyleSheet.absoluteFill}>
 
       {/* Skia Canvas */}
-      <Canvas style={[S.canvasD, { width, height }]}>
+      <Canvas style={StyleSheet.absoluteFill}>
         <Group layer>
 
           {/* Trazos normales */}
@@ -145,7 +140,6 @@ const DrawingCanvas: React.FC<DrawingCanvasProps> = ({
             />
           ))}
 
-          {/* Trazos de borrador - mostrar como líneas rojas semitransparentes */}
           {eraserPaths.map((item) => (
             <Path
               key={item.id}
