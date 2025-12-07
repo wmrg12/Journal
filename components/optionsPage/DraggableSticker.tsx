@@ -55,7 +55,6 @@ export function PageStickerComponent({
   const lastSize = useRef({ width: Number(sticker.width) || 100, height: Number(sticker.height) || 100 });
   const lastRotation = useRef(Number(sticker.rotation) || 0);
   const rotationStartRef = useRef(Number(sticker.rotation) || 0);
-  // Refs to hold the latest values during gesture (so PanResponder release handlers can read them)
   const currentPosition = useRef({ x: Number(sticker.position_x) || 0, y: Number(sticker.position_y) || 0 });
   const currentSize = useRef({ width: Number(sticker.width) || 100, height: Number(sticker.height) || 100 });
   const currentRotation = useRef(Number(sticker.rotation) || 0);
@@ -68,7 +67,6 @@ export function PageStickerComponent({
 
   const panResponder = useRef(
     PanResponder.create({
-      // Don't capture taps immediately — allow child controls to receive touches.
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_evt, gestureState) => {
         if (toolbarButtonPressed.current) return false;
@@ -79,7 +77,6 @@ export function PageStickerComponent({
       onPanResponderGrant: (evt, gestureState) => {
         onSelect();
         isGestureActive.current = true;
-        // record starting pan values
         lastPan.current = { x: (pan.x as any)._value, y: (pan.y as any)._value };
       },
       onPanResponderMove: (evt, gesture) => {
@@ -108,13 +105,11 @@ export function PageStickerComponent({
         if (sticker.is_locked) return;
         toolbarButtonPressed.current = true;
         isGestureActive.current = true;
-        // Use the most recent known size (from ref) as the start size for the gesture
         lastSize.current = { width: Number(currentSize.current.width), height: Number(currentSize.current.height) };
         sizeStartRef.current = { width: currentSize.current.width, height: currentSize.current.height };
       },
       onPanResponderMove: (_, gesture) => {
         if (sticker.is_locked) return;
-        // Accumulate from the initial size at gesture start; do NOT mutate lastSize during move
         const newWidth = Math.max(30, sizeStartRef.current.width + gesture.dx / scale);
         const newHeight = Math.max(30, sizeStartRef.current.height + gesture.dy / scale);
         setLocalSize({ width: newWidth, height: newHeight });
@@ -124,7 +119,6 @@ export function PageStickerComponent({
         if (sticker.is_locked) return;
         isGestureActive.current = false;
         toolbarButtonPressed.current = false;
-        // persist final size and update lastSize to match persisted/current
         lastSize.current = { width: currentSize.current.width, height: currentSize.current.height };
         onUpdate({ width: Number(currentSize.current.width), height: Number(currentSize.current.height) });
       },
@@ -140,7 +134,6 @@ export function PageStickerComponent({
         toolbarButtonPressed.current = true;
         isGestureActive.current = true;
         rotationStartRef.current = Number(localRotation) || 0;
-        // measure center of sticker in window coords and compute initial angle from the event
         stickerBoxRef.current?.measureInWindow((x, y, w, h) => {
           stickerCenterRef.current = { x: x + w / 2, y: y + h / 2 };
           const { pageX, pageY } = evt.nativeEvent as any;
@@ -167,7 +160,6 @@ export function PageStickerComponent({
         if (sticker.is_locked) return;
         toolbarButtonPressed.current = false;
         isGestureActive.current = false;
-        // Persist the current localRotation to DB
         onUpdate({ rotation: Number(currentRotation.current) });
       },
     }),
@@ -210,6 +202,8 @@ export function PageStickerComponent({
         {
           width: localSize.width,
           height: localSize.height,
+          zIndex: isSelected ? 1000 : 500, 
+          elevation: isSelected ? 1000 : 500,
           transform: [
             { translateX: pan.x },
             { translateY: pan.y },

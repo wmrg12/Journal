@@ -783,8 +783,6 @@ export default function PageView() {
               />
             ))}
 
-            <EditImageModal visible={!!editingImage} image={editingImage} onClose={handleCloseEditor} onSave={handleSaveEditedImage} />
-
             {sortedPageTexts.map((text) => (
               <DraggableText
                 key={text.id}
@@ -852,6 +850,7 @@ export default function PageView() {
       </View>
 
       <BottomToolbar items={toolbarItems} />
+      <EditImageModal visible={!!editingImage} image={editingImage} onClose={handleCloseEditor} onSave={handleSaveEditedImage} />
 
       <TextOptionsModal
         visible={showTextOptions}
