@@ -128,7 +128,7 @@ export default function SmallPagePreview({
   const scaleY = sourceHeight / originalCanvasHeight;
   const uniformScale = Math.min(scaleX, scaleY);
 
-  // === UTILIDADES ===
+  //  UTILIDADES 
 
   const normX = (v: number | null | undefined) => {
     if (v == null) return sourceWidth / 2;
@@ -587,28 +587,21 @@ export default function SmallPagePreview({
 
     return (
       <G>
-        {/* Draws - filtrar trazos que tienen segmentos (no mostrar el padre si existen segmentos) */}
         {(() => {
-          // Detectar trazos que son segmentos (formato: parentId_seg_index_timestamp)
           const segments = new Set<string>();
           const parentIds = new Set<string>();
           
           for (const draw of draws) {
             const match = draw.id.match(/^(.+?)_seg_\d+_\d+$/);
             if (match) {
-              // Este es un segmento
               segments.add(draw.id);
-              parentIds.add(match[1]); // Guardar el ID del padre
+              parentIds.add(match[1]); 
             }
           }
           
-          // Filtrar: mostrar segmentos + draws que no sean padres de segmentos
           const filteredDraws = draws.filter((d) => {
-            // Si es segmento, mostrar
             if (segments.has(d.id)) return true;
-            // Si es padre de segmentos, no mostrar
             if (parentIds.has(d.id)) return false;
-            // Si no es ni segmento ni padre, mostrar
             return true;
           });
           
@@ -643,7 +636,6 @@ export default function SmallPagePreview({
               : undefined;
 
           if (!src) {
-            // Placeholder para imágenes sin URI
             return (
               <Rect
                 key={`image-placeholder-${im.id}`}
