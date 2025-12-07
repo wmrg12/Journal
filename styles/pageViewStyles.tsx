@@ -573,6 +573,7 @@ export default StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     minHeight: 70,
+    maxHeight: 150,
     fontSize: 16,
     color: uiColors.black,
     marginBottom: 20,
