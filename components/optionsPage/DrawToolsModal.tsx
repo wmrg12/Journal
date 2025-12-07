@@ -18,7 +18,7 @@ type DrawToolsModalProps = {
   eraserWidth: number;
   onEraserWidthChange: (width: number) => void;
   onStartDrawing: () => void;
-  onStopDrawing?: () => void; // nuevo: terminar dibujo explícitamente
+  onStopDrawing?: () => void; 
 };
 
 // Configuración de grosores
@@ -126,7 +126,7 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
     >
       <View style={S.drawModalOverlay}>
         <TouchableOpacity onPress={() => { onStopDrawing?.(); }}>
-     
+
         </TouchableOpacity>
 
         <View style={S.drawOptionsContainer}>
@@ -297,7 +297,6 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
               style={S.addTextButton}
               onPress={() => {
                 onStartDrawing();
-                // Mantener modal abierto o cerrarlo según UX: aquí cerramos
                 if (onStopDrawing) {
                   onClose(); 
                 } else {
