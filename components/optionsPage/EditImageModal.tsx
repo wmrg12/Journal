@@ -126,10 +126,13 @@ export default function EditImageModal({
   }, [naturalSize, image]);
   // Guarda: si no hay forma, devolvemos la uri actual; si hay forma, capturamos el ViewShot
   const handleSave = async () => {
-    if (!image || !workingUri) return onClose();
-    try {
-      setIsProcessing(true);
+   if (!image || !workingUri) {
+  setIsProcessing(false);
+  onClose();
+  return;
+}
 
+    try {
       // Determinar dimensiones finales (preferir outputSize, si no naturalSize)
       const finalW = outputSize?.w ?? naturalSize?.w ?? undefined;
       const finalH = outputSize?.h ?? naturalSize?.h ?? undefined;
