@@ -91,15 +91,12 @@ export const DraggableImage: React.FC<Props> = ({
   }, [rotation]);
 
   // sync local state when incoming image props change
-  // sync local state when incoming image props change
   useEffect(() => {
-    // solo sincronizar si NO estamos interactuando (drag/resize/rotate)
     if (
       isResizingRef.current ||
       isDraggingRef.current ||
       isRotatingRef.current
     ) {
-      // no sobrescribimos mientras usuario interactúa
       return;
     }
     setSize({ width: image.width ?? 120, height: image.height ?? 120 });
@@ -149,38 +146,8 @@ export const DraggableImage: React.FC<Props> = ({
     );
   };
 
-  // VALIDACIÓN: asegura que la imagen esté dentro del canvas al montar
-  const hasValidatedPosition = useRef(false);
-  useEffect(() => {
-    if (
-      !hasValidatedPosition.current &&
-      canvasWidth > 0 &&
-      canvasHeight > 0 &&
-      size.width > 0 &&
-      size.height > 0
-    ) {
-      const currentX = (pan.x as any)._value;
-      const currentY = (pan.y as any)._value;
-      let validX = Math.max(0, Math.min(currentX, canvasWidth - size.width));
-      let validY = Math.max(0, Math.min(currentY, canvasHeight - size.height));
-      if (validX !== currentX || validY !== currentY) {
-        pan.setValue({ x: validX, y: validY });
-
-        (async () => {
-          try {
-            await updatePageImage(image.id, {
-              position_x: validX,
-              position_y: validY,
-            });
-          } catch (e) {
-            console.error("Error guardando posición inicial de la imagen:", e);
-          }
-        })();
-        onMoveEnd(image.id, validX, validY);
-      }
-      hasValidatedPosition.current = true;
-    }
-  }, [canvasWidth, canvasHeight, size.width, size.height]);
+  // He eliminado la validación inicial que forzaba la imagen dentro del canvas.
+  // Si la quieres de vuelta, coméntame y la reintroduzco con la lógica que prefieras.
 
   /* ---------- Move panResponder (guarda en BD al soltar) ---------- */
   const panResponder = useRef(
@@ -204,14 +171,7 @@ export const DraggableImage: React.FC<Props> = ({
         let nx = startRef.current.x + g.dx;
         let ny = startRef.current.y + g.dy;
 
-        // aplicar límites del canvas
-        if (canvasWidth > 0) {
-          nx = Math.max(0, Math.min(nx, canvasWidth - size.width));
-        }
-        if (canvasHeight > 0) {
-          ny = Math.max(0, Math.min(ny, canvasHeight - size.height));
-        }
-
+        // SIN LÍMITES: no aplicamos recortes al mover, permiten coordenadas negativas o fuera del canvas
         pan.setValue({ x: nx, y: ny });
       },
       onPanResponderRelease: async (_evt, g) => {
@@ -225,26 +185,19 @@ export const DraggableImage: React.FC<Props> = ({
         const newX = startRef.current.x + g.dx;
         const newY = startRef.current.y + g.dy;
 
-        // asegurar dentro canvas final
-        let finalX = newX;
-        let finalY = newY;
-        if (canvasWidth > 0)
-          finalX = Math.max(0, Math.min(finalX, canvasWidth - size.width));
-        if (canvasHeight > 0)
-          finalY = Math.max(0, Math.min(finalY, canvasHeight - size.height));
-
-        pan.setValue({ x: finalX, y: finalY });
+        // SIN LÍMITES: guardamos la posición tal cual
+        pan.setValue({ x: newX, y: newY });
 
         try {
-          onMoveEnd(image.id, finalX, finalY);
+          onMoveEnd(image.id, newX, newY);
         } catch (e) {
           console.error("onMoveEnd error:", e);
         }
 
         try {
           await updatePageImage(image.id, {
-            position_x: finalX,
-            position_y: finalY,
+            position_x: newX,
+            position_y: newY,
           });
         } catch (e) {
           console.error("Error guardando posición de la imagen en BD:", e);
@@ -264,8 +217,7 @@ export const DraggableImage: React.FC<Props> = ({
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
         toolbarButtonPressed.current = true;
-        isResizingRef.current = true; // <-- marca que estamos redimensionando
-        // usa lastSizeRef actual para evitar leer un size stale
+        isResizingRef.current = true;
         resizeStart.current = {
           w: lastSizeRef.current.width,
           h: lastSizeRef.current.height,
@@ -285,14 +237,7 @@ export const DraggableImage: React.FC<Props> = ({
         let nextW = Math.max(MIN_SIZE, resizeStart.current.w + dx);
         let nextH = Math.max(MIN_SIZE, resizeStart.current.h + dy);
 
-        const currentX = (pan.x as any)._value ?? image.x;
-        const currentY = (pan.y as any)._value ?? image.y;
-        if (canvasWidth > 0 && currentX + nextW > canvasWidth)
-          nextW = Math.max(MIN_SIZE, canvasWidth - currentX);
-        if (canvasHeight > 0 && currentY + nextH > canvasHeight)
-          nextH = Math.max(MIN_SIZE, canvasHeight - currentY);
-
-        // Actualizamos estado (para render) y el ref (para persistir EXACTAMENTE lo que el usuario vio)
+        // SIN LÍMITES: ya no recortamos por canvasWidth/canvasHeight
         setSize({ width: nextW, height: nextH });
         lastSizeRef.current = { width: nextW, height: nextH };
       },
@@ -300,7 +245,6 @@ export const DraggableImage: React.FC<Props> = ({
         toolbarButtonPressed.current = false;
         isResizingRef.current = false;
 
-        // Usa el valor guardado en el ref (evita race condition con setState)
         const finalW = Math.max(
           MIN_SIZE,
           Math.round(lastSizeRef.current.width)
@@ -310,7 +254,6 @@ export const DraggableImage: React.FC<Props> = ({
           Math.round(lastSizeRef.current.height)
         );
 
-        // Aseguramos estado consistente
         setSize({ width: finalW, height: finalH });
 
         try {
@@ -327,7 +270,7 @@ export const DraggableImage: React.FC<Props> = ({
       },
       onPanResponderTerminate: async () => {
         toolbarButtonPressed.current = false;
-isResizingRef.current = false;
+        isResizingRef.current = false;
         const finalW = Math.max(
           MIN_SIZE,
           Math.round(lastSizeRef.current.width)
