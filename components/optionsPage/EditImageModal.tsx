@@ -41,7 +41,8 @@ type Props = {
   ) => void;
 };
 
-type Shape = "none" | "square" | "circle" | "heart" | "star";
+// REMOVIDO "none" / Full
+type Shape = "square" | "circle" | "heart" | "star";
 
 export default function EditImageModal({
   visible,
@@ -60,7 +61,8 @@ export default function EditImageModal({
   } | null>(null);
 
   const [showCropOptions, setShowCropOptions] = useState(false);
-  const [shape, setShape] = useState<Shape>("none");
+  // por defecto un tipo de recorte (puedes cambiarlo)
+  const [shape, setShape] = useState<Shape>("square");
 
   const viewShotRef = useRef<any>(null);
 
@@ -70,7 +72,7 @@ export default function EditImageModal({
     setRotation(image?.rotation ?? 0);
     setNaturalSize(null);
     setShowCropOptions(false);
-    setShape("none");
+    setShape("square");
 
     if (image?.uri) {
       Image.getSize(
@@ -121,8 +123,8 @@ export default function EditImageModal({
       return;
     }
     try {
-      // Si no hay recorte, devolver tal cual
-      if (!showCropOptions || shape === "none") {
+      // Si no hay recorte activo, devolver tal cual (original)
+      if (!showCropOptions) {
         onSave(image.id, workingUri, {
           rotation,
           width: naturalSize?.w,
@@ -144,7 +146,7 @@ export default function EditImageModal({
         return;
       }
 
-      const box = 260;
+      const box = 260; // tamaño del recorte
       onSave(image.id, uri, { rotation, width: box, height: box });
     } catch (e) {
       console.error("save capture error", e);
@@ -154,8 +156,10 @@ export default function EditImageModal({
     }
   };
 
-  const PreviewMasked = ({ size = 300 }: { size?: number }) => {
-    const box = size;
+  // Preview siempre recortada (no hay branch "none")
+  const PreviewMasked = ({ size = 260 }: { size?: number }) => {
+    const box = size; // siempre usamos el tamaño de recorte aquí
+
     return (
       <ViewShot
         ref={viewShotRef}
@@ -173,53 +177,28 @@ export default function EditImageModal({
       >
         <Svg width={box} height={box} viewBox={`0 0 ${box} ${box}`}>
           <Defs>
-            {shape !== "none" && (
-              <ClipPath id="mask">
-                {shape === "square" && (
-                  <Rect x="0" y="0" width={box} height={box} />
-                )}
-                {shape === "circle" && (
-                  <Circle cx={box / 2} cy={box / 2} r={box / 2} />
-                )}
-                {shape === "heart" && (
-                  <Path
-                    d={HEART_PATH}
-                    transform={`scale(${box / 100})`}
-                  />
-                )}
-                {shape === "star" && (
-                  <Path
-                    d={STAR_PATH}
-                    transform={`scale(${box / 100})`}
-                  />
-                )}
-              </ClipPath>
-            )}
+            <ClipPath id="mask">
+              {shape === "square" && <Rect x="0" y="0" width={box} height={box} />}
+              {shape === "circle" && <Circle cx={box / 2} cy={box / 2} r={box / 2} />}
+              {shape === "heart" && (
+                <Path d={HEART_PATH} transform={`scale(${box / 100})`} />
+              )}
+              {shape === "star" && (
+                <Path d={STAR_PATH} transform={`scale(${box / 100})`} />
+              )}
+            </ClipPath>
           </Defs>
 
-          {workingUri && shape !== "none" && (
-            <G clipPath="url(#mask)">
-              <SvgImage
-                x={0}
-                y={0}
-                width={box}
-                height={box}
-                preserveAspectRatio="xMidYMid slice"
-                href={{ uri: workingUri }}
-              />
-            </G>
-          )}
-
-          {workingUri && shape === "none" && (
+          <G clipPath="url(#mask)">
             <SvgImage
               x={0}
               y={0}
               width={box}
               height={box}
-              preserveAspectRatio="xMidYMid meet"
-              href={{ uri: workingUri }}
+              preserveAspectRatio="xMidYMid slice"
+              href={{ uri: workingUri ?? "" }}
             />
-          )}
+          </G>
         </Svg>
       </ViewShot>
     );
@@ -248,8 +227,8 @@ export default function EditImageModal({
             <TouchableOpacity
               onPress={() => {
                 setShowCropOptions((s) => !s);
-                if (showCropOptions) setShape("none");
-                else setShape("square");
+                // si mostramos recorte dejamos el tipo actual o lo inicializamos a square
+                if (!showCropOptions) setShape((prev) => prev ?? "square");
               }}
               style={[S.actionBtn, showCropOptions && S.actionBtnActive]}
             >
@@ -286,13 +265,6 @@ export default function EditImageModal({
                 onPress={() => setShape("star")}
               >
                 <Text style={S.cropButtonText}>Estrella</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[S.cropButton, shape === "none" && S.actionBtnActive]}
-                onPress={() => setShape("none")}
-              >
-                <Text style={S.cropButtonText}>Full</Text>
               </TouchableOpacity>
             </View>
           )}

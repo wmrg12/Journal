@@ -1197,7 +1197,7 @@ export default StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 14,
-    minHeight: 420,
+    minHeight: 320,
   },
   previewWrap: {
     alignItems: 'center',

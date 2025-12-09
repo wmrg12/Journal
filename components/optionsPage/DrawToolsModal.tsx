@@ -18,7 +18,7 @@ type DrawToolsModalProps = {
   eraserWidth: number;
   onEraserWidthChange: (width: number) => void;
   onStartDrawing: () => void;
-  onStopDrawing?: () => void; 
+  onStopDrawing?: () => void; // nuevo: terminar dibujo explícitamente
 };
 
 // Configuración de grosores
@@ -116,6 +116,7 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
       transparent
       animationType="slide"
       onRequestClose={() => {
+        // Si existe onStopDrawing preferimos llamarla (termina el modo dibujar).
         if (onStopDrawing) {
           onStopDrawing();
         } else {
@@ -126,7 +127,7 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
     >
       <View style={S.drawModalOverlay}>
         <TouchableOpacity onPress={() => { onStopDrawing?.(); }}>
-
+          <MaterialIcons name="close" size={24} color={uiColors.gray} />
         </TouchableOpacity>
 
         <View style={S.drawOptionsContainer}>
@@ -296,9 +297,12 @@ export const DrawToolsModal: React.FC<DrawToolsModalProps> = ({
             <TouchableOpacity
               style={S.addTextButton}
               onPress={() => {
+                // Inicia modo dibujo y cierra modal para dibujar
                 onStartDrawing();
+                // Mantener modal abierto o cerrarlo según UX: aquí cerramos
                 if (onStopDrawing) {
-                  onClose(); 
+                  // no cerrar modal: onStartDrawing -> normalmente hará setDrawMode(true) y la UI de dibujo estará activa
+                  onClose(); // cerramos modal para empezar a dibujar en pantalla
                 } else {
                   onClose();
                 }
