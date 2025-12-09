@@ -54,7 +54,10 @@ export const DraggableImage: React.FC<Props> = ({
   const pan = useRef(new Animated.ValueXY({ x: image.x, y: image.y })).current;
 
   // size / rotation
-  const [size, setSize] = useState({ width: image.width ?? 120, height: image.height ?? 120 });
+  const [size, setSize] = useState({
+    width: image.width ?? 120,
+    height: image.height ?? 120,
+  });
   const [rotation, setRotation] = useState(image.rotation ?? 0);
   const rotationRef = useRef(rotation);
 
@@ -65,17 +68,48 @@ export const DraggableImage: React.FC<Props> = ({
   const [isDragging, setIsDragging] = useState(false);
   const toolbarButtonPressed = useRef(false);
   const startRef = useRef({ x: image.x, y: image.y });
-  const resizeStart = useRef({ w: size.width, h: size.height, startX: 0, startY: 0 });
-  const rotateStart = useRef({ centerX: 0, centerY: 0, startAngle: 0, startRotation: 0 });
+  const resizeStart = useRef({
+    w: size.width,
+    h: size.height,
+    startX: 0,
+    startY: 0,
+  });
+  const rotateStart = useRef({
+    centerX: 0,
+    centerY: 0,
+    startAngle: 0,
+    startRotation: 0,
+  });
   const boxRef = useRef<View | null>(null);
+
+  const isResizingRef = useRef(false);
+  const isDraggingRef = useRef(false);
+  const isRotatingRef = useRef(false);
 
   useEffect(() => {
     rotationRef.current = rotation;
   }, [rotation]);
 
   // sync local state when incoming image props change
-  useEffect(() => setSize({ width: image.width ?? 120, height: image.height ?? 120 }), [image.width, image.height]);
   useEffect(() => {
+    if (
+      isResizingRef.current ||
+      isDraggingRef.current ||
+      isRotatingRef.current
+    ) {
+      return;
+    }
+    setSize({ width: image.width ?? 120, height: image.height ?? 120 });
+  }, [image.width, image.height]);
+
+  useEffect(() => {
+    if (
+      isResizingRef.current ||
+      isDraggingRef.current ||
+      isRotatingRef.current
+    ) {
+      return;
+    }
     setRotation(image.rotation ?? 0);
     rotationRef.current = image.rotation ?? 0;
   }, [image.rotation]);
@@ -86,8 +120,11 @@ export const DraggableImage: React.FC<Props> = ({
   }, [size.width, size.height]);
 
   useEffect(() => {
-    // also sync when image props change (cover cases where parent updates)
-    lastSizeRef.current = { width: image.width ?? 120, height: image.height ?? 120 };
+    if (isResizingRef.current) return;
+    lastSizeRef.current = {
+      width: image.width ?? 120,
+      height: image.height ?? 120,
+    };
   }, [image.width, image.height]);
 
   useEffect(() => {
@@ -98,36 +135,19 @@ export const DraggableImage: React.FC<Props> = ({
     }).start();
   }, [image.x, image.y, pan]);
 
-  const measureBox = (cb?: (x: number, y: number, w: number, h: number) => void) => {
+  const measureBox = (
+    cb?: (x: number, y: number, w: number, h: number) => void
+  ) => {
     if (!boxRef.current) return;
-    boxRef.current.measureInWindow((x: number, y: number, w: number, h: number) => {
-      if (cb) cb(x, y, w, h);
-    });
+    boxRef.current.measureInWindow(
+      (x: number, y: number, w: number, h: number) => {
+        if (cb) cb(x, y, w, h);
+      }
+    );
   };
 
-  // VALIDACIÓN: asegura que la imagen esté dentro del canvas al montar
-  const hasValidatedPosition = useRef(false);
-  useEffect(() => {
-    if (!hasValidatedPosition.current && canvasWidth > 0 && canvasHeight > 0 && size.width > 0 && size.height > 0) {
-      const currentX = (pan.x as any)._value;
-      const currentY = (pan.y as any)._value;
-      let validX = Math.max(0, Math.min(currentX, canvasWidth - size.width));
-      let validY = Math.max(0, Math.min(currentY, canvasHeight - size.height));
-      if (validX !== currentX || validY !== currentY) {
-        pan.setValue({ x: validX, y: validY });
-
-        (async () => {
-          try {
-            await updatePageImage(image.id, { position_x: validX, position_y: validY });
-          } catch (e) {
-            console.error("Error guardando posición inicial de la imagen:", e);
-          }
-        })();
-        onMoveEnd(image.id, validX, validY);
-      }
-      hasValidatedPosition.current = true;
-    }
-  }, [canvasWidth, canvasHeight, size.width, size.height]);
+  // He eliminado la validación inicial que forzaba la imagen dentro del canvas.
+  // Si la quieres de vuelta, coméntame y la reintroduzco con la lógica que prefieras.
 
   /* ---------- Move panResponder (guarda en BD al soltar) ---------- */
   const panResponder = useRef(
@@ -151,14 +171,7 @@ export const DraggableImage: React.FC<Props> = ({
         let nx = startRef.current.x + g.dx;
         let ny = startRef.current.y + g.dy;
 
-        // aplicar límites del canvas
-        if (canvasWidth > 0) {
-          nx = Math.max(0, Math.min(nx, canvasWidth - size.width));
-        }
-        if (canvasHeight > 0) {
-          ny = Math.max(0, Math.min(ny, canvasHeight - size.height));
-        }
-
+        // SIN LÍMITES: no aplicamos recortes al mover, permiten coordenadas negativas o fuera del canvas
         pan.setValue({ x: nx, y: ny });
       },
       onPanResponderRelease: async (_evt, g) => {
@@ -172,22 +185,20 @@ export const DraggableImage: React.FC<Props> = ({
         const newX = startRef.current.x + g.dx;
         const newY = startRef.current.y + g.dy;
 
-        // asegurar dentro canvas final
-        let finalX = newX;
-        let finalY = newY;
-        if (canvasWidth > 0) finalX = Math.max(0, Math.min(finalX, canvasWidth - size.width));
-        if (canvasHeight > 0) finalY = Math.max(0, Math.min(finalY, canvasHeight - size.height));
-
-        pan.setValue({ x: finalX, y: finalY });
+        // SIN LÍMITES: guardamos la posición tal cual
+        pan.setValue({ x: newX, y: newY });
 
         try {
-          onMoveEnd(image.id, finalX, finalY);
+          onMoveEnd(image.id, newX, newY);
         } catch (e) {
           console.error("onMoveEnd error:", e);
         }
 
         try {
-          await updatePageImage(image.id, { position_x: finalX, position_y: finalY });
+          await updatePageImage(image.id, {
+            position_x: newX,
+            position_y: newY,
+          });
         } catch (e) {
           console.error("Error guardando posición de la imagen en BD:", e);
         }
@@ -206,10 +217,17 @@ export const DraggableImage: React.FC<Props> = ({
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
         toolbarButtonPressed.current = true;
-        resizeStart.current = { w: size.width, h: size.height, startX: (evt as any).nativeEvent.pageX, startY: (evt as any).nativeEvent.pageY };
+        isResizingRef.current = true;
+        resizeStart.current = {
+          w: lastSizeRef.current.width,
+          h: lastSizeRef.current.height,
+          startX: (evt as any).nativeEvent.pageX,
+          startY: (evt as any).nativeEvent.pageY,
+        };
         onSelect(image.id);
         measureBox();
       },
+
       onPanResponderMove: (evt) => {
         const pageX = (evt as any).nativeEvent.pageX;
         const pageY = (evt as any).nativeEvent.pageY;
@@ -219,23 +237,23 @@ export const DraggableImage: React.FC<Props> = ({
         let nextW = Math.max(MIN_SIZE, resizeStart.current.w + dx);
         let nextH = Math.max(MIN_SIZE, resizeStart.current.h + dy);
 
-        const currentX = (pan.x as any)._value ?? image.x;
-        const currentY = (pan.y as any)._value ?? image.y;
-        if (canvasWidth > 0 && currentX + nextW > canvasWidth) nextW = Math.max(MIN_SIZE, canvasWidth - currentX);
-        if (canvasHeight > 0 && currentY + nextH > canvasHeight) nextH = Math.max(MIN_SIZE, canvasHeight - currentY);
-
-        // Actualizamos estado (para render) y el ref (para persistir EXACTAMENTE lo que el usuario vio)
+        // SIN LÍMITES: ya no recortamos por canvasWidth/canvasHeight
         setSize({ width: nextW, height: nextH });
         lastSizeRef.current = { width: nextW, height: nextH };
       },
       onPanResponderRelease: async () => {
         toolbarButtonPressed.current = false;
+        isResizingRef.current = false;
 
-        // Usa el valor guardado en el ref (evita race condition con setState)
-        const finalW = Math.max(MIN_SIZE, Math.round(lastSizeRef.current.width));
-        const finalH = Math.max(MIN_SIZE, Math.round(lastSizeRef.current.height));
+        const finalW = Math.max(
+          MIN_SIZE,
+          Math.round(lastSizeRef.current.width)
+        );
+        const finalH = Math.max(
+          MIN_SIZE,
+          Math.round(lastSizeRef.current.height)
+        );
 
-        // Aseguramos estado consistente
         setSize({ width: finalW, height: finalH });
 
         try {
@@ -252,9 +270,15 @@ export const DraggableImage: React.FC<Props> = ({
       },
       onPanResponderTerminate: async () => {
         toolbarButtonPressed.current = false;
-
-        const finalW = Math.max(MIN_SIZE, Math.round(lastSizeRef.current.width));
-        const finalH = Math.max(MIN_SIZE, Math.round(lastSizeRef.current.height));
+        isResizingRef.current = false;
+        const finalW = Math.max(
+          MIN_SIZE,
+          Math.round(lastSizeRef.current.width)
+        );
+        const finalH = Math.max(
+          MIN_SIZE,
+          Math.round(lastSizeRef.current.height)
+        );
 
         setSize({ width: finalW, height: finalH });
 
@@ -287,13 +311,23 @@ export const DraggableImage: React.FC<Props> = ({
           rotateStart.current.centerY = y + h / 2;
 
           const { pageX, pageY } = (evt as any).nativeEvent;
-          rotateStart.current.startAngle = Math.atan2(pageY - rotateStart.current.centerY, pageX - rotateStart.current.centerX) * (180 / Math.PI);
+          rotateStart.current.startAngle =
+            Math.atan2(
+              pageY - rotateStart.current.centerY,
+              pageX - rotateStart.current.centerX
+            ) *
+            (180 / Math.PI);
           rotateStart.current.startRotation = rotationRef.current ?? rotation;
         });
       },
       onPanResponderMove: (evt) => {
         const { pageX, pageY } = (evt as any).nativeEvent;
-        const currentAngle = Math.atan2(pageY - rotateStart.current.centerY, pageX - rotateStart.current.centerX) * (180 / Math.PI);
+        const currentAngle =
+          Math.atan2(
+            pageY - rotateStart.current.centerY,
+            pageX - rotateStart.current.centerX
+          ) *
+          (180 / Math.PI);
         const delta = currentAngle - rotateStart.current.startAngle;
         const newRot = rotateStart.current.startRotation + delta;
         setRotation(newRot);
@@ -358,10 +392,7 @@ export const DraggableImage: React.FC<Props> = ({
       style={[
         {
           position: "absolute",
-          transform: [
-            { translateX: pan.x },
-            { translateY: pan.y },
-          ],
+          transform: [{ translateX: pan.x }, { translateY: pan.y }],
           width: size.width,
           height: size.height,
           zIndex: isSelected ? 1000 : 1,
@@ -379,16 +410,34 @@ export const DraggableImage: React.FC<Props> = ({
         }}
       >
         {/* Aplicamos la rotación en este View interno (rotación alrededor del centro por defecto) */}
-        <View style={{ width: "100%", height: "100%", transform: [{ rotate: `${rotation}deg` }] }}>
-          <TouchableOpacity activeOpacity={1} onPress={handleTap} style={{ width: "100%", height: "100%" }}>
-            <Image source={{ uri: image.uri }} style={{ width: "100%", height: "100%", borderRadius: 8 }} resizeMode="cover" />
+        <View
+          style={{
+            width: "100%",
+            height: "100%",
+            transform: [{ rotate: `${rotation}deg` }],
+          }}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={handleTap}
+            style={{ width: "100%", height: "100%" }}
+          >
+            <Image
+              source={{ uri: image.uri }}
+              style={{ width: "100%", height: "100%", borderRadius: 8 }}
+              resizeMode="cover"
+            />
           </TouchableOpacity>
         </View>
 
         {isSelected && (
           <>
             {/* delete - top-left */}
-            <TouchableOpacity onPressIn={() => (toolbarButtonPressed.current = true)} onPress={handleDelete} style={[S.shapeControlButton, S.shapeDeleteButton]}>
+            <TouchableOpacity
+              onPressIn={() => (toolbarButtonPressed.current = true)}
+              onPress={handleDelete}
+              style={[S.shapeControlButton, S.shapeDeleteButton]}
+            >
               <Feather name="trash-2" size={14} color="#fff" />
             </TouchableOpacity>
 
@@ -396,23 +445,43 @@ export const DraggableImage: React.FC<Props> = ({
             <TouchableOpacity
               onPressIn={() => (toolbarButtonPressed.current = true)}
               onPress={handleEdit}
-              style={[S.shapeControlButton, { top: -20, right: -20, position: "absolute", backgroundColor: uiColors.primary }]}
+              style={[
+                S.shapeControlButton,
+                {
+                  top: -20,
+                  right: -20,
+                  position: "absolute",
+                  backgroundColor: uiColors.primary,
+                },
+              ]}
             >
               <Feather name="edit-2" size={14} color="#fff" />
             </TouchableOpacity>
 
             {/* duplicate - bottom-left */}
-            <TouchableOpacity onPressIn={() => (toolbarButtonPressed.current = true)} onPress={handleDuplicate} style={[S.shapeControlButton, S.shapeDuplicateButton]}>
+            <TouchableOpacity
+              onPressIn={() => (toolbarButtonPressed.current = true)}
+              onPress={handleDuplicate}
+              style={[S.shapeControlButton, S.shapeDuplicateButton]}
+            >
               <Feather name="copy" size={14} color="#fff" />
             </TouchableOpacity>
 
             {/* rotate - bottom-right */}
-            <View {...rotatePanResponder.panHandlers} style={[S.shapeControlButton, S.shapeRotateButton]} pointerEvents="box-only">
+            <View
+              {...rotatePanResponder.panHandlers}
+              style={[S.shapeControlButton, S.shapeRotateButton]}
+              pointerEvents="box-only"
+            >
               <Feather name="rotate-cw" size={14} color="#fff" />
             </View>
 
             {/* resize - bottom-center */}
-            <View {...resizeResponder.panHandlers} style={[S.shapeResizeHandle, { bottom: -24 }]} pointerEvents="box-only">
+            <View
+              {...resizeResponder.panHandlers}
+              style={[S.shapeResizeHandle, { bottom: -24 }]}
+              pointerEvents="box-only"
+            >
               <View style={S.shapeResizeHandleInner} />
             </View>
           </>
