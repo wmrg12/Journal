@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Alert } from 'react-native';
+import { downloadAudioFromSupabase, getFileNameFromUrl } from '@/src/service/storageService';
+import * as FileSystem from 'expo-file-system/legacy'; 
+
 import {
   listPageAudios,
   createPageAudio,
@@ -13,6 +16,7 @@ interface UsePageAudiosReturn {
   audios: PageAudio[];
   selectedAudioId: string | null;
   isLoading: boolean;
+  downloadingIds: Set<string>;
   setSelectedAudioId: (id: string | null) => void;
   getPanForAudio: (audioId: string) => Animated.ValueXY;
   handleAddAudio: (audioUri: string, audioType: 'recording' | 'file') => Promise<void>;
@@ -27,10 +31,12 @@ export function usePageAudios(
   currentPageId: string | null,
   canvasWidth: number,
   canvasHeight: number,
+  getToken: () => Promise<string | null>
 ): UsePageAudiosReturn {
   const [audios, setAudios] = useState<PageAudio[]>([]);
   const [selectedAudioId, setSelectedAudioId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
 
   const audioPans = useRef<Map<string, Animated.ValueXY>>(new Map());
 
@@ -42,7 +48,6 @@ export function usePageAudios(
         const initialX = audio?.position_x ?? 0;
         const initialY = audio?.position_y ?? 0;
         const newPan = new Animated.ValueXY({ x: initialX, y: initialY });
-        // Asegurar que el offset esté en cero al inicio
         newPan.setOffset({ x: 0, y: 0 });
         audioPans.current.set(audioId, newPan);
       }
@@ -56,16 +61,93 @@ export function usePageAudios(
     if (!currentPageId) return;
     try {
       const loadedAudios = await listPageAudios(currentPageId);
-      setAudios(loadedAudios);
+      
+      console.log(` Total audios en página: ${loadedAudios.length}`); 
+      
+      // Identificar audios que necesitan descarga
+      const needsDownload = loadedAudios
+        .filter(a => a.audio_uri.startsWith('http://') || a.audio_uri.startsWith('https://'))
+        .map(a => a.id);
+      
+      setDownloadingIds(new Set(needsDownload));
+      
+      if (needsDownload.length > 0) {
+        console.log(`${needsDownload.length} audios necesitan descarga`); 
+      }
+      
+      // Descargar audios de Supabase
+      const processedAudios = await Promise.all(
+        loadedAudios.map(async (audio) => {
+          // Log para cada audio
+          const uriPreview = audio.audio_uri.substring(0, 60) + (audio.audio_uri.length > 60 ? '...' : '');
+          console.log(`Audio ${audio.id.substring(0, 8)}: ${uriPreview}`);
+          
+          if (audio.audio_uri && (audio.audio_uri.startsWith('http://') || audio.audio_uri.startsWith('https://'))) {
+            try {
+              console.log(` Descargando audio ${audio.id.substring(0, 8)} desde Supabase...`);
+              const fileName = getFileNameFromUrl(audio.audio_uri);
+              const localUri = await downloadAudioFromSupabase(audio.audio_uri, fileName);
+              
+              //  Verificar que el archivo exista
+              const fileInfo = await FileSystem.getInfoAsync(localUri);
+              console.log(`Audio descargado: ${localUri}`);
+              if (fileInfo.exists && 'size' in fileInfo) {
+                console.log(` Archivo existe: true, Tamaño: ${fileInfo.size} bytes`);
+              } else {
+                console.log(`Archivo existe: ${fileInfo.exists}`);
+              }
+              await updatePageAudio(audio.id, { audio_uri: localUri });
+              
+              // Remover de descarga
+              setDownloadingIds(prev => {
+                const next = new Set(prev);
+                next.delete(audio.id);
+                return next;
+              });
+              
+              return { ...audio, audio_uri: localUri };
+            } catch (error) {
+              console.error(` Error descargando audio ${audio.id}:`, error);
+              
+              setDownloadingIds(prev => {
+                const next = new Set(prev);
+                next.delete(audio.id);
+                return next;
+              });
+              
+              return audio;
+            }
+          }
+          
+          //  Verificar audios que ya son file://
+          if (audio.audio_uri.startsWith('file://')) {
+            try {
+              const fileInfo = await FileSystem.getInfoAsync(audio.audio_uri);
+              if (!fileInfo.exists) {
+                console.warn(` Audio ${audio.id.substring(0, 8)} NO existe localmente: ${audio.audio_uri}`);
+              } else if ('size' in fileInfo) {
+                console.log(` Audio ${audio.id.substring(0, 8)} existe: ${fileInfo.size} bytes`);
+              } else {
+                console.log(`Audio ${audio.id.substring(0, 8)} existe`);
+              }
+            } catch (error) {
+              console.error(` Error verificando audio ${audio.id}:`, error);
+            }
+          }
 
-      // Actualizar pans existentes solo si la posición cambió desde otra fuente
-      loadedAudios.forEach((audio) => {
+          return audio;
+        })
+      );
+
+      setAudios(processedAudios);
+
+      // Actualizar pans existentes
+      processedAudios.forEach((audio) => {
         if (audioPans.current.has(audio.id)) {
           const pan = audioPans.current.get(audio.id)!;
           const currentX = (pan.x as any)._value;
           const currentY = (pan.y as any)._value;
 
-          // Solo actualizar si hay una diferencia significativa (más de 1px)
           if (
             Math.abs(currentX - audio.position_x) > 1 ||
             Math.abs(currentY - audio.position_y) > 1
@@ -99,11 +181,18 @@ export function usePageAudios(
       try {
         setIsLoading(true);
 
-        // Crear audio en el centro del canvas
         const centerX = canvasWidth / 2 - 25;
         const centerY = canvasHeight / 2 - 25;
 
-        await createPageAudio(currentPageId, audioUri, audioType, centerX, centerY);
+        const token = await getToken();
+        
+        if (!token) {
+          console.error('No se pudo obtener el token');
+          Alert.alert('Error', 'No se pudo autenticar. Intenta nuevamente.');
+          return;
+        }
+
+        await createPageAudio(currentPageId, audioUri, audioType, centerX, centerY, token);
         await loadAudios();
       } catch (error) {
         console.error('Error creating audio:', error);
@@ -113,7 +202,7 @@ export function usePageAudios(
         setIsLoading(false);
       }
     },
-    [currentPageId, canvasWidth, canvasHeight, loadAudios],
+    [currentPageId, canvasWidth, canvasHeight, loadAudios, getToken], 
   );
 
   // Eliminar audio
@@ -169,12 +258,21 @@ export function usePageAudios(
         const audio = audios.find((a) => a.id === audioId);
         if (!audio) return;
 
+        const token = await getToken();
+        
+        if (!token) {
+          console.error('No se pudo obtener el token');
+          Alert.alert('Error', 'No se pudo autenticar. Intenta nuevamente.');
+          return;
+        }
+
         await createPageAudio(
           currentPageId,
           audio.audio_uri,
           audio.audio_type,
           audio.position_x + 20,
           audio.position_y + 20,
+          token, 
         );
         await loadAudios();
       } catch (error) {
@@ -183,7 +281,7 @@ export function usePageAudios(
         throw error;
       }
     },
-    [currentPageId, audios, loadAudios],
+    [currentPageId, audios, loadAudios, getToken], 
   );
 
   // Seleccionar audio
@@ -195,8 +293,9 @@ export function usePageAudios(
     audios,
     selectedAudioId,
     isLoading,
+    downloadingIds,
     setSelectedAudioId,
-    getPanForAudio,
+    getPanForAudio, 
     handleAddAudio,
     handleDeleteAudio,
     handleAudioPositionCommit,

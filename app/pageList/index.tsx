@@ -94,7 +94,6 @@ export default function PagesList() {
         stickers = results[4] ?? [];
         audios = results[5] ?? [];
 
-        // Filtrar draws: si un trazo tiene segmentos (son hijos), no mostrar el padre
         const segments = new Set<string>();
         const parentIds = new Set<string>();
         for (const draw of draws) {
@@ -230,6 +229,7 @@ export default function PagesList() {
               positionMode="topleft"
               debug={false}
               style={{ width: "100%", height: "100%" }}
+              
             />
           </View>
 

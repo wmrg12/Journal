@@ -247,6 +247,7 @@ function SyncManager() {
 
     // MODO ONLINE, Verificar Clerk
     if (!authLoaded || !userLoaded) {
+      console.log(' Esperando auth/user loaded...');
       return;
     }
 

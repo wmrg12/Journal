@@ -48,10 +48,9 @@ export const usePageText = (
     return merged;
   }, []);
 
-  // Función para estimar dimensiones del texto
   const estimateTextDimensions = useCallback((text: PageText) => {
     const fontSize = text.font_size ?? 16;
-    const charWidth = fontSize * 0.6; // Aproximación de ancho por carácter
+    const charWidth = fontSize * 0.6; 
     const lineHeight = fontSize * 1.5;
     const maxCharsPerLine = 30;
     const contentLength = text.content.length;
@@ -63,7 +62,6 @@ export const usePageText = (
     return { width, height };
   }, []);
 
-  //Función para validar límites del canvas
   const clampToCanvas = useCallback(
     (x: number, y: number, textWidth: number, textHeight: number) => {
       let clampedX = x;
@@ -183,7 +181,6 @@ export const usePageText = (
         let newY = currentText.position_y + offsetY;
 
         if (canvasWidth > 0 && canvasHeight > 0) {
-          // Verificar si la posición con offset se sale del canvas
           if (
             newX + textWidth > canvasWidth ||
             newY + textHeight > canvasHeight

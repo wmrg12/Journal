@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as ImagePicker from "expo-image-picker";
+import { downloadImageFromSupabase, getFileNameFromUrl } from "@/src/service/storageService";
+import * as FileSystem from 'expo-file-system/legacy';
+
 import {
   listPageImages,
   createPageImage,
@@ -20,13 +23,15 @@ export type PageImage = {
   updated_at: number;
 };
 
-export function usePageImages(currentPageId: string | null) {
+export function usePageImages(currentPageId: string | null, getToken: () => Promise<string | null>) {
   const [pageImages, setPageImages] = useState<PageImage[]>([]);
   const pageImagesRef = useRef<PageImage[]>([]);
   pageImagesRef.current = pageImages;
 
   const [selectedImageId, setSelectedImageId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set()); 
+
   const sameImages = (a: PageImage[], b: PageImage[]) => {
     if (a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++) {
@@ -36,12 +41,13 @@ export function usePageImages(currentPageId: string | null) {
     return true;
   };
 
-  useEffect(() => {
+    useEffect(() => {
     let mounted = true;
     (async () => {
       if (!currentPageId) {
         if (mounted) {
           if (pageImagesRef.current.length > 0) setPageImages([]);
+          setDownloadingIds(new Set()); 
         }
         return;
       }
@@ -50,7 +56,85 @@ export function usePageImages(currentPageId: string | null) {
         const rows = (await listPageImages(currentPageId)) as PageImage[];
         if (!mounted) return;
 
-        const ordered = rows.slice().sort((a, b) => (a.created_at ?? 0) - (b.created_at ?? 0));
+        console.log(` Total imágenes en página: ${rows.length}`); 
+
+        // Identificar imágenes que necesitan descarga
+        const needsDownload = rows
+          .filter(img => img.uri.startsWith('http://') || img.uri.startsWith('https://'))
+          .map(img => img.id);
+        
+        setDownloadingIds(new Set(needsDownload));
+        
+        if (needsDownload.length > 0) {
+          console.log(` ${needsDownload.length} imágenes necesitan descarga`); 
+        }
+
+        // Descargar imágenes de Supabase
+        const processedImages = await Promise.all(
+          rows.map(async (img) => {
+            // Log para cada imagen
+            const uriPreview = img.uri.substring(0, 60) + (img.uri.length > 60 ? '...' : '');
+            console.log(` Imagen ${img.id.substring(0, 8)}: ${uriPreview}`);
+            
+            if (img.uri && (img.uri.startsWith('http://') || img.uri.startsWith('https://'))) {
+              try {
+                console.log(` Descargando imagen ${img.id.substring(0, 8)} desde Supabase...`);
+                const fileName = getFileNameFromUrl(img.uri);
+                const localUri = await downloadImageFromSupabase(img.uri, fileName);
+                
+                // Verificar que el archivo exista
+                const fileInfo = await FileSystem.getInfoAsync(localUri);
+                console.log(` Imagen descargada: ${localUri}`);
+                if (fileInfo.exists && 'size' in fileInfo) {
+                  console.log(`Archivo existe: true, Tamaño: ${fileInfo.size} bytes`);
+                } else {
+                  console.log(`Archivo existe: ${fileInfo.exists}`);
+                }
+                
+                await updatePageImage(img.id, { uri: localUri } as any);
+                
+                // Remover de la lista de descarga
+                setDownloadingIds(prev => {
+                  const next = new Set(prev);
+                  next.delete(img.id);
+                  return next;
+                });
+                
+                return { ...img, uri: localUri };
+              } catch (error) {
+                console.error(`Error descargando imagen ${img.id}:`, error);
+                
+                setDownloadingIds(prev => {
+                  const next = new Set(prev);
+                  next.delete(img.id);
+                  return next;
+                });
+                
+                return img;
+              }
+            }
+            
+            // Verificar imágenes que ya son file://
+            if (img.uri.startsWith('file://')) {
+              try {
+                const fileInfo = await FileSystem.getInfoAsync(img.uri);
+                if (!fileInfo.exists) {
+                  console.warn(`Imagen ${img.id.substring(0, 8)} NO existe localmente: ${img.uri}`);
+                } else if ('size' in fileInfo) {
+                  console.log(`Imagen ${img.id.substring(0, 8)} existe: ${fileInfo.size} bytes`);
+                } else {
+                  console.log(`Imagen ${img.id.substring(0, 8)} existe`);
+                }
+              } catch (error) {
+                console.error(`Error verificando imagen ${img.id}:`, error);
+              }
+            }
+            
+            return img;
+          })
+        );
+
+        const ordered = processedImages.slice().sort((a, b) => (a.created_at ?? 0) - (b.created_at ?? 0));
 
         if (!sameImages(pageImagesRef.current, ordered)) {
           setPageImages(ordered);
@@ -65,8 +149,7 @@ export function usePageImages(currentPageId: string | null) {
     return () => {
       mounted = false;
     };
-    
-  }, [currentPageId]); 
+  }, [currentPageId]);
 
   const addImage = useCallback(async () => {
     if (!currentPageId) return;
@@ -80,13 +163,22 @@ export function usePageImages(currentPageId: string | null) {
       const uri = res.assets[0].uri;
       const finalUri = uri;
 
+      // Obtener token
+      const token = await getToken();
+      
+      if (!token) {
+        console.error('No se pudo obtener el token');
+        return;
+      }
+
       const { id } = await createPageImage(
         currentPageId,
         finalUri,
         20, 
         20, 
         150,
-        150
+        150,
+        token 
       );
 
       const now = Math.floor(Date.now() / 1000);
@@ -103,15 +195,13 @@ export function usePageImages(currentPageId: string | null) {
         updated_at: now,
       };
 
-      // functional update (evita dependencias)
       setPageImages((prev) => [...prev, newImg]);
       setSelectedImageId(id);
     } catch (e) {
       console.error("addImage error:", e);
     }
-  }, [currentPageId]);
+  }, [currentPageId, getToken]); 
 
-  // DUPLICATE image (creates DB entry with offset)
   const handleDuplicateImage = useCallback(async (id: string) => {
     const src = pageImagesRef.current.find((p) => p.id === id);
     if (!src || !currentPageId) return;
@@ -119,13 +209,23 @@ export function usePageImages(currentPageId: string | null) {
       const offset = 16;
       const x = Math.min(src.position_x + offset, 100000);
       const y = Math.min(src.position_y + offset, 100000);
+      
+      // Obtener token
+      const token = await getToken();
+      
+      if (!token) {
+        console.error('No se pudo obtener el token');
+        return;
+      }
+      
       const { id: newId } = await createPageImage(
         currentPageId,
         src.uri,
         x,
         y,
         src.width,
-        src.height
+        src.height,
+        token 
       );
 
       const now = Math.floor(Date.now() / 1000);
@@ -147,8 +247,8 @@ export function usePageImages(currentPageId: string | null) {
     } catch (e) {
       console.error("Error duplicando imagen:", e);
     }
-  }, [currentPageId]);
-
+  }, [currentPageId, getToken]); 
+  
   // REPLACE URI edit from modal
   const replaceImage = useCallback(async (id: string, newUri: string, opts?: { width?: number; height?: number; rotation?: number }) => {
     const img = pageImagesRef.current.find((p) => p.id === id);
@@ -226,6 +326,7 @@ export function usePageImages(currentPageId: string | null) {
     pageImages,
     selectedImageId,
     setSelectedImageId,
+    downloadingIds,
     addImage,
     handleEditImage: pickAndReplaceImage,
     handleDeleteImage,

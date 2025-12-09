@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { View, TouchableOpacity, Animated, PanResponder, Alert } from 'react-native';
+import { View, TouchableOpacity, Animated, PanResponder, Alert, ActivityIndicator, Text } from 'react-native'; // 🔥 NUEVOS
 import { MaterialIcons } from '@expo/vector-icons';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import S from '@/styles/pageViewStyles';
@@ -26,6 +26,7 @@ type DraggableAudioProps = {
   onDuplicate: (id: string) => void;
   locked: boolean;
   isSelected: boolean;
+  isDownloading?: boolean; // 🔥 NUEVA PROP
 };
 
 export const DraggableAudio: React.FC<DraggableAudioProps> = ({
@@ -38,6 +39,7 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
   onDuplicate,
   locked,
   isSelected,
+  isDownloading = false, // 🔥 VALOR POR DEFECTO
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -49,23 +51,21 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
   const isDraggingRef = useRef(false);
   const dragStartTimeRef = useRef(0);
 
-  // Reproducir / Pausar audio
+  // ... (todo el código de reproducción se mantiene igual)
+
   const togglePlayback = async () => {
-    if (isLoading) return;
+    if (isLoading || isDownloading) return; // 🔥 No reproducir si está descargando
 
     try {
       setIsLoading(true);
 
       if (isPlaying) {
-        // Pausar
         if (soundRef.current) {
           await soundRef.current.pauseAsync();
           setIsPlaying(false);
         }
       } else {
-        // Reproducir
         if (soundRef.current) {
-          // Si ya existe el sound, reproducir desde donde quedó
           const status = await soundRef.current.getStatusAsync();
 
           if (status.isLoaded) {
@@ -78,7 +78,6 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
             setIsPlaying(true);
           }
         } else {
-          // Crear nuevo sound
           await Audio.setAudioModeAsync({
             allowsRecordingIOS: false,
             playsInSilentModeIOS: true,
@@ -126,7 +125,6 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
     }
   };
 
-  // Callback del reproductor
   const onPlaybackStatusUpdate = async (status: AVPlaybackStatus) => {
     if (status.isLoaded) {
       if (status.didJustFinish) {
@@ -148,13 +146,10 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
     }
   };
 
-  // Confirmar eliminación
   const confirmDelete = () => {
     Alert.alert(
       'Eliminar audio',
-      `¿Seguro que deseas eliminar este audio ${
-        audio.audio_type === 'recording' ? 'grabado' : 'importado'
-      }?`,
+      `¿Seguro que deseas eliminar este audio ${audio.audio_type === 'recording' ? 'grabado' : 'importado'}?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -162,7 +157,6 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
           style: 'destructive',
           onPress: async () => {
             try {
-              // Detener y limpiar el audio antes de eliminar
               if (soundRef.current) {
                 await soundRef.current.stopAsync();
                 await soundRef.current.unloadAsync();
@@ -180,7 +174,6 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
     );
   };
 
-  // Cleanup al desmontar
   useEffect(() => {
     return () => {
       if (soundRef.current) {
@@ -191,7 +184,6 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
     };
   }, [audio.id]);
 
-  // Cleanup al cambiar la URI
   useEffect(() => {
     if (soundRef.current) {
       soundRef.current.unloadAsync().catch(() => {});
@@ -201,12 +193,11 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
     }
   }, [audio.audio_uri]);
 
-  // PanResponder para arrastrar
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !locked,
+      onStartShouldSetPanResponder: () => !locked && !isDownloading, // 🔥
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        if (!locked) {
+        if (!locked && !isDownloading) { // 🔥
           const moved = Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
           if (moved) isDraggingRef.current = true;
           return moved;
@@ -214,7 +205,7 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
         return false;
       },
       onPanResponderGrant: () => {
-        if (!locked) {
+        if (!locked && !isDownloading) { // 🔥
           dragStartTimeRef.current = Date.now();
           isDraggingRef.current = false;
           onSelect(audio.id);
@@ -230,10 +221,9 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
         useNativeDriver: false,
       }),
       onPanResponderRelease: () => {
-        if (!locked) {
+        if (!locked && !isDownloading) { // 🔥
           const dragDuration = Date.now() - dragStartTimeRef.current;
 
-          // Si fue un tap rápido (no arrastre), reproducir
           if (!isDraggingRef.current && dragDuration < 200) {
             togglePlayback();
           }
@@ -254,20 +244,41 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
 
   return (
     <Animated.View style={[S.audioContainer, animatedStyle]} {...panResponder.panHandlers}>
-      <TouchableOpacity
-        style={[S.audioButton, isSelected && S.audioButtonSelected, isLoading && { opacity: 0.5 }]}
-        onPress={togglePlayback}
-        activeOpacity={0.8}
-        disabled={isLoading || locked}
-      >
-        <MaterialIcons
-          name={isPlaying ? 'album' : 'music-note'}
-          size={32}
-          color={isSelected ? uiColors.primary : uiColors.brown}
-        />
-      </TouchableOpacity>
+      {/* 🔥 MOSTRAR PLACEHOLDER SI ESTÁ DESCARGANDO */}
+      {isDownloading ? (
+        <View
+          style={[
+            S.audioButton,
+            {
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              borderWidth: 2,
+              borderColor: '#3b82f6',
+              borderStyle: 'dashed',
+              justifyContent: 'center',
+              alignItems: 'center',
+            },
+          ]}
+        >
+          <ActivityIndicator size="small" color="#3b82f6" />
+        </View>
+      ) : (
+        // Botón normal de reproducción
+        <TouchableOpacity
+          style={[S.audioButton, isSelected && S.audioButtonSelected, isLoading && { opacity: 0.5 }]}
+          onPress={togglePlayback}
+          activeOpacity={0.8}
+          disabled={isLoading || locked}
+        >
+          <MaterialIcons
+            name={isPlaying ? 'album' : 'music-note'}
+            size={32}
+            color={isSelected ? uiColors.primary : uiColors.brown}
+          />
+        </TouchableOpacity>
+      )}
 
-      {isSelected && !locked && (
+      {/* 🔥 OCULTAR CONTROLES SI ESTÁ DESCARGANDO */}
+      {isSelected && !locked && !isDownloading && (
         <View style={S.audioControls}>
           <TouchableOpacity
             style={S.controlButton}
@@ -287,7 +298,7 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
         </View>
       )}
 
-      {locked && (
+      {locked && !isDownloading && (
         <View style={S.lockIndicator}>
           <MaterialIcons name="lock" size={16} color="#6B7280" />
         </View>

@@ -1,5 +1,6 @@
 // PageView.tsx 
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useAuth } from '@clerk/clerk-expo';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, BackHandler, LayoutChangeEvent, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -61,10 +62,27 @@ import { usePageAudios } from '@/hooks/usePage/usePageAudio';
 // Types
 import { Params } from '@/types';
 
+const normalizeImageUri = (uri: string): string => {
+  if (!uri) return '';
+  
+  if (uri.startsWith('http://') || uri.startsWith('https://')) {
+    return uri;
+  }
+  
+  if (uri.startsWith('file://')) {
+    return uri;
+  }
+  
+  return `file://${uri}`;
+};
+
 export default function PageView() {
   // ROUTER & PARAMS
   const { journalId, color, pageNumber, totalPages } = useLocalSearchParams<Params>();
   const router = useRouter();
+  
+  // AUTH
+  const { getToken, isLoaded, isSignedIn } = useAuth();
 
   // STATE
   const [bg, setBg] = useState<(typeof pagePalette)[number]>(pagePalette[0]);
@@ -86,8 +104,21 @@ export default function PageView() {
   const total = useMemo(() => Math.max(Number(totalPages ?? 1) || 1, 1), [totalPages]);
 
   // CUSTOM HOOKS
+  const safeGetToken = useCallback(async () => {
+    try {
+      if (!getToken) {
+        console.error(' getToken no está disponible');
+        return null;
+      }
+      return await getToken({ template: 'supabase' });
+    } catch (error) {
+      console.error('Error obteniendo token:', error);
+      return null;
+    }
+  }, [getToken]);
+
   const drawing = useSkiaDrawing(currentPageId);
-  // Desestructuro funciones/valores usados de drawing para tener referencias más claras en deps
+
   const {
     strokes,
     setStrokes,
@@ -108,21 +139,19 @@ export default function PageView() {
     pointsToPath,
     clearEraserStrokes,
     waitForPendingSaves,
-    deleteStroke,
-    clearAllStrokes,
     stopDrawing,
   } = drawing;
 
   const textManager = usePageText(currentPageId, canvasSize.width, canvasSize.height);
   const shapeManager = usePageShapes(currentPageId, canvasSize.width, canvasSize.height);
   const stickerManager = usePageStickers(currentPageId);
-  const audioManager = usePageAudios(currentPageId, canvasSize.width, canvasSize.height);
+  const audioManager = usePageAudios(currentPageId, canvasSize.width, canvasSize.height, safeGetToken);
+
   const {
     pageImages,
     selectedImageId,
     setSelectedImageId,
     addImage,
-    handleEditImage,
     handleDeleteImage,
     handleMoveEnd,
     handleResizeEnd,
@@ -130,7 +159,9 @@ export default function PageView() {
     handleDuplicateImage,
     replaceImage,
     loading: imagesLoading,
-  } = usePageImages(currentPageId);
+    downloadingIds: imageDownloadingIds, 
+  } = usePageImages(currentPageId, safeGetToken);
+
 
   // HANDLER PARA MEDIR EL CANVAS
   const handleCanvasLayout = useCallback((event: LayoutChangeEvent) => {
@@ -156,11 +187,10 @@ export default function PageView() {
     rotation?: number;
   };
 
-  // Mapea PageImage (DB) a Img (componente) — stable via useCallback
   const mapPageImageToImg = useCallback((p: PageImage): Img => {
     return {
       id: p.id,
-      uri: p.uri,
+      uri: normalizeImageUri(p.uri), 
       x: (p as any).position_x ?? (p as any).x ?? 0,
       y: (p as any).position_y ?? (p as any).y ?? 0,
       width: (p as any).width ?? 120,
@@ -215,7 +245,7 @@ export default function PageView() {
   }, [color]); // solo depende de `color`
 
   // -----------------------------
-  // useEffect: cargar color desde BD (no incluye `bg` para evitar loop)
+  // useEffect: cargar color desde BD
   // -----------------------------
   useEffect(() => {
     if (!journalId) return;
@@ -243,7 +273,7 @@ export default function PageView() {
   }, [journalId, pageNum]); // evitamos incluir `bg` aquí para no provocar loops
 
   // -----------------------------
-  // useEffect: cargar patrón (solo actualiza si cambia)
+  // useEffect: cargar patrón 
   // -----------------------------
   useEffect(() => {
     if (!journalId) return;
@@ -268,10 +298,6 @@ export default function PageView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [journalId, pageNum]); // no incluimos pagePattern para evitar loops
 
-  // -----------------------------
-  // useEffect: cargar datos de página (texts, shapes, draws, etc.)
-  // NOTA: no incluimos `bg` en deps para evitar re-ejecuciones por setBg
-  // -----------------------------
   useEffect(() => {
     if (!journalId) return;
     let mounted = true;
@@ -355,7 +381,7 @@ export default function PageView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // EFFECTS - VALIDAR TOTAL DE PÁGINAS (sin bg ni router en deps para evitar loops)
+  // EFFECTS - VALIDAR TOTAL DE PÁGINAS 
   useEffect(() => {
     if (!journalId) return;
     let mounted = true;
@@ -705,6 +731,16 @@ export default function PageView() {
 
   const TOOLBAR_BG = uiColors.background;
 
+    if (!isLoaded || !isSignedIn) {
+    return (
+      <SafeAreaView style={[S.container, { backgroundColor: uiColors.background }]} edges={['top', 'left', 'right']}>
+        <View style={S.loadingOverlay}>
+          <ActivityIndicator size="large" color={uiColors.danger} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // RENDER
   return (
     <SafeAreaView style={[S.container, { backgroundColor: TOOLBAR_BG }]} edges={['top', 'left', 'right']}>
@@ -771,6 +807,7 @@ export default function PageView() {
                 key={img.id}
                 image={img}
                 isSelected={selectedImageId === img.id}
+                isDownloading={imageDownloadingIds.has(img.id)}
                 onSelect={(id: string) => setSelectedImageId(id)}
                 onDelete={handleDeleteImage}
                 onEdit={openImageEditor}
@@ -829,6 +866,7 @@ export default function PageView() {
                   onDuplicate={audioManager.handleDuplicateAudio}
                   locked={audio.is_locked === 1}
                   isSelected={audioManager.selectedAudioId === audio.id}
+                  isDownloading={audioManager.downloadingIds?.has(audio.id) ?? false}   
                 />
               ))}
 

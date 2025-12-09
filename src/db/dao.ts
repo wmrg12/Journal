@@ -267,6 +267,17 @@ async function _initDbInternal(userId?: string) {
       await execTxIgnore(tx, `ALTER TABLE page_images ADD COLUMN user_id TEXT`);
       await execTxIgnore(tx, `ALTER TABLE page_audios ADD COLUMN user_id TEXT`);
       await execTxIgnore(tx, `ALTER TABLE tasks ADD COLUMN user_id TEXT`);
+      await execTxIgnore(tx, `ALTER TABLE pages ADD COLUMN deleted_at INTEGER`);
+
+      // En la sección de migraciones, agregar:
+      await execTxIgnore(tx, `ALTER TABLE journals ADD COLUMN deleted_at INTEGER`);
+await execTxIgnore(tx, `ALTER TABLE tasks ADD COLUMN deleted_at INTEGER`);
+await execTxIgnore(tx, `ALTER TABLE page_texts ADD COLUMN deleted_at INTEGER`);
+await execTxIgnore(tx, `ALTER TABLE page_draws ADD COLUMN deleted_at INTEGER`);
+await execTxIgnore(tx, `ALTER TABLE page_shapes ADD COLUMN deleted_at INTEGER`);
+await execTxIgnore(tx, `ALTER TABLE page_stickers ADD COLUMN deleted_at INTEGER`);
+await execTxIgnore(tx, `ALTER TABLE page_images ADD COLUMN deleted_at INTEGER`);
+await execTxIgnore(tx, `ALTER TABLE page_audios ADD COLUMN deleted_at INTEGER`);
 
       await execTxIgnore(
         tx,
@@ -282,10 +293,7 @@ async function _initDbInternal(userId?: string) {
         `ALTER TABLE page_shapes ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0`,
       );
       await execTxIgnore(tx, `ALTER TABLE page_shapes ADD COLUMN rotation REAL NOT NULL DEFAULT 0`);
-      // borrar diarios
-      // En las migraciones (tanto legacy como async)
       await execTxIgnore(tx, `ALTER TABLE journals ADD COLUMN deleted_at INTEGER`);
-      // Índices adicionales
       await execTx(tx, `CREATE INDEX IF NOT EXISTS idx_pages_journal ON pages(journal_id);`);
       await execTx(
         tx,
@@ -442,10 +450,11 @@ async function _initDbInternal(userId?: string) {
         CREATE INDEX IF NOT EXISTS idx_page_texts_page ON page_texts(page_id);
       `);
 
-      // Ejecutar migraciones por separado (ignorando errores)
+      // Ejecutar migraciones por separado 
       const migrations = [
         `ALTER TABLE journals ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`,
         `ALTER TABLE pages ADD COLUMN updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))`,
+
         `ALTER TABLE journals ADD COLUMN user_id TEXT`,
         `ALTER TABLE pages ADD COLUMN user_id TEXT`,
         `ALTER TABLE page_texts ADD COLUMN user_id TEXT`,
@@ -455,15 +464,28 @@ async function _initDbInternal(userId?: string) {
         `ALTER TABLE page_images ADD COLUMN user_id TEXT`,
         `ALTER TABLE page_audios ADD COLUMN user_id TEXT`,
         `ALTER TABLE tasks ADD COLUMN user_id TEXT`,
+
         `ALTER TABLE page_texts ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0 CHECK(is_locked IN (0,1))`,
         `ALTER TABLE page_texts ADD COLUMN rotation REAL NOT NULL DEFAULT 0`,
         `ALTER TABLE page_shapes ADD COLUMN is_locked INTEGER NOT NULL DEFAULT 0`,
         `ALTER TABLE page_shapes ADD COLUMN rotation REAL NOT NULL DEFAULT 0`,
+
         `ALTER TABLE pages ADD COLUMN pattern TEXT NOT NULL DEFAULT 'none'`,
         `ALTER TABLE journals ADD COLUMN default_pattern TEXT`,
         `ALTER TABLE journals ADD COLUMN default_color TEXT`,
+
+        // Campos deleted_at (todos)
         `ALTER TABLE journals ADD COLUMN deleted_at INTEGER`,
-        `ALTER TABLE page_texts ADD COLUMN text_width`,
+        `ALTER TABLE pages ADD COLUMN deleted_at INTEGER`,
+        `ALTER TABLE tasks ADD COLUMN deleted_at INTEGER`,
+        `ALTER TABLE page_texts ADD COLUMN deleted_at INTEGER`,
+        `ALTER TABLE page_draws ADD COLUMN deleted_at INTEGER`,
+        `ALTER TABLE page_shapes ADD COLUMN deleted_at INTEGER`,
+        `ALTER TABLE page_stickers ADD COLUMN deleted_at INTEGER`,
+        `ALTER TABLE page_images ADD COLUMN deleted_at INTEGER`,
+        `ALTER TABLE page_audios ADD COLUMN deleted_at INTEGER`,
+
+        `ALTER TABLE page_texts ADD COLUMN text_width`
       ];
 
       for (const migration of migrations) {
@@ -676,12 +698,55 @@ export async function deleteJournal(journalId: string) {
   }
 }
 
-export async function hardDeleteJournal(journalId: string) {
+export async function hardDeleteJournal(journalId: string): Promise<void> {
   if (isAsync) {
-    await runAsync(`DELETE FROM journals WHERE id = ?`, [journalId]);
+    // Primero obtener todas las páginas del journal
+    const pages = await (adb as any).getAllAsync?.(
+      'SELECT id FROM pages WHERE journal_id = ?',
+      [journalId]
+    );
+    
+    // Eliminar cada página con sus elementos
+    for (const page of pages || []) {
+      await hardDeletePage(page.id);
+    }
+    
+    // Eliminar el journal
+    await runAsync('DELETE FROM journals WHERE id = ?', [journalId]);
   } else {
     await txLegacy(async (tx) => {
-      await execTx(tx, `DELETE FROM journals WHERE id = ?`, [journalId]);
+      // Obtener páginas
+      const pages: { id: string }[] = await new Promise((resolve, reject) => {
+        tx.executeSql(
+          'SELECT id FROM pages WHERE journal_id = ?',
+          [journalId],
+          (_: any, res: any) => {
+            const out: { id: string }[] = [];
+            for (let i = 0; i < res.rows.length; i++) {
+              out.push(res.rows.item(i));
+            }
+            resolve(out);
+          },
+          (_: any, err: any) => {
+            reject(err);
+            return true;
+          }
+        );
+      });
+      
+      // Eliminar elementos de cada página
+      for (const page of pages) {
+        await execTx(tx, 'DELETE FROM page_texts WHERE page_id = ?', [page.id]);
+        await execTx(tx, 'DELETE FROM page_draws WHERE page_id = ?', [page.id]);
+        await execTx(tx, 'DELETE FROM page_shapes WHERE page_id = ?', [page.id]);
+        await execTx(tx, 'DELETE FROM page_images WHERE page_id = ?', [page.id]);
+        await execTx(tx, 'DELETE FROM page_stickers WHERE page_id = ?', [page.id]);
+        await execTx(tx, 'DELETE FROM page_audios WHERE page_id = ?', [page.id]);
+        await execTx(tx, 'DELETE FROM pages WHERE id = ?', [page.id]);
+      }
+      
+      // Eliminar el journal
+      await execTx(tx, 'DELETE FROM journals WHERE id = ?', [journalId]);
     });
   }
 }
@@ -779,8 +844,10 @@ export async function updateJournalCover(
 export async function getTotalPages(journalId: string): Promise<number> {
   if (isAsync) {
     const rows = await (adb as any).getAllAsync?.(
-      `SELECT COALESCE(MAX(page_number),0) AS total FROM pages WHERE journal_id = ?`,
-      [journalId],
+      `SELECT COALESCE(MAX(page_number), 0) AS total 
+       FROM pages 
+       WHERE journal_id = ? AND deleted_at IS NULL`,
+      [journalId]
     );
     return rows?.[0]?.total ?? 0;
   }
@@ -788,13 +855,15 @@ export async function getTotalPages(journalId: string): Promise<number> {
   return new Promise<number>((resolve, reject) => {
     legacyDb.readTransaction((tx: any) => {
       tx.executeSql(
-        `SELECT COALESCE(MAX(page_number),0) AS total FROM pages WHERE journal_id = ?`,
+        `SELECT COALESCE(MAX(page_number), 0) AS total 
+         FROM pages 
+         WHERE journal_id = ? AND deleted_at IS NULL`,
         [journalId],
         (_: any, res: any) => resolve(res.rows.item(0).total ?? 0),
         (_: any, err: any) => {
           reject(err);
           return true;
-        },
+        }
       );
     });
   });
@@ -803,7 +872,11 @@ export async function getTotalPages(journalId: string): Promise<number> {
 export async function getPageId(journalId: string, pageNumber: number): Promise<string | null> {
   if (isAsync) {
     try {
-      const query = `SELECT id FROM pages WHERE journal_id = ? AND page_number = ? LIMIT 1`;
+      const query = `SELECT id FROM pages 
+                     WHERE journal_id = ? 
+                       AND page_number = ? 
+                       AND deleted_at IS NULL 
+                     LIMIT 1`;
       const rows = await (adb as any).getAllAsync(query, [journalId, pageNumber]);
       return rows?.[0]?.id ?? null;
     } catch (error) {
@@ -815,7 +888,11 @@ export async function getPageId(journalId: string, pageNumber: number): Promise<
   return new Promise<string | null>((resolve, reject) => {
     legacyDb.readTransaction((tx: any) => {
       tx.executeSql(
-        `SELECT id FROM pages WHERE journal_id = ? AND page_number = ? LIMIT 1`,
+        `SELECT id FROM pages 
+         WHERE journal_id = ? 
+           AND page_number = ? 
+           AND deleted_at IS NULL 
+         LIMIT 1`,
         [journalId, pageNumber],
         (_: any, res: any) => {
           resolve(res.rows.length ? (res.rows.item(0).id as string) : null);
@@ -823,7 +900,7 @@ export async function getPageId(journalId: string, pageNumber: number): Promise<
         (_: any, err: any) => {
           reject(err);
           return true;
-        },
+        }
       );
     });
   });
@@ -832,7 +909,11 @@ export async function getPageId(journalId: string, pageNumber: number): Promise<
 export async function getPageColor(journalId: string, pageNumber: number): Promise<string | null> {
   if (isAsync) {
     try {
-      const query = `SELECT bg_color FROM pages WHERE journal_id = ? AND page_number = ? LIMIT 1`;
+      const query = `SELECT bg_color FROM pages 
+                     WHERE journal_id = ? 
+                       AND page_number = ? 
+                       AND deleted_at IS NULL 
+                     LIMIT 1`;
       const rows = await (adb as any).getAllAsync(query, [journalId, pageNumber]);
       return rows?.[0]?.bg_color ?? null;
     } catch (error) {
@@ -844,7 +925,11 @@ export async function getPageColor(journalId: string, pageNumber: number): Promi
   return new Promise<string | null>((resolve, reject) => {
     legacyDb.readTransaction((tx: any) => {
       tx.executeSql(
-        `SELECT bg_color FROM pages WHERE journal_id = ? AND page_number = ? LIMIT 1`,
+        `SELECT bg_color FROM pages 
+         WHERE journal_id = ? 
+           AND page_number = ? 
+           AND deleted_at IS NULL 
+         LIMIT 1`,
         [journalId, pageNumber],
         (_: any, res: any) => {
           resolve(res.rows.length ? (res.rows.item(0).bg_color as string) : null);
@@ -852,7 +937,7 @@ export async function getPageColor(journalId: string, pageNumber: number): Promi
         (_: any, err: any) => {
           reject(err);
           return true;
-        },
+        }
       );
     });
   });
@@ -907,6 +992,12 @@ export async function createPage(journalId: string, bgColor: string, pattern: st
   const id = await Crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
 
+  console.log('createPage llamado:', { 
+    id: id.substring(0, 8), 
+    journalId: journalId.substring(0, 8), 
+    currentUserId 
+  }); 
+
   if (isAsync) {
     await runAsync('BEGIN');
     try {
@@ -918,11 +1009,18 @@ export async function createPage(journalId: string, bgColor: string, pattern: st
 
       await runAsync(
         `INSERT INTO pages(id, journal_id, page_number, bg_color, pattern, created_at, updated_at, user_id)
-         VALUES(?,?,?,?,?,?,?,?)`,
+          VALUES(?,?,?,?,?,?,?,?)`,
         [id, journalId, next, bgColor, pattern, now, now, currentUserId],
       );
 
       await runAsync('COMMIT');
+      
+      console.log('Página creada:', { 
+        pageNumber: next, 
+        user_id: currentUserId,
+        hasUserId: currentUserId !== null 
+      }); 
+      
       return { pageNumber: next, total: next };
     } catch (e) {
       await runAsync('ROLLBACK');
@@ -951,7 +1049,7 @@ export async function createPage(journalId: string, bgColor: string, pattern: st
     await execTx(
       tx,
       `INSERT INTO pages(id, journal_id, page_number, bg_color, pattern, created_at, updated_at, user_id)
-       VALUES(?,?,?,?,?,?,?,?)`,
+        VALUES(?,?,?,?,?,?,?,?)`,
       [id, journalId, next, bgColor, pattern, now, now, currentUserId],
     );
   });
@@ -966,7 +1064,11 @@ export async function getPagePattern(
 ): Promise<string | null> {
   if (isAsync) {
     try {
-      const query = `SELECT pattern FROM pages WHERE journal_id = ? AND page_number = ? LIMIT 1`;
+      const query = `SELECT pattern FROM pages 
+                      WHERE journal_id = ? 
+                        AND page_number = ? 
+                        AND deleted_at IS NULL 
+                      LIMIT 1`;
       const rows = await (adb as any).getAllAsync(query, [journalId, pageNumber]);
       return rows?.[0]?.pattern ?? null;
     } catch (error) {
@@ -978,7 +1080,10 @@ export async function getPagePattern(
   return new Promise<string | null>((resolve, reject) => {
     legacyDb.readTransaction((tx: any) => {
       tx.executeSql(
-        `SELECT pattern FROM pages WHERE journal_id = ? AND page_number = ? LIMIT 1`,
+        `SELECT pattern FROM pages 
+          WHERE journal_id = ? 
+            AND deleted_at IS NULL 
+          LIMIT 1`,
         [journalId, pageNumber],
         (_: any, res: any) => {
           resolve(res.rows.length ? (res.rows.item(0).pattern as string) : null);
@@ -986,7 +1091,7 @@ export async function getPagePattern(
         (_: any, err: any) => {
           reject(err);
           return true;
-        },
+        }
       );
     });
   });
@@ -1016,30 +1121,40 @@ export async function updatePagePattern(
   }
 }
 
+// Eliminar paginas
+
 export async function deletePage(journalId: string, pageNumber: number) {
   if (pageNumber < 1) return { pageNumber: 1, total: 1 };
+
+  const now = Math.floor(Date.now() / 1000);
 
   if (isAsync) {
     await runAsync('BEGIN');
     try {
-      await runAsync(`DELETE FROM pages WHERE journal_id = ? AND page_number = ?`, [
-        journalId,
-        pageNumber,
-      ]);
+      await runAsync(
+        `UPDATE pages SET deleted_at = ?, updated_at = ? WHERE journal_id = ? AND page_number = ?`,
+        [now, now, journalId, pageNumber]
+      );
 
+      // Actualizar números de páginas posteriores
       await runAsync(
         `UPDATE pages
-           SET page_number = page_number - 1,
-               updated_at   = ?
-         WHERE journal_id = ? AND page_number > ?`,
-        [Math.floor(Date.now() / 1000), journalId, pageNumber],
+            SET page_number = page_number - 1,
+                updated_at   = ?
+          WHERE journal_id = ? 
+            AND page_number > ?
+            AND deleted_at IS NULL`,
+        [now, journalId, pageNumber]
       );
 
       await runAsync('COMMIT');
 
+      // Calcular total de páginas NO eliminadas
       const rows = await (adb as any).getAllAsync?.(
-        `SELECT COALESCE(MAX(page_number),0) AS total FROM pages WHERE journal_id = ?`,
-        [journalId],
+        `SELECT COALESCE(MAX(page_number), 0) AS total 
+          FROM pages 
+          WHERE journal_id = ? AND deleted_at IS NULL`,
+        [journalId]
       );
       const total = Math.max(rows?.[0]?.total ?? 0, 0);
       const target = Math.max(Math.min(pageNumber, total), 1);
@@ -1053,21 +1168,40 @@ export async function deletePage(journalId: string, pageNumber: number) {
 
   // Legacy
   await txLegacy(async (tx) => {
-    await execTx(tx, `DELETE FROM pages WHERE journal_id = ? AND page_number = ?`, [
-      journalId,
-      pageNumber,
-    ]);
+    await execTx(
+      tx,
+      `UPDATE pages SET deleted_at = ?, updated_at = ? WHERE journal_id = ? AND page_number = ?`,
+      [now, now, journalId, pageNumber]
+    );
+    
     await execTx(
       tx,
       `UPDATE pages
          SET page_number = page_number - 1,
              updated_at   = ?
-       WHERE journal_id = ? AND page_number > ?`,
-      [Math.floor(Date.now() / 1000), journalId, pageNumber],
+       WHERE journal_id = ? 
+         AND page_number > ?
+         AND deleted_at IS NULL`,
+      [now, journalId, pageNumber]
     );
   });
 
-  const total = await getTotalPages(journalId);
+  const total = await new Promise<number>((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT COALESCE(MAX(page_number), 0) AS total 
+         FROM pages 
+         WHERE journal_id = ? AND deleted_at IS NULL`,
+        [journalId],
+        (_: any, res: any) => resolve(res.rows.item(0).total ?? 0),
+        (_: any, err: any) => {
+          reject(err);
+          return true;
+        }
+      );
+    });
+  });
+
   const target = Math.max(Math.min(pageNumber, total), 1);
   return { pageNumber: Math.max(target, 1), total: Math.max(total, 1) };
 }
@@ -1159,7 +1293,7 @@ export async function listPageTexts(pageId: string): Promise<PageText[]> {
     const rows = await (adb as any).getAllAsync?.(
       `SELECT id, page_id, content, font_family, color, position_x, position_y, font_size, text_width, created_at, updated_at, is_locked, rotation
          FROM page_texts
-        WHERE page_id = ?
+        WHERE page_id = ? AND deleted_at IS NULL
         ORDER BY created_at ASC`,
       [pageId],
     );
@@ -1171,7 +1305,7 @@ export async function listPageTexts(pageId: string): Promise<PageText[]> {
       tx.executeSql(
         `SELECT id, page_id, content, font_family, color, position_x, position_y, font_size, text_width, created_at, updated_at, is_locked, rotation
            FROM page_texts
-          WHERE page_id = ?
+          WHERE page_id = ? AND deleted_at IS NULL
           ORDER BY created_at ASC`,
         [pageId],
         (_: any, res: any) => {
@@ -1187,6 +1321,7 @@ export async function listPageTexts(pageId: string): Promise<PageText[]> {
     });
   });
 }
+
 
 export async function updatePageText(
   textId: string,
@@ -1261,11 +1396,21 @@ export async function updatePageText(
 }
 
 export async function deletePageText(textId: string) {
+  const now = Math.floor(Date.now() / 1000);
+  
   if (isAsync) {
-    await runAsync(`DELETE FROM page_texts WHERE id = ?`, [textId]);
+    await runAsync(`UPDATE page_texts SET deleted_at = ?, updated_at = ? WHERE id = ?`, [
+      now,
+      now,
+      textId,
+    ]);
   } else {
     await txLegacy(async (tx) => {
-      await execTx(tx, `DELETE FROM page_texts WHERE id = ?`, [textId]);
+      await execTx(tx, `UPDATE page_texts SET deleted_at = ?, updated_at = ? WHERE id = ?`, [
+        now,
+        now,
+        textId,
+      ]);
     });
   }
 }
@@ -1366,7 +1511,7 @@ export async function listPageShapes(pageId: string): Promise<PageShape[]> {
     const rows = await (adb as any).getAllAsync?.(
       `SELECT id, page_id, shape_type, color, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at
           FROM page_shapes
-        WHERE page_id = ?
+        WHERE page_id = ? AND deleted_at IS NULL
         ORDER BY created_at ASC`,
       [pageId],
     );
@@ -1378,7 +1523,7 @@ export async function listPageShapes(pageId: string): Promise<PageShape[]> {
       tx.executeSql(
         `SELECT id, page_id, shape_type, color, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at
             FROM page_shapes
-          WHERE page_id = ?
+          WHERE page_id = ? AND deleted_at IS NULL
           ORDER BY created_at ASC`,
         [pageId],
         (_: any, res: any) => {
@@ -1458,11 +1603,21 @@ export async function updatePageShape(
 }
 
 export async function deletePageShape(shapeId: string) {
+  const now = Math.floor(Date.now() / 1000);
+  
   if (isAsync) {
-    await runAsync(`DELETE FROM page_shapes WHERE id = ?`, [shapeId]);
+    await runAsync(`UPDATE page_shapes SET deleted_at = ?, updated_at = ? WHERE id = ?`, [
+      now,
+      now,
+      shapeId,
+    ]);
   } else {
     await txLegacy(async (tx) => {
-      await execTx(tx, `DELETE FROM page_shapes WHERE id = ?`, [shapeId]);
+      await execTx(tx, `UPDATE page_shapes SET deleted_at = ?, updated_at = ? WHERE id = ?`, [
+        now,
+        now,
+        shapeId,
+      ]);
     });
   }
 }
@@ -1539,9 +1694,9 @@ export async function listPageDraws(pageId: string): Promise<PageDraw[]> {
   if (isAsync) {
     const rows = await (adb as any).getAllAsync?.(
       `SELECT id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at
-       FROM page_draws
-       WHERE page_id = ?
-       ORDER BY order_index ASC, created_at ASC`,
+        FROM page_draws
+        WHERE page_id = ? AND deleted_at IS NULL
+        ORDER BY order_index ASC, created_at ASC`,
       [pageId],
     );
     return rows ?? [];
@@ -1551,9 +1706,9 @@ export async function listPageDraws(pageId: string): Promise<PageDraw[]> {
     legacyDb.readTransaction((tx: any) => {
       tx.executeSql(
         `SELECT id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at
-         FROM page_draws
-         WHERE page_id = ?
-         ORDER BY order_index ASC, created_at ASC`,
+          FROM page_draws
+          WHERE page_id = ? AND deleted_at IS NULL
+          ORDER BY order_index ASC, created_at ASC`,
         [pageId],
         (_: any, res: any) => {
           const out: PageDraw[] = [];
@@ -1570,15 +1725,24 @@ export async function listPageDraws(pageId: string): Promise<PageDraw[]> {
 }
 
 export async function deletePageDraw(drawId: string) {
+  const now = Math.floor(Date.now() / 1000);
+  
   if (isAsync) {
-    await runAsync(`DELETE FROM page_draws WHERE id = ?`, [drawId]);
+    await runAsync(`UPDATE page_draws SET deleted_at = ?, updated_at = ? WHERE id = ?`, [
+      now,
+      now,
+      drawId,
+    ]);
   } else {
     await txLegacy(async (tx) => {
-      await execTx(tx, `DELETE FROM page_draws WHERE id = ?`, [drawId]);
+      await execTx(tx, `UPDATE page_draws SET deleted_at = ?, updated_at = ? WHERE id = ?`, [
+        now,
+        now,
+        drawId,
+      ]);
     });
   }
 }
-
 // ---------- DAO: Page Stickers ----------
 export type PageSticker = {
   id: string;
@@ -1659,7 +1823,7 @@ export async function listPageStickers(pageId: string): Promise<PageSticker[]> {
     const rows = await (adb as any).getAllAsync?.(
       `SELECT id, page_id, sticker_url, sticker_category, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at
        FROM page_stickers
-       WHERE page_id = ?
+       WHERE page_id = ? AND deleted_at IS NULL
        ORDER BY created_at ASC`,
       [pageId],
     );
@@ -1671,7 +1835,7 @@ export async function listPageStickers(pageId: string): Promise<PageSticker[]> {
       tx.executeSql(
         `SELECT id, page_id, sticker_url, sticker_category, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at
          FROM page_stickers
-         WHERE page_id = ?
+         WHERE page_id = ? AND deleted_at IS NULL
          ORDER BY created_at ASC`,
         [pageId],
         (_: any, res: any) => {
@@ -1826,11 +1990,21 @@ export async function duplicatePageSticker(stickerId: string): Promise<{ id: str
 }
 
 export async function deletePageSticker(stickerId: string) {
+  const now = Math.floor(Date.now() / 1000);
+  
   if (isAsync) {
-    await runAsync(`DELETE FROM page_stickers WHERE id = ?`, [stickerId]);
+    await runAsync(`UPDATE page_stickers SET deleted_at = ?, updated_at = ? WHERE id = ?`, [
+      now,
+      now,
+      stickerId,
+    ]);
   } else {
     await txLegacy(async (tx) => {
-      await execTx(tx, `DELETE FROM page_stickers WHERE id = ?`, [stickerId]);
+      await execTx(tx, `UPDATE page_stickers SET deleted_at = ?, updated_at = ? WHERE id = ?`, [
+        now,
+        now,
+        stickerId,
+      ]);
     });
   }
 }
@@ -1908,28 +2082,50 @@ export type PageImage = {
 
 export async function createPageImage(
   pageId: string,
-  uri: string,
+  localUri: string,
   positionX: number,
   positionY: number,
   width: number = 100,
   height: number = 100,
+  token?: string, 
 ) {
   const id = await Crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
 
+  // Subir a Supabase Storage 
+  let supabaseUri: string;
+  try {
+    const { uploadImageToSupabase } = await import('@/src/service/storageService');
+    
+    if (!token) {
+      throw new Error('Token de autenticación requerido');
+    }
+    
+    const userId = getCurrentUserId() || 'anonymous';
+    const extension = localUri.split('.').pop() || 'jpg';
+    const remotePath = `${userId}/${id}.${extension}`;
+    
+    supabaseUri = await uploadImageToSupabase(localUri, remotePath, token); 
+    console.log('Imagen subida a Supabase:', supabaseUri);
+  } catch (error) {
+    console.error('Error subiendo imagen a Supabase:', error);
+    throw new Error('No se pudo subir la imagen. Verifica tu conexión a internet.');
+  }
+
+  // Solo guardar en BD si la subida fue exitosa
   if (isAsync) {
     await runAsync(
       `INSERT INTO page_images(id, page_id, uri, position_x, position_y, width, height, rotation, created_at, updated_at, user_id)
        VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
-      [id, pageId, uri, positionX, positionY, width, height, 0, now, now, currentUserId],
+      [id, pageId, supabaseUri, positionX, positionY, width, height, 0, now, now, currentUserId],
     );
   } else {
     await txLegacy(async (tx) => {
       await execTx(
         tx,
-        `INSERT INTO page_images(id, page_id, uri, position_x, position_y, width, height, rotation, created_at, updated_at, user_id)  
+        `INSERT INTO page_images(id, page_id, uri, position_x, position_y, width, height, rotation, created_at, updated_at, user_id)
          VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
-        [id, pageId, uri, positionX, positionY, width, height, 0, now, now, currentUserId],
+        [id, pageId, supabaseUri, positionX, positionY, width, height, 0, now, now, currentUserId],
       );
     });
   }
@@ -1942,7 +2138,7 @@ export async function listPageImages(pageId: string): Promise<PageImage[]> {
     const rows = await (adb as any).getAllAsync?.(
       `SELECT id, page_id, uri, position_x, position_y, width, height, rotation, created_at, updated_at
          FROM page_images
-        WHERE page_id = ?
+        WHERE page_id = ? AND deleted_at IS NULL
         ORDER BY created_at ASC`,
       [pageId],
     );
@@ -1954,7 +2150,7 @@ export async function listPageImages(pageId: string): Promise<PageImage[]> {
       tx.executeSql(
         `SELECT id, page_id, uri, position_x, position_y, width, height, rotation, created_at, updated_at
            FROM page_images
-          WHERE page_id = ?
+          WHERE page_id = ? AND deleted_at IS NULL
           ORDER BY created_at ASC`,
         [pageId],
         (_: any, res: any) => {
@@ -1970,6 +2166,7 @@ export async function listPageImages(pageId: string): Promise<PageImage[]> {
     });
   });
 }
+
 
 export async function updatePageImage(
   imageId: string,
@@ -2029,11 +2226,21 @@ export async function updatePageImage(
 }
 
 export async function deletePageImage(imageId: string) {
+  const now = Math.floor(Date.now() / 1000);
+  
   if (isAsync) {
-    await runAsync(`DELETE FROM page_images WHERE id = ?`, [imageId]);
+    await runAsync(`UPDATE page_images SET deleted_at = ?, updated_at = ? WHERE id = ?`, [
+      now,
+      now,
+      imageId,
+    ]);
   } else {
     await txLegacy(async (tx) => {
-      await execTx(tx, `DELETE FROM page_images WHERE id = ?`, [imageId]);
+      await execTx(tx, `UPDATE page_images SET deleted_at = ?, updated_at = ? WHERE id = ?`, [
+        now,
+        now,
+        imageId,
+      ]);
     });
   }
 }
@@ -2057,15 +2264,37 @@ export async function createPageAudio(
   audioType: 'recording' | 'file',
   positionX: number,
   positionY: number,
+  token?: string, 
 ) {
   const id = await Crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
 
+  // Subir a Supabase Storage PRIMERO
+  let supabaseUri: string;
+  try {
+    const { uploadAudioToSupabase } = await import('@/src/service/storageService');
+    
+    if (!token) {
+      throw new Error('Token de autenticación requerido');
+    }
+    
+    const userId = getCurrentUserId() || 'anonymous';
+    const extension = audioUri.split('.').pop() || 'm4a';
+    const remotePath = `${userId}/${id}.${extension}`;
+    
+    supabaseUri = await uploadAudioToSupabase(audioUri, remotePath, token); 
+    console.log('Audio subido a Supabase:', supabaseUri);
+  } catch (error) {
+    console.error('Error subiendo audio a Supabase:', error);
+    throw new Error('No se pudo subir el audio. Verifica tu conexión a internet.');
+  }
+
+  // Solo guardar en BD si la subida fue exitosa
   if (isAsync) {
     await runAsync(
       `INSERT INTO page_audios(id, page_id, audio_uri, audio_type, position_x, position_y, is_locked, created_at, updated_at, user_id)
        VALUES(?,?,?,?,?,?,?,?,?,?)`,
-      [id, pageId, audioUri, audioType, positionX, positionY, 0, now, now, currentUserId],
+      [id, pageId, supabaseUri, audioType, positionX, positionY, 0, now, now, currentUserId],
     );
   } else {
     await txLegacy(async (tx) => {
@@ -2073,7 +2302,7 @@ export async function createPageAudio(
         tx,
         `INSERT INTO page_audios(id, page_id, audio_uri, audio_type, position_x, position_y, is_locked, created_at, updated_at, user_id)
          VALUES(?,?,?,?,?,?,?,?,?,?)`,
-        [id, pageId, audioUri, audioType, positionX, positionY, 0, now, now, currentUserId],
+        [id, pageId, supabaseUri, audioType, positionX, positionY, 0, now, now, currentUserId],
       );
     });
   }
@@ -2085,7 +2314,7 @@ export async function listPageAudios(pageId: string): Promise<PageAudio[]> {
     const rows = await (adb as any).getAllAsync?.(
       `SELECT id, page_id, audio_uri, audio_type, position_x, position_y, is_locked, created_at, updated_at
        FROM page_audios
-       WHERE page_id = ?
+       WHERE page_id = ? AND deleted_at IS NULL
        ORDER BY created_at ASC`,
       [pageId],
     );
@@ -2097,7 +2326,7 @@ export async function listPageAudios(pageId: string): Promise<PageAudio[]> {
       tx.executeSql(
         `SELECT id, page_id, audio_uri, audio_type, position_x, position_y, is_locked, created_at, updated_at
          FROM page_audios
-         WHERE page_id = ?
+         WHERE page_id = ? AND deleted_at IS NULL
          ORDER BY created_at ASC`,
         [pageId],
         (_: any, res: any) => {
@@ -2120,6 +2349,7 @@ export async function updatePageAudio(
     position_x?: number;
     position_y?: number;
     is_locked?: number;
+    audio_uri?: string;
   },
 ) {
   const now = Math.floor(Date.now() / 1000);
@@ -2137,6 +2367,11 @@ export async function updatePageAudio(
   if (updates.is_locked !== undefined) {
     fields.push('is_locked = ?');
     values.push(updates.is_locked);
+  }
+
+  if (updates.audio_uri !== undefined) {
+    fields.push('audio_uri = ?');
+    values.push(updates.audio_uri);
   }
 
   if (fields.length === 0) return;
@@ -2176,11 +2411,21 @@ export async function togglePageAudioLock(audioId: string) {
 }
 
 export async function deletePageAudio(audioId: string) {
+  const now = Math.floor(Date.now() / 1000);
+  
   if (isAsync) {
-    await runAsync(`DELETE FROM page_audios WHERE id = ?`, [audioId]);
+    await runAsync(`UPDATE page_audios SET deleted_at = ?, updated_at = ? WHERE id = ?`, [
+      now,
+      now,
+      audioId,
+    ]);
   } else {
     await txLegacy(async (tx) => {
-      await execTx(tx, `DELETE FROM page_audios WHERE id = ?`, [audioId]);
+      await execTx(tx, `UPDATE page_audios SET deleted_at = ?, updated_at = ? WHERE id = ?`, [
+        now,
+        now,
+        audioId,
+      ]);
     });
   }
 }
@@ -2222,6 +2467,7 @@ export async function listTasks(): Promise<Task[]> {
     const rows = await (adb as any).getAllAsync?.(
       `SELECT id, title, is_completed, created_at, updated_at
           FROM tasks
+        WHERE deleted_at IS NULL
         ORDER BY is_completed ASC, created_at ASC`,
     );
     return rows ?? [];
@@ -2232,6 +2478,7 @@ export async function listTasks(): Promise<Task[]> {
       tx.executeSql(
         `SELECT id, title, is_completed, created_at, updated_at
             FROM tasks
+          WHERE deleted_at IS NULL
           ORDER BY is_completed ASC, created_at ASC`,
         [],
         (_: any, res: any) => {
@@ -2307,11 +2554,47 @@ export async function toggleTaskCompletion(taskId: string, completed: boolean) {
 }
 
 export async function deleteTask(taskId: string) {
+  const now = Math.floor(Date.now() / 1000);
+  
   if (isAsync) {
-    await runAsync(`DELETE FROM tasks WHERE id = ?`, [taskId]);
+    await runAsync(`UPDATE tasks SET deleted_at = ?, updated_at = ? WHERE id = ?`, [
+      now,
+      now,
+      taskId,
+    ]);
   } else {
     await txLegacy(async (tx) => {
-      await execTx(tx, `DELETE FROM tasks WHERE id = ?`, [taskId]);
+      await execTx(tx, `UPDATE tasks SET deleted_at = ?, updated_at = ? WHERE id = ?`, [
+        now,
+        now,
+        taskId,
+      ]);
+    });
+  }
+}
+
+export async function insertTaskFromRemote(task: any): Promise<void> {
+  const created_at = typeof task.created_at === 'string' 
+    ? Math.floor(new Date(task.created_at).getTime() / 1000)
+    : task.created_at;
+  
+  const updated_at = typeof task.updated_at === 'string'
+    ? Math.floor(new Date(task.updated_at).getTime() / 1000)
+    : task.updated_at;
+
+  if (isAsync) {
+    await runAsync(
+      `INSERT OR REPLACE INTO tasks(id, title, is_completed, created_at, updated_at, user_id)
+       VALUES(?,?,?,?,?,?)`,
+      [task.id, task.title, task.is_completed ?? 0, created_at, updated_at, task.user_id]
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx,
+        `INSERT OR REPLACE INTO tasks(id, title, is_completed, created_at, updated_at, user_id)
+         VALUES(?,?,?,?,?,?)`,
+        [task.id, task.title, task.is_completed ?? 0, created_at, updated_at, task.user_id]
+      );
     });
   }
 }
@@ -2478,10 +2761,22 @@ export async function insertJournalFromRemote(journal: {
   name: string;
   color: string;
   is_favorite: number;
-  created_at: number;
-  updated_at: number;
+  created_at: number | string;
+  updated_at: number | string;
   user_id: string;
 }): Promise<void> {
+
+  // Convertir timestamps si vienen como string ISO
+  const created_at = typeof journal.created_at === 'string' 
+    ? Math.floor(new Date(journal.created_at).getTime() / 1000)
+    : journal.created_at;
+  
+  const updated_at = typeof journal.updated_at === 'string'
+    ? Math.floor(new Date(journal.updated_at).getTime() / 1000)
+    : journal.updated_at;
+
+  console.log(' Guardando journal localmente:', journal.id.substring(0, 8)); 
+
   if (isAsync) {
     await runAsync(
       `INSERT OR REPLACE INTO journals(id, name, color, is_favorite, created_at, updated_at, user_id)
@@ -2491,8 +2786,8 @@ export async function insertJournalFromRemote(journal: {
         journal.name,
         journal.color,
         journal.is_favorite,
-        journal.created_at,
-        journal.updated_at,
+        created_at,
+        updated_at,
         journal.user_id,
       ],
     );
@@ -2507,11 +2802,613 @@ export async function insertJournalFromRemote(journal: {
           journal.name,
           journal.color,
           journal.is_favorite,
-          journal.created_at,
-          journal.updated_at,
+          created_at,
+          updated_at,
           journal.user_id,
         ],
       );
+    });
+  }
+}
+
+
+// ---------- SYNC: Pages ----------
+
+export async function listAllPagesForSync(): Promise<any[]> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync?.(
+      `SELECT id, journal_id, page_number, bg_color as color, pattern, created_at, updated_at, user_id, deleted_at
+        FROM pages
+        ORDER BY created_at ASC`
+    );
+    return rows ?? [];
+  }
+
+  return new Promise<any[]>((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT id, journal_id, page_number, bg_color as color, pattern, created_at, updated_at, user_id, deleted_at
+          FROM pages
+          ORDER BY created_at ASC`,
+        [],
+        (_: any, res: any) => {
+          const out: any[] = [];
+          for (let i = 0; i < res.rows.length; i++) {
+            out.push(res.rows.item(i));
+          }
+          resolve(out);
+        },
+        (_: any, err: any) => {
+          reject(err);
+          return true;
+        }
+      );
+    });
+  });
+}
+
+// Insertar o actualizar página desde remoto
+export async function insertPageFromRemote(page: {
+  id: string;
+  journal_id: string;
+  page_number: number;
+  color: string;
+  pattern: string;
+  created_at: string | number;
+  updated_at: string | number;
+  user_id: string;
+  deleted_at?: number | null;
+}): Promise<void> {
+  const created_at = typeof page.created_at === 'string' 
+    ? Math.floor(new Date(page.created_at).getTime() / 1000)
+    : page.created_at;
+  
+  const updated_at = typeof page.updated_at === 'string'
+    ? Math.floor(new Date(page.updated_at).getTime() / 1000)
+    : page.updated_at;
+
+  //  VALIDACIÓN SIMPLE - SI NO EXISTE EL JOURNAL, SALIR
+  if (isAsync) {
+    const journal = await (adb as any).getFirstAsync(
+      'SELECT id FROM journals WHERE id = ?',
+      [page.journal_id]
+    );
+    
+    if (!journal) {
+      console.log(`Página ${page.page_number} ignorada - journal ${page.journal_id.substring(0, 8)} no existe`);
+      return; 
+    }
+  } else {
+    const journal = await new Promise<any>((resolve, reject) => {
+      legacyDb.readTransaction((tx: any) => {
+        tx.executeSql(
+          'SELECT id FROM journals WHERE id = ?',
+          [page.journal_id],
+          (_: any, res: any) => resolve(res.rows.length ? res.rows.item(0) : null),
+          (_: any, err: any) => { reject(err); return true; }
+        );
+      });
+    });
+    
+    if (!journal) {
+      console.log(`  Página ${page.page_number} ignorada - journal ${page.journal_id.substring(0, 8)} no existe`);
+      return;
+    }
+  }
+
+  console.log(' Guardando página localmente:', page.id.substring(0, 8), 'del journal', page.journal_id.substring(0, 8));
+
+  if (isAsync) {
+    await runAsync(
+      `INSERT OR REPLACE INTO pages(id, journal_id, page_number, bg_color, pattern, created_at, updated_at, user_id, deleted_at)
+       VALUES(?,?,?,?,?,?,?,?,?)`,
+      [
+        page.id,
+        page.journal_id,
+        page.page_number,
+        page.color,
+        page.pattern,
+        created_at,
+        updated_at,
+        page.user_id,
+        page.deleted_at || null,
+      ]
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(
+        tx,
+        `INSERT OR REPLACE INTO pages(id, journal_id, page_number, bg_color, pattern, created_at, updated_at, user_id, deleted_at)
+         VALUES(?,?,?,?,?,?,?,?,?)`,
+        [
+          page.id,
+          page.journal_id,
+          page.page_number,
+          page.color,
+          page.pattern,
+          created_at,
+          updated_at,
+          page.user_id,
+          page.deleted_at || null,
+        ]
+      );
+    });
+  }
+  
+  console.log('Página guardada exitosamente');
+}
+
+// Eliminar página permanentemente (para sync)
+export async function hardDeletePage(pageId: string): Promise<void> {
+  if (isAsync) {
+    // Primero eliminar todos los elementos relacionados
+    await runAsync('DELETE FROM page_texts WHERE page_id = ?', [pageId]);
+    await runAsync('DELETE FROM page_draws WHERE page_id = ?', [pageId]);
+    await runAsync('DELETE FROM page_shapes WHERE page_id = ?', [pageId]);
+    await runAsync('DELETE FROM page_images WHERE page_id = ?', [pageId]);
+    await runAsync('DELETE FROM page_stickers WHERE page_id = ?', [pageId]);
+    await runAsync('DELETE FROM page_audios WHERE page_id = ?', [pageId]);
+    
+    // Luego eliminar la página
+    await runAsync('DELETE FROM pages WHERE id = ?', [pageId]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, 'DELETE FROM page_texts WHERE page_id = ?', [pageId]);
+      await execTx(tx, 'DELETE FROM page_draws WHERE page_id = ?', [pageId]);
+      await execTx(tx, 'DELETE FROM page_shapes WHERE page_id = ?', [pageId]);
+      await execTx(tx, 'DELETE FROM page_images WHERE page_id = ?', [pageId]);
+      await execTx(tx, 'DELETE FROM page_stickers WHERE page_id = ?', [pageId]);
+      await execTx(tx, 'DELETE FROM page_audios WHERE page_id = ?', [pageId]);
+      await execTx(tx, 'DELETE FROM pages WHERE id = ?', [pageId]);
+    });
+  }
+}
+
+// ---------- SYNC: Listar todos los elementos para sincronización ----------
+
+// ---------- SYNC: Page Texts ----------
+export async function listAllPageTextsForSync(): Promise<any[]> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync(
+      `SELECT id, page_id, content, font_family, color, position_x, position_y, 
+              font_size, rotation, is_locked, text_width, created_at, updated_at, 
+              user_id, deleted_at
+       FROM page_texts 
+       ORDER BY created_at ASC`
+    );
+    return rows ?? [];
+  }
+  
+  return new Promise((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT id, page_id, content, font_family, color, position_x, position_y, 
+                font_size, rotation, is_locked, text_width, created_at, updated_at, 
+                user_id, deleted_at
+         FROM page_texts 
+         ORDER BY created_at ASC`,
+        [],
+        (_: any, res: any) => {
+          const out: any[] = [];
+          for (let i = 0; i < res.rows.length; i++) out.push(res.rows.item(i));
+          resolve(out);
+        },
+        (_: any, err: any) => { reject(err); return true; }
+      );
+    });
+  });
+}
+
+// ---------- SYNC: Page Draws ----------
+export async function listAllPageDrawsForSync(): Promise<any[]> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync(
+      `SELECT id, page_id, path_d, color, width, opacity, tool, order_index, 
+              created_at, updated_at, user_id, deleted_at
+       FROM page_draws 
+       ORDER BY created_at ASC`
+    );
+    return rows ?? [];
+  }
+  
+  return new Promise((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT id, page_id, path_d, color, width, opacity, tool, order_index, 
+                created_at, updated_at, user_id, deleted_at
+         FROM page_draws 
+         ORDER BY created_at ASC`,
+        [],
+        (_: any, res: any) => {
+          const out: any[] = [];
+          for (let i = 0; i < res.rows.length; i++) out.push(res.rows.item(i));
+          resolve(out);
+        },
+        (_: any, err: any) => { reject(err); return true; }
+      );
+    });
+  });
+}
+
+// ---------- SYNC: Page Shapes ----------
+export async function listAllPageShapesForSync(): Promise<any[]> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync(
+      `SELECT id, page_id, shape_type, color, position_x, position_y, width, height, 
+              rotation, is_locked, created_at, updated_at, user_id, deleted_at
+       FROM page_shapes 
+       ORDER BY created_at ASC`
+    );
+    return rows ?? [];
+  }
+  
+  return new Promise((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT id, page_id, shape_type, color, position_x, position_y, width, height, 
+                rotation, is_locked, created_at, updated_at, user_id, deleted_at
+         FROM page_shapes 
+         ORDER BY created_at ASC`,
+        [],
+        (_: any, res: any) => {
+          const out: any[] = [];
+          for (let i = 0; i < res.rows.length; i++) out.push(res.rows.item(i));
+          resolve(out);
+        },
+        (_: any, err: any) => { reject(err); return true; }
+      );
+    });
+  });
+}
+
+// ---------- SYNC: Page Stickers ----------
+export async function listAllPageStickersForSync(): Promise<any[]> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync(
+      `SELECT id, page_id, sticker_url, sticker_category, position_x, position_y, 
+              width, height, rotation, is_locked, created_at, updated_at, user_id, deleted_at
+       FROM page_stickers 
+       ORDER BY created_at ASC`
+    );
+    return rows ?? [];
+  }
+  
+  return new Promise((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT id, page_id, sticker_url, sticker_category, position_x, position_y, 
+                width, height, rotation, is_locked, created_at, updated_at, user_id, deleted_at
+         FROM page_stickers 
+         ORDER BY created_at ASC`,
+        [],
+        (_: any, res: any) => {
+          const out: any[] = [];
+          for (let i = 0; i < res.rows.length; i++) out.push(res.rows.item(i));
+          resolve(out);
+        },
+        (_: any, err: any) => { reject(err); return true; }
+      );
+    });
+  });
+}
+
+// ---------- SYNC: Page Images ----------
+export async function listAllPageImagesForSync(): Promise<any[]> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync(
+      `SELECT id, page_id, uri, position_x, position_y, width, height, rotation, 
+              created_at, updated_at, user_id, deleted_at
+       FROM page_images 
+       ORDER BY created_at ASC`
+    );
+    return rows ?? [];
+  }
+  
+  return new Promise((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT id, page_id, uri, position_x, position_y, width, height, rotation, 
+                created_at, updated_at, user_id, deleted_at
+         FROM page_images 
+         ORDER BY created_at ASC`,
+        [],
+        (_: any, res: any) => {
+          const out: any[] = [];
+          for (let i = 0; i < res.rows.length; i++) out.push(res.rows.item(i));
+          resolve(out);
+        },
+        (_: any, err: any) => { reject(err); return true; }
+      );
+    });
+  });
+}
+
+// ---------- SYNC: Page Audios ----------
+export async function listAllPageAudiosForSync(): Promise<any[]> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync(
+      `SELECT id, page_id, audio_uri, audio_type, position_x, position_y, is_locked, 
+              created_at, updated_at, user_id, deleted_at
+       FROM page_audios 
+       ORDER BY created_at ASC`
+    );
+    return rows ?? [];
+  }
+  
+  return new Promise((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT id, page_id, audio_uri, audio_type, position_x, position_y, is_locked, 
+                created_at, updated_at, user_id, deleted_at
+         FROM page_audios 
+         ORDER BY created_at ASC`,
+        [],
+        (_: any, res: any) => {
+          const out: any[] = [];
+          for (let i = 0; i < res.rows.length; i++) out.push(res.rows.item(i));
+          resolve(out);
+        },
+        (_: any, err: any) => { reject(err); return true; }
+      );
+    });
+  });
+}
+
+// ---------- SYNC: Tasks ----------
+export async function listAllTasksForSync(): Promise<any[]> {
+  if (isAsync) {
+    const rows = await (adb as any).getAllAsync(
+      `SELECT id, title, is_completed, created_at, updated_at, user_id, deleted_at
+       FROM tasks 
+       ORDER BY created_at ASC`
+    );
+    return rows ?? [];
+  }
+  
+  return new Promise((resolve, reject) => {
+    legacyDb.readTransaction((tx: any) => {
+      tx.executeSql(
+        `SELECT id, title, is_completed, created_at, updated_at, user_id, deleted_at
+         FROM tasks 
+         ORDER BY created_at ASC`,
+        [],
+        (_: any, res: any) => {
+          const out: any[] = [];
+          for (let i = 0; i < res.rows.length; i++) out.push(res.rows.item(i));
+          resolve(out);
+        },
+        (_: any, err: any) => { reject(err); return true; }
+      );
+    });
+  });
+}
+
+// Funciones para insertar desde remoto
+export async function insertPageTextFromRemote(text: any): Promise<void> {
+  const created_at = typeof text.created_at === 'string' 
+    ? Math.floor(new Date(text.created_at).getTime() / 1000)
+    : text.created_at;
+  
+  const updated_at = typeof text.updated_at === 'string'
+    ? Math.floor(new Date(text.updated_at).getTime() / 1000)
+    : text.updated_at;
+
+  if (isAsync) {
+    await runAsync(
+      `INSERT OR REPLACE INTO page_texts(id, page_id, content, font_family, color, position_x, position_y, font_size, rotation, is_locked, created_at, updated_at, user_id)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [text.id, text.page_id, text.content, text.font_family, text.color, text.position_x, text.position_y, text.font_size, text.rotation ?? 0, text.is_locked ?? 0, created_at, updated_at, text.user_id]
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx,
+        `INSERT OR REPLACE INTO page_texts(id, page_id, content, font_family, color, position_x, position_y, font_size, rotation, is_locked, created_at, updated_at, user_id)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [text.id, text.page_id, text.content, text.font_family, text.color, text.position_x, text.position_y, text.font_size, text.rotation ?? 0, text.is_locked ?? 0, created_at, updated_at, text.user_id]
+      );
+    });
+  }
+}
+
+export async function insertPageDrawFromRemote(draw: any): Promise<void> {
+  const created_at = typeof draw.created_at === 'string' 
+    ? Math.floor(new Date(draw.created_at).getTime() / 1000)
+    : draw.created_at;
+  
+  const updated_at = typeof draw.updated_at === 'string'
+    ? Math.floor(new Date(draw.updated_at).getTime() / 1000)
+    : draw.updated_at;
+
+  if (isAsync) {
+    await runAsync(
+      `INSERT OR REPLACE INTO page_draws(id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at, user_id)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+      [draw.id, draw.page_id, draw.path_d, draw.color, draw.width, draw.opacity, draw.tool, draw.order_index, created_at, updated_at, draw.user_id]
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx,
+        `INSERT OR REPLACE INTO page_draws(id, page_id, path_d, color, width, opacity, tool, order_index, created_at, updated_at, user_id)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+        [draw.id, draw.page_id, draw.path_d, draw.color, draw.width, draw.opacity, draw.tool, draw.order_index, created_at, updated_at, draw.user_id]
+      );
+    });
+  }
+}
+
+export async function insertPageShapeFromRemote(shape: any): Promise<void> {
+  const created_at = typeof shape.created_at === 'string' 
+    ? Math.floor(new Date(shape.created_at).getTime() / 1000)
+    : shape.created_at;
+  
+  const updated_at = typeof shape.updated_at === 'string'
+    ? Math.floor(new Date(shape.updated_at).getTime() / 1000)
+    : shape.updated_at;
+
+  if (isAsync) {
+    await runAsync(
+      `INSERT OR REPLACE INTO page_shapes(id, page_id, shape_type, color, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at, user_id)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [shape.id, shape.page_id, shape.shape_type, shape.color, shape.position_x, shape.position_y, shape.width, shape.height, shape.rotation ?? 0, shape.is_locked ?? 0, created_at, updated_at, shape.user_id]
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx,
+        `INSERT OR REPLACE INTO page_shapes(id, page_id, shape_type, color, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at, user_id)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [shape.id, shape.page_id, shape.shape_type, shape.color, shape.position_x, shape.position_y, shape.width, shape.height, shape.rotation ?? 0, shape.is_locked ?? 0, created_at, updated_at, shape.user_id]
+      );
+    });
+  }
+}
+
+export async function insertPageImageFromRemote(image: any): Promise<void> {
+  const created_at = typeof image.created_at === 'string' 
+    ? Math.floor(new Date(image.created_at).getTime() / 1000)
+    : image.created_at;
+  
+  const updated_at = typeof image.updated_at === 'string'
+    ? Math.floor(new Date(image.updated_at).getTime() / 1000)
+    : image.updated_at;
+
+  if (isAsync) {
+    await runAsync(
+      `INSERT OR REPLACE INTO page_images(id, page_id, uri, position_x, position_y, width, height, rotation, created_at, updated_at, user_id)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+      [image.id, image.page_id, image.uri, image.position_x, image.position_y, image.width, image.height, image.rotation ?? 0, created_at, updated_at, image.user_id]
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx,
+        `INSERT OR REPLACE INTO page_images(id, page_id, uri, position_x, position_y, width, height, rotation, created_at, updated_at, user_id)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?)`,
+        [image.id, image.page_id, image.uri, image.position_x, image.position_y, image.width, image.height, image.rotation ?? 0, created_at, updated_at, image.user_id]
+      );
+    });
+  }
+}
+
+export async function insertPageStickerFromRemote(sticker: any): Promise<void> {
+  const created_at = typeof sticker.created_at === 'string' 
+    ? Math.floor(new Date(sticker.created_at).getTime() / 1000)
+    : sticker.created_at;
+  
+  const updated_at = typeof sticker.updated_at === 'string'
+    ? Math.floor(new Date(sticker.updated_at).getTime() / 1000)
+    : sticker.updated_at;
+
+  if (isAsync) {
+    await runAsync(
+      `INSERT OR REPLACE INTO page_stickers(id, page_id, sticker_url, sticker_category, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at, user_id)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [sticker.id, sticker.page_id, sticker.sticker_url, sticker.sticker_category, sticker.position_x, sticker.position_y, sticker.width, sticker.height, sticker.rotation ?? 0, sticker.is_locked ?? 0, created_at, updated_at, sticker.user_id]
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx,
+        `INSERT OR REPLACE INTO page_stickers(id, page_id, sticker_url, sticker_category, position_x, position_y, width, height, rotation, is_locked, created_at, updated_at, user_id)
+         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [sticker.id, sticker.page_id, sticker.sticker_url, sticker.sticker_category, sticker.position_x, sticker.position_y, sticker.width, sticker.height, sticker.rotation ?? 0, sticker.is_locked ?? 0, created_at, updated_at, sticker.user_id]
+      );
+    });
+  }
+}
+
+export async function insertPageAudioFromRemote(audio: any): Promise<void> {
+  const created_at = typeof audio.created_at === 'string' 
+    ? Math.floor(new Date(audio.created_at).getTime() / 1000)
+    : audio.created_at;
+  
+  const updated_at = typeof audio.updated_at === 'string'
+    ? Math.floor(new Date(audio.updated_at).getTime() / 1000)
+    : audio.updated_at;
+
+  if (isAsync) {
+    await runAsync(
+      `INSERT OR REPLACE INTO page_audios(id, page_id, audio_uri, audio_type, position_x, position_y, is_locked, created_at, updated_at, user_id)
+       VALUES(?,?,?,?,?,?,?,?,?,?)`,
+      [audio.id, audio.page_id, audio.audio_uri, audio.audio_type, audio.position_x, audio.position_y, audio.is_locked ?? 0, created_at, updated_at, audio.user_id]
+    );
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx,
+        `INSERT OR REPLACE INTO page_audios(id, page_id, audio_uri, audio_type, position_x, position_y, is_locked, created_at, updated_at, user_id)
+         VALUES(?,?,?,?,?,?,?,?,?,?)`,
+        [audio.id, audio.page_id, audio.audio_uri, audio.audio_type, audio.position_x, audio.position_y, audio.is_locked ?? 0, created_at, updated_at, audio.user_id]
+      );
+    });
+  }
+}
+
+
+// ========== HARD DELETE FUNCTIONS (para sincronizacion) ==========
+
+export async function hardDeletePageText(textId: string): Promise<void> {
+  if (isAsync) {
+    await runAsync('DELETE FROM page_texts WHERE id = ?', [textId]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, 'DELETE FROM page_texts WHERE id = ?', [textId]);
+    });
+  }
+}
+
+export async function hardDeletePageDraw(drawId: string): Promise<void> {
+  if (isAsync) {
+    await runAsync('DELETE FROM page_draws WHERE id = ?', [drawId]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, 'DELETE FROM page_draws WHERE id = ?', [drawId]);
+    });
+  }
+}
+
+export async function hardDeletePageShape(shapeId: string): Promise<void> {
+  if (isAsync) {
+    await runAsync('DELETE FROM page_shapes WHERE id = ?', [shapeId]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, 'DELETE FROM page_shapes WHERE id = ?', [shapeId]);
+    });
+  }
+}
+
+export async function hardDeletePageSticker(stickerId: string): Promise<void> {
+  if (isAsync) {
+    await runAsync('DELETE FROM page_stickers WHERE id = ?', [stickerId]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, 'DELETE FROM page_stickers WHERE id = ?', [stickerId]);
+    });
+  }
+}
+
+export async function hardDeletePageImage(imageId: string): Promise<void> {
+  if (isAsync) {
+    await runAsync('DELETE FROM page_images WHERE id = ?', [imageId]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, 'DELETE FROM page_images WHERE id = ?', [imageId]);
+    });
+  }
+}
+
+export async function hardDeletePageAudio(audioId: string): Promise<void> {
+  if (isAsync) {
+    await runAsync('DELETE FROM page_audios WHERE id = ?', [audioId]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, 'DELETE FROM page_audios WHERE id = ?', [audioId]);
+    });
+  }
+}
+
+export async function hardDeleteTask(taskId: string): Promise<void> {
+  if (isAsync) {
+    await runAsync('DELETE FROM tasks WHERE id = ?', [taskId]);
+  } else {
+    await txLegacy(async (tx) => {
+      await execTx(tx, 'DELETE FROM tasks WHERE id = ?', [taskId]);
     });
   }
 }

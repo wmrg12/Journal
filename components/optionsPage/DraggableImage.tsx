@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   Animated,
   LayoutChangeEvent,
+   ActivityIndicator,
+   Text,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import S from "@/styles/pageViewStyles";
@@ -25,6 +27,7 @@ type Img = {
 type Props = {
   image: Img;
   isSelected: boolean;
+  isDownloading?: boolean; 
   onSelect: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
@@ -41,6 +44,7 @@ const MIN_SIZE = 40;
 export const DraggableImage: React.FC<Props> = ({
   image,
   isSelected,
+  isDownloading = false,
   onSelect,
   onEdit,
   onDelete,
@@ -146,9 +150,6 @@ export const DraggableImage: React.FC<Props> = ({
     );
   };
 
-  // He eliminado la validación inicial que forzaba la imagen dentro del canvas.
-  // Si la quieres de vuelta, coméntame y la reintroduzco con la lógica que prefieras.
-
   /* ---------- Move panResponder (guarda en BD al soltar) ---------- */
   const panResponder = useRef(
     PanResponder.create({
@@ -213,8 +214,8 @@ export const DraggableImage: React.FC<Props> = ({
   // resizeResponder: actualiza setSize y lastSizeRef, y al soltar persiste desde el ref
   const resizeResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => !isDownloading, // 
+      onMoveShouldSetPanResponder: () => !isDownloading, // 
       onPanResponderGrant: (evt) => {
         toolbarButtonPressed.current = true;
         isResizingRef.current = true;
@@ -300,8 +301,8 @@ export const DraggableImage: React.FC<Props> = ({
   /* --- Rotate panResponder (guarda en BD al soltar) --- */
   const rotatePanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => !isDownloading, // 
+      onMoveShouldSetPanResponder: () => !isDownloading, // 
       onPanResponderGrant: (evt) => {
         toolbarButtonPressed.current = true;
         onSelect(image.id);
@@ -375,9 +376,8 @@ export const DraggableImage: React.FC<Props> = ({
     toolbarButtonPressed.current = false;
   };
 
-  // tap selection
   const handleTap = () => {
-    if (toolbarButtonPressed.current) return;
+    if (toolbarButtonPressed.current || isDownloading) return; // 
     onSelect(image.id);
   };
 
@@ -385,10 +385,9 @@ export const DraggableImage: React.FC<Props> = ({
     measureBox();
   };
 
-  return (
-    // Animated.View ahora SOLO hace translateX/translateY (no rotate)
+   return (
     <Animated.View
-      {...panResponder.panHandlers}
+      {...(isDownloading ? {} : panResponder.panHandlers)} // 🔥 Deshabilitar pan si está descargando
       style={[
         {
           position: "absolute",
@@ -400,7 +399,6 @@ export const DraggableImage: React.FC<Props> = ({
         },
       ]}
     >
-      {/* Contenedor medible (boxRef) — dentro de este aplicamos la rotación en el View interno */}
       <View
         ref={boxRef}
         onLayout={handleLayout}
@@ -409,7 +407,6 @@ export const DraggableImage: React.FC<Props> = ({
           height: "100%",
         }}
       >
-        {/* Aplicamos la rotación en este View interno (rotación alrededor del centro por defecto) */}
         <View
           style={{
             width: "100%",
@@ -417,22 +414,52 @@ export const DraggableImage: React.FC<Props> = ({
             transform: [{ rotate: `${rotation}deg` }],
           }}
         >
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={handleTap}
-            style={{ width: "100%", height: "100%" }}
-          >
-            <Image
-              source={{ uri: image.uri }}
-              style={{ width: "100%", height: "100%", borderRadius: 8 }}
-              resizeMode="cover"
-            />
-          </TouchableOpacity>
+          {/* 🔥 MOSTRAR PLACEHOLDER SI ESTÁ DESCARGANDO */}
+          {isDownloading ? (
+            <View
+              style={{
+                width: "100%",
+                height: "100%",
+                backgroundColor: "rgba(59, 130, 246, 0.1)",
+                borderRadius: 8,
+                borderWidth: 2,
+                borderColor: "#3b82f6",
+                borderStyle: "dashed",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <ActivityIndicator size="large" color="#3b82f6" />
+              <Text
+                style={{
+                  marginTop: 8,
+                  fontSize: 12,
+                  color: "#3b82f6",
+                  fontWeight: "600",
+                }}
+              >
+                Descargando...
+              </Text>
+            </View>
+          ) : (
+            // Renderizar imagen normal solo si NO está descargando
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={handleTap}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <Image
+                source={{ uri: image.uri }}
+                style={{ width: "100%", height: "100%", borderRadius: 8 }}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+          )}
         </View>
 
-        {isSelected && (
+        {/* 🔥 OCULTAR CONTROLES SI ESTÁ DESCARGANDO */}
+        {isSelected && !isDownloading && (
           <>
-            {/* delete - top-left */}
             <TouchableOpacity
               onPressIn={() => (toolbarButtonPressed.current = true)}
               onPress={handleDelete}
@@ -441,7 +468,6 @@ export const DraggableImage: React.FC<Props> = ({
               <Feather name="trash-2" size={14} color="#fff" />
             </TouchableOpacity>
 
-            {/* edit - top-right */}
             <TouchableOpacity
               onPressIn={() => (toolbarButtonPressed.current = true)}
               onPress={handleEdit}
@@ -458,7 +484,6 @@ export const DraggableImage: React.FC<Props> = ({
               <Feather name="edit-2" size={14} color="#fff" />
             </TouchableOpacity>
 
-            {/* duplicate - bottom-left */}
             <TouchableOpacity
               onPressIn={() => (toolbarButtonPressed.current = true)}
               onPress={handleDuplicate}
@@ -467,7 +492,6 @@ export const DraggableImage: React.FC<Props> = ({
               <Feather name="copy" size={14} color="#fff" />
             </TouchableOpacity>
 
-            {/* rotate - bottom-right */}
             <View
               {...rotatePanResponder.panHandlers}
               style={[S.shapeControlButton, S.shapeRotateButton]}
@@ -476,7 +500,6 @@ export const DraggableImage: React.FC<Props> = ({
               <Feather name="rotate-cw" size={14} color="#fff" />
             </View>
 
-            {/* resize - bottom-center */}
             <View
               {...resizeResponder.panHandlers}
               style={[S.shapeResizeHandle, { bottom: -24 }]}

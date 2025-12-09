@@ -24,6 +24,7 @@ type TextItem = {
   color?: string;
   rotation?: number;
   font_family?: string;
+  text_width?: number;
 };
 
 type DrawItem = {
@@ -176,6 +177,58 @@ export default function SmallPagePreview({
     if (!raw) return "";
     return raw.toString().trim().toLowerCase();
   }
+
+  // === FUNCIÓN PARA AJUSTAR TEXTO EN CAJA ===
+
+  const wrapText = (text: string, maxWidth: number, fontSize: number): string[] => {
+  if (!text || !maxWidth) return [text];
+  
+  const paragraphs = text.split('\n');
+  const wrappedLines: string[] = [];
+  const avgCharWidth = fontSize * 0.49;
+  const maxCharsPerLine = Math.floor(maxWidth / avgCharWidth);
+  
+  if (maxCharsPerLine <= 0) return [text];
+  
+  paragraphs.forEach((paragraph) => {
+    if (paragraph.length === 0) {
+      wrappedLines.push(''); 
+      return;
+    }
+    
+    const words = paragraph.split(' ');
+    let currentLine = '';
+    
+    words.forEach((word, index) => {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      
+      if (testLine.length <= maxCharsPerLine) {
+        currentLine = testLine;
+      } else {
+        if (currentLine) {
+          wrappedLines.push(currentLine);
+        }
+        
+        if (word.length > maxCharsPerLine) {
+          let remainingWord = word;
+          while (remainingWord.length > maxCharsPerLine) {
+            wrappedLines.push(remainingWord.substring(0, maxCharsPerLine - 1) + '');
+            remainingWord = remainingWord.substring(maxCharsPerLine - 1);
+          }
+          currentLine = remainingWord;
+        } else {
+          currentLine = word;
+        }
+      }
+    });
+    
+    if (currentLine) {
+      wrappedLines.push(currentLine);
+    }
+  });
+  
+  return wrappedLines;
+};
 
   // === ESCALADO DE PATH SVG COMPLETO ===
   const scalePathD = (pathD: string): string => {
@@ -715,38 +768,39 @@ export default function SmallPagePreview({
         {/* Texts */}
         {texts.map((t) => {
         const fontSize = Math.max(6, (t.font_size ?? 16) * uniformScale);
-        const x = normX(t.position_x);
-        const y = normY(t.position_y);
-        const paddingOffset = 8 * uniformScale;
-        const yOffset = paddingOffset;
+        const textBoxPaddingX = 6 * scaleX; 
+        const textBoxPaddingY = 4 * scaleY;  
+        const x = normX(t.position_x) + textBoxPaddingX;
+        const y = normY(t.position_y) + textBoxPaddingY;
         const rotation = t.rotation ?? 0;
-        const transform = rotation ? `rotate(${rotation} ${x} ${y + yOffset})` : undefined;
+  
+        const maxWidth = t.text_width ? scaleW(t.text_width) : 300 * scaleX;
+  
+        const fontFamily = fontFamilyMap[t.font_family as TextFont] ?? t.font_family ?? undefined;
 
-        const fontFamily =
-        fontFamilyMap[t.font_family as TextFont] ?? t.font_family ?? undefined;
-
-        const lines = t.content.split('\n');
+        const lines = wrapText(t.content, maxWidth, fontSize);
         const lineHeight = fontSize * 1.2; 
 
-  return (
-    <G key={`text-${t.id}`} transform={transform}>
-      {lines.map((line, index) => (
-        <SvgText
-          key={`${t.id}-line-${index}`}
-          x={x}
-          y={y + (index * lineHeight)}
-          fontSize={fontSize}
-          fill={safeColor(t.color, "#111")}
-          fontFamily={fontFamily}
-          textAnchor="start"
-          alignmentBaseline="hanging"
-        >
-          {line}
-        </SvgText>
-      ))}
-    </G>
-  );
-})}
+        return (
+        <G key={`text-${t.id}`}>
+          {lines.map((line, index) => (
+            <SvgText
+              key={`${t.id}-line-${index}`}
+              x={x}
+              y={y + (index * lineHeight)}
+              fontSize={fontSize}
+              fill={safeColor(t.color, "#111")}
+              fontFamily={fontFamily}
+              textAnchor="start"
+              alignmentBaseline="hanging"
+              transform={rotation ? `rotate(${rotation} ${x - textBoxPaddingX} ${y - textBoxPaddingY})` : undefined}
+            >
+            {line}
+            </SvgText>
+          ))}
+        </G>
+      );
+    })}
       </G>
     );
   };
