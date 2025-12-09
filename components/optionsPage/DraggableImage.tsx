@@ -387,7 +387,7 @@ export const DraggableImage: React.FC<Props> = ({
 
    return (
     <Animated.View
-      {...(isDownloading ? {} : panResponder.panHandlers)} // 🔥 Deshabilitar pan si está descargando
+      {...(isDownloading ? {} : panResponder.panHandlers)} 
       style={[
         {
           position: "absolute",
@@ -414,7 +414,7 @@ export const DraggableImage: React.FC<Props> = ({
             transform: [{ rotate: `${rotation}deg` }],
           }}
         >
-          {/* 🔥 MOSTRAR PLACEHOLDER SI ESTÁ DESCARGANDO */}
+          {/*  MOSTRAR PLACEHOLDER SI ESTÁ DESCARGANDO */}
           {isDownloading ? (
             <View
               style={{
@@ -457,7 +457,7 @@ export const DraggableImage: React.FC<Props> = ({
           )}
         </View>
 
-        {/* 🔥 OCULTAR CONTROLES SI ESTÁ DESCARGANDO */}
+        {/*  OCULTAR CONTROLES SI ESTÁ DESCARGANDO */}
         {isSelected && !isDownloading && (
           <>
             <TouchableOpacity
