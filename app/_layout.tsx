@@ -8,8 +8,12 @@ import { initSync, getSyncInstance } from '../src/service/supabaseSync';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { Audio } from 'expo-av';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 
 SplashScreen.preventAutoHideAsync();
+
+const OFFLINE_SESSION_KEY = 'offline_user_session';
 
 const tokenCache = {
   async getToken(key: string) {
@@ -50,6 +54,108 @@ function SyncManager() {
   const prevIsSignedInRef = useRef<boolean | undefined>(undefined);
   const isInitializingRef = useRef(false);
   const isSwitchingUserRef = useRef(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const offlineInitializedRef = useRef(false);
+
+  // Detectar conectividad
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsOnline(state.isConnected ?? false);
+    });
+
+    NetInfo.fetch().then((state) => {
+      setIsOnline(state.isConnected ?? false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Inicializar DB en modo offline
+  useEffect(() => {
+    if (!isOnline && !offlineInitializedRef.current && !dbReady) {
+      (async () => {
+        try {
+          const savedSession = await AsyncStorage.getItem(OFFLINE_SESSION_KEY);
+          if (savedSession) {
+            const { userId } = JSON.parse(savedSession);
+
+            // Establecer userId globalmente
+            setCurrentUserId(userId);
+
+            // Inicializar base de datos local
+            await initDb(userId);
+
+            setDbReady(true);
+            setSyncInitialized(true);
+            offlineInitializedRef.current = true;
+          }
+        } catch (error) {
+          console.error('Error inicializando en modo offline:', error);
+        }
+      })();
+    }
+  }, [isOnline, dbReady]);
+
+  // Guardar/limpiar sesión offline
+  useEffect(() => {
+    if (authLoaded && isSignedIn && user?.id && isOnline) {
+      AsyncStorage.setItem(
+        OFFLINE_SESSION_KEY,
+        JSON.stringify({
+          userId: user.id,
+          timestamp: Date.now(),
+        }),
+      ).catch(console.error);
+    } else if (authLoaded && !isSignedIn && isOnline) {
+      AsyncStorage.removeItem(OFFLINE_SESSION_KEY).catch(console.error);
+    }
+  }, [authLoaded, isSignedIn, user?.id, isOnline]);
+
+  useEffect(() => {
+    if (!authLoaded || !userLoaded) {
+      if (!isOnline && dbReady && !hasNavigatedRef.current) {
+        hasNavigatedRef.current = true;
+        setTimeout(() => {
+          router.replace('/tabs/home');
+        }, 200);
+        return;
+      }
+
+      return;
+    }
+
+    const inAuthGroup = segments[0] === 'login';
+
+    // Modo online normal
+    if (
+      isSignedIn &&
+      user?.id &&
+      dbReady &&
+      syncInitialized &&
+      !hasNavigatedRef.current &&
+      !isSwitchingUserRef.current &&
+      isOnline
+    ) {
+      hasNavigatedRef.current = true;
+
+      setTimeout(() => {
+        router.replace('/tabs/home');
+      }, 200);
+    } else if (!isSignedIn && !inAuthGroup && isOnline) {
+      hasNavigatedRef.current = false;
+      router.replace('/login');
+    }
+  }, [
+    isSignedIn,
+    user?.id,
+    segments,
+    authLoaded,
+    userLoaded,
+    dbReady,
+    syncInitialized,
+    router,
+    isOnline,
+  ]);
 
   // Detectar cuando se cierra sesión
   useEffect(() => {
@@ -116,74 +222,74 @@ function SyncManager() {
   }, [user?.id]);
 
   // Inicialización de DB y Sync al iniciar sesión
-useEffect(() => {
-  if (
-    userLoaded &&
-    user?.id &&
-    !syncInitialized &&
-    isSignedIn &&
-    !isInitializingRef.current &&
-    !isSwitchingUserRef.current
-  ) {
-    isInitializingRef.current = true;
+  useEffect(() => {
+    if (
+      userLoaded &&
+      user?.id &&
+      !syncInitialized &&
+      isSignedIn &&
+      !isInitializingRef.current &&
+      !isSwitchingUserRef.current
+    ) {
+      isInitializingRef.current = true;
 
-    (async () => {
-      console.log('Inicializando para usuario:', user.id);
+      (async () => {
+        console.log('Inicializando para usuario:', user.id);
 
-      setDbReady(false);
+        setDbReady(false);
 
-      try {
-        // Inicializar base de datos
-        await initDb(user.id);
-        console.log('Base de datos del usuario lista');
+        try {
+          // Inicializar base de datos
+          await initDb(user.id);
+          console.log('Base de datos del usuario lista');
 
-        // Actualizar user_id en datos existentes
-        await updateUserIdForExistingData().catch((error) => {
-          console.error('Error actualizando user_id:', error);
-        });
+          // Actualizar user_id en datos existentes
+          await updateUserIdForExistingData().catch((error) => {
+            console.error('Error actualizando user_id:', error);
+          });
 
-        // Configurar función para obtener token
-        const getSupabaseToken = async () => {
-          try {
-            console.log('Solicitando token de Clerk');
-            const token = await getToken({ template: 'supabase' });
-            console.log('Token obtenido:', token ? 'Sí' : 'No');
-            return token;
-          } catch (error) {
-            console.error('Error obteniendo token:', error);
-            return null;
-          }
-        };
+          // Configurar función para obtener token
+          const getSupabaseToken = async () => {
+            try {
+              console.log('Solicitando token de Clerk');
+              const token = await getToken({ template: 'supabase' });
+              console.log('Token obtenido:', token ? 'Sí' : 'No');
+              return token;
+            } catch (error) {
+              console.error('Error obteniendo token:', error);
+              return null;
+            }
+          };
 
-        // Inicializar servicio de sincronización
-        initSync(user.id, getSupabaseToken);
+          // Inicializar servicio de sincronización
+          initSync(user.id, getSupabaseToken);
 
-        console.log('Marcando como listo para navegación...');
-        setSyncInitialized(true);
-        setDbReady(true);
+          console.log('Marcando como listo para navegación...');
+          setSyncInitialized(true);
+          setDbReady(true);
 
-        await new Promise((resolve) => setTimeout(resolve, 300));
+          await new Promise((resolve) => setTimeout(resolve, 300));
 
-        setTimeout(() => {
-          const syncService = getSyncInstance();
-          if (syncService) {
-            console.log('Iniciando sincronización en background...');
-            syncService.performFullSync().catch((error: unknown) => {
-              console.error('Error en sincronización completa:', error);
-            });
-          }
-        }, 1000); 
+          setTimeout(() => {
+            const syncService = getSyncInstance();
+            if (syncService) {
+              console.log('Iniciando sincronización en background...');
+              syncService.performFullSync().catch((error: unknown) => {
+                console.error('Error en sincronización completa:', error);
+              });
+            }
+          }, 1000);
 
-        console.log('Inicialización completa');
-      } catch (error) {
-        console.error('Error en inicialización:', error);
-        setDbReady(true);
-        setSyncInitialized(true);
-        isInitializingRef.current = false;
-      }
-    })();
-  }
-}, [user?.id, userLoaded, syncInitialized, getToken, isSignedIn]);
+          console.log('Inicialización completa');
+        } catch (error) {
+          console.error('Error en inicialización:', error);
+          setDbReady(true);
+          setSyncInitialized(true);
+          isInitializingRef.current = false;
+        }
+      })();
+    }
+  }, [user?.id, userLoaded, syncInitialized, getToken, isSignedIn]);
 
   // Navegacion automatica
   useEffect(() => {
