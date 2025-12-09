@@ -27,6 +27,7 @@ interface PageStickerComponentProps {
   onDuplicate: () => void;
   onToggleLock: () => void;
   scale?: number;
+  zIndex?: number;
 }
 
 export function PageStickerComponent({
@@ -38,17 +39,20 @@ export function PageStickerComponent({
   onDuplicate,
   onToggleLock,
   scale = 1,
+  zIndex = 4, 
 }: PageStickerComponentProps) {
-  // position is driven by Animated pan
-
+  const isLockedRef = useRef(sticker.is_locked);
+  
   const pan = useRef(new Animated.ValueXY({
     x: Number(sticker.position_x) || 0,
     y: Number(sticker.position_y) || 0,
   })).current;
+  
   const [localSize, setLocalSize] = useState({
     width: Number(sticker.width) || 100,
     height: Number(sticker.height) || 100,
   });
+  
   const [localRotation, setLocalRotation] = useState(Number(sticker.rotation) || 0);
 
   const lastPan = useRef({ x: Number(sticker.position_x) || 0, y: Number(sticker.position_y) || 0 });
@@ -65,30 +69,42 @@ export function PageStickerComponent({
   const initialAngleRef = useRef(0);
   const sizeStartRef = useRef({ width: Number(sticker.width) || 100, height: Number(sticker.height) || 100 });
 
+  useEffect(() => {
+    isLockedRef.current = sticker.is_locked;
+    console.log('Lock actualizado:', sticker.id.substring(0, 8), '->', sticker.is_locked);
+  }, [sticker.is_locked, sticker.id]);
+
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_evt, gestureState) => {
+      onStartShouldSetPanResponder: () => {
+        if (isLockedRef.current) return false;
         if (toolbarButtonPressed.current) return false;
-        if (sticker.is_locked) return false;
+        return false;
+      },
+      onMoveShouldSetPanResponder: (_evt, gestureState) => {
+        if (isLockedRef.current) return false;
+        if (toolbarButtonPressed.current) return false;
         if (gestureState.numberActiveTouches !== 1) return false;
         return Math.abs(gestureState.dx) > 3 || Math.abs(gestureState.dy) > 3;
       },
       onPanResponderGrant: (evt, gestureState) => {
+        if (isLockedRef.current) {
+          console.log('Intento de mover sticker bloqueado');
+          return;
+        }
         onSelect();
         isGestureActive.current = true;
         lastPan.current = { x: (pan.x as any)._value, y: (pan.y as any)._value };
       },
       onPanResponderMove: (evt, gesture) => {
-        if (sticker.is_locked) return;
+        if (isLockedRef.current) return;
         const nx = lastPan.current.x + gesture.dx / scale;
         const ny = lastPan.current.y + gesture.dy / scale;
         pan.setValue({ x: nx, y: ny });
-        const newPos = { x: nx, y: ny };
-        currentPosition.current = newPos;
+        currentPosition.current = { x: nx, y: ny };
       },
       onPanResponderRelease: () => {
-        if (sticker.is_locked) return;
+        if (isLockedRef.current) return;
         isGestureActive.current = false;
         const finalX = (pan.x as any)._value;
         const finalY = (pan.y as any)._value;
@@ -99,24 +115,24 @@ export function PageStickerComponent({
 
   const resizePanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !sticker.is_locked,
-      onMoveShouldSetPanResponder: () => !sticker.is_locked,
+      onStartShouldSetPanResponder: () => !isLockedRef.current,
+      onMoveShouldSetPanResponder: () => !isLockedRef.current,
       onPanResponderGrant: () => {
-        if (sticker.is_locked) return;
+        if (isLockedRef.current) return;
         toolbarButtonPressed.current = true;
         isGestureActive.current = true;
         lastSize.current = { width: Number(currentSize.current.width), height: Number(currentSize.current.height) };
         sizeStartRef.current = { width: currentSize.current.width, height: currentSize.current.height };
       },
       onPanResponderMove: (_, gesture) => {
-        if (sticker.is_locked) return;
+        if (isLockedRef.current) return;
         const newWidth = Math.max(30, sizeStartRef.current.width + gesture.dx / scale);
         const newHeight = Math.max(30, sizeStartRef.current.height + gesture.dy / scale);
         setLocalSize({ width: newWidth, height: newHeight });
         currentSize.current = { width: newWidth, height: newHeight };
       },
       onPanResponderRelease: () => {
-        if (sticker.is_locked) return;
+        if (isLockedRef.current) return;
         isGestureActive.current = false;
         toolbarButtonPressed.current = false;
         lastSize.current = { width: currentSize.current.width, height: currentSize.current.height };
@@ -127,10 +143,10 @@ export function PageStickerComponent({
 
   const rotatePanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !sticker.is_locked,
-      onMoveShouldSetPanResponder: () => !sticker.is_locked,
+      onStartShouldSetPanResponder: () => !isLockedRef.current,
+      onMoveShouldSetPanResponder: () => !isLockedRef.current,
       onPanResponderGrant: (evt) => {
-        if (sticker.is_locked) return;
+        if (isLockedRef.current) return;
         toolbarButtonPressed.current = true;
         isGestureActive.current = true;
         rotationStartRef.current = Number(localRotation) || 0;
@@ -143,7 +159,7 @@ export function PageStickerComponent({
         });
       },
       onPanResponderMove: (evt) => {
-        if (sticker.is_locked) return;
+        if (isLockedRef.current) return;
         const { pageX, pageY } = evt.nativeEvent;
         const dx = pageX - stickerCenterRef.current.x;
         const dy = pageY - stickerCenterRef.current.y;
@@ -157,7 +173,7 @@ export function PageStickerComponent({
         currentRotation.current = newRotation;
       },
       onPanResponderRelease: () => {
-        if (sticker.is_locked) return;
+        if (isLockedRef.current) return;
         toolbarButtonPressed.current = false;
         isGestureActive.current = false;
         onUpdate({ rotation: Number(currentRotation.current) });
@@ -186,7 +202,7 @@ export function PageStickerComponent({
   }, [sticker.position_x, sticker.position_y, sticker.width, sticker.height, sticker.rotation, pan]);
 
   const handleDelete = () => {
-    Alert.alert('Eliminar Sticker', '¿Estás seguro de que quieres eliminar este sticker?', [
+    Alert.alert('Eliminar Sticker', '¿Estas seguro de que quieres eliminar este sticker?', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: onDelete },
     ]);
@@ -202,8 +218,8 @@ export function PageStickerComponent({
         {
           width: localSize.width,
           height: localSize.height,
-          zIndex: isSelected ? 1000 : 500, 
-          elevation: isSelected ? 1000 : 500,
+          zIndex: isSelected ? zIndex + 10000 : zIndex,
+          elevation: isSelected ? zIndex + 10000 : zIndex,
           transform: [
             { translateX: pan.x },
             { translateY: pan.y },
@@ -291,4 +307,3 @@ export function PageStickerComponent({
     </Animated.View>
   );
 }
-
