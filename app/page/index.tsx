@@ -820,10 +820,26 @@ export default function PageView() {
               />
             ))}
 
-            {sortedPageTexts.map((text) => (
+              {sortedPageStickers.map((sticker, index) => (
+              <PageStickerComponent
+                key={sticker.id}
+                sticker={sticker}
+                zIndex={4000 + index} 
+                isSelected={stickerManager.selectedStickerId === sticker.id}
+                onSelect={() => stickerManager.setSelectedStickerId(sticker.id)}
+                onUpdate={(updates) => stickerManager.updateSticker(sticker.id, updates)}
+                onDelete={() => stickerManager.removeSticker(sticker.id)}
+                onDuplicate={() => stickerManager.duplicateSticker(sticker.id)}
+                onToggleLock={() => stickerManager.toggleLock(sticker.id, !sticker.is_locked)}
+                scale={1}
+              />
+            ))}
+
+            {sortedPageTexts.map((text, index) => (
               <DraggableText
                 key={text.id}
                 text={text}
+                zIndex={5000 + index} 
                 currentPageId={currentPageId}
                 handleDeleteText={textManager.handleDeleteText}
                 getPanFor={textManager.getPanFor}
@@ -845,7 +861,7 @@ export default function PageView() {
             ))}
 
             {currentPageId &&
-              sortedAudios.map((audio) => (
+              sortedAudios.map((audio, index) => (
                 <DraggableAudio
                   key={audio.id}
                   audio={{
@@ -858,6 +874,7 @@ export default function PageView() {
                     is_locked: audio.is_locked === 1,
                     created_at: audio.created_at,
                   }}
+                  zIndex={6000 + index}
                   getPanFor={audioManager.getPanForAudio}
                   onPositionCommit={audioManager.handleAudioPositionCommit}
                   onDelete={audioManager.handleDeleteAudio}
@@ -870,19 +887,6 @@ export default function PageView() {
                 />
               ))}
 
-              {sortedPageStickers.map((sticker) => (
-              <PageStickerComponent
-                key={sticker.id}
-                sticker={sticker}
-                isSelected={stickerManager.selectedStickerId === sticker.id}
-                onSelect={() => stickerManager.setSelectedStickerId(sticker.id)}
-                onUpdate={(updates) => stickerManager.updateSticker(sticker.id, updates)}
-                onDelete={() => stickerManager.removeSticker(sticker.id)}
-                onDuplicate={() => stickerManager.duplicateSticker(sticker.id)}
-                onToggleLock={() => stickerManager.toggleLock(sticker.id, !sticker.is_locked)}
-                scale={1}
-              />
-            ))}
           </SkiaCanvas>
         </View>
       </View>
