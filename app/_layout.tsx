@@ -70,6 +70,70 @@ function SyncManager() {
     return () => unsubscribe();
   }, []);
 
+  // Detectar cuando se cierra sesión (ACTUALIZADO para modo offline)
+  useEffect(() => {
+    // Solo procesar cierre de sesión si estamos ONLINE
+    if (prevIsSignedInRef.current === true && isSignedIn === false && isOnline) {
+      const syncService = getSyncInstance();
+      if (syncService) {
+        syncService.destroy();
+      }
+
+      setSyncInitialized(false);
+      setDbReady(false);
+      hasNavigatedRef.current = false;
+      prevUserIdRef.current = null;
+      isInitializingRef.current = false;
+      isSwitchingUserRef.current = false;
+
+      AsyncStorage.removeItem(OFFLINE_SESSION_KEY).catch(console.error);
+    }
+
+    // En modo offline, NO hacer nada si Clerk dice que no hay sesión
+    if (!isOnline && isSignedIn === false) {
+      return;
+    }
+
+    prevIsSignedInRef.current = isSignedIn;
+  }, [isSignedIn, isOnline]);
+
+  // Cambio de usuario
+  useEffect(() => {
+    if (user?.id && prevUserIdRef.current && prevUserIdRef.current !== user.id) {
+      isSwitchingUserRef.current = true;
+
+      (async () => {
+        try {
+          const syncService = getSyncInstance();
+          if (syncService) {
+            syncService.destroy();
+          }
+
+          await closeDatabase();
+
+          setSyncInitialized(false);
+          setDbReady(false);
+          hasNavigatedRef.current = false;
+          isInitializingRef.current = false;
+
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        } catch (error) {
+          console.error('Error durante cambio de usuario:', error);
+        } finally {
+          isSwitchingUserRef.current = false;
+        }
+      })();
+    }
+    prevUserIdRef.current = user?.id || null;
+  }, [user?.id]);
+
+  // Establecer userId globalmente
+  useEffect(() => {
+    if (user?.id) {
+      setCurrentUserId(user.id);
+    }
+  }, [user?.id]);
+
   // Inicializar DB en modo offline
   useEffect(() => {
     if (!isOnline && !offlineInitializedRef.current && !dbReady) {
@@ -111,22 +175,84 @@ function SyncManager() {
     }
   }, [authLoaded, isSignedIn, user?.id, isOnline]);
 
+  // Inicialización de DB y Sync al iniciar sesión (SOLO ONLINE)
   useEffect(() => {
-    if (!authLoaded || !userLoaded) {
-      if (!isOnline && dbReady && !hasNavigatedRef.current) {
-        hasNavigatedRef.current = true;
-        setTimeout(() => {
-          router.replace('/tabs/home');
-        }, 200);
-        return;
-      }
+    if (
+      userLoaded &&
+      user?.id &&
+      !syncInitialized &&
+      isSignedIn &&
+      !isInitializingRef.current &&
+      !isSwitchingUserRef.current &&
+      isOnline
+    ) {
+      isInitializingRef.current = true;
 
+      (async () => {
+        setDbReady(false);
+
+        try {
+          await initDb(user.id);
+
+          await updateUserIdForExistingData().catch((error) => {
+            console.error('Error actualizando user_id:', error);
+          });
+
+          const getSupabaseToken = async () => {
+            try {
+              const token = await getToken({ template: 'supabase' });
+              return token;
+            } catch (error) {
+              console.error('Error obteniendo token:', error);
+              return null;
+            }
+          };
+
+          initSync(user.id, getSupabaseToken);
+
+          setSyncInitialized(true);
+          setDbReady(true);
+
+          await new Promise((resolve) => setTimeout(resolve, 300));
+
+          setTimeout(() => {
+            const syncService = getSyncInstance();
+            if (syncService) {
+              syncService.performFullSync().catch((error: unknown) => {
+                console.error('Error en sincronización completa:', error);
+              });
+            }
+          }, 1000);
+        } catch (error) {
+          console.error('Error en inicialización:', error);
+          setDbReady(true);
+          setSyncInitialized(true);
+        } finally {
+          isInitializingRef.current = false;
+        }
+      })();
+    }
+  }, [user?.id, userLoaded, syncInitialized, getToken, isSignedIn, isOnline]);
+
+  // Navegación automática
+  useEffect(() => {
+    // MODO OFFLINE, No depender de Clerk
+    if (!isOnline && dbReady && !hasNavigatedRef.current) {
+      hasNavigatedRef.current = true;
+      setTimeout(() => {
+        router.replace('/tabs/home');
+      }, 200);
+      return;
+    }
+
+    // MODO ONLINE, Verificar Clerk
+    if (!authLoaded || !userLoaded) {
       return;
     }
 
     const inAuthGroup = segments[0] === 'login';
 
-    // Modo online normal
+    // Usuario autenticado y todo listo
     if (
       isSignedIn &&
       user?.id &&
@@ -137,13 +263,18 @@ function SyncManager() {
       isOnline
     ) {
       hasNavigatedRef.current = true;
-
       setTimeout(() => {
         router.replace('/tabs/home');
       }, 200);
-    } else if (!isSignedIn && !inAuthGroup && isOnline) {
+    }
+    // No autenticado y online
+    else if (!isSignedIn && !inAuthGroup && isOnline) {
       hasNavigatedRef.current = false;
       router.replace('/login');
+    }
+    // Offline sin sesión
+    else if (!isSignedIn && !isOnline && !dbReady) {
+      // No hacer nada, el modo offline lo manejará
     }
   }, [
     isSignedIn,
@@ -156,183 +287,6 @@ function SyncManager() {
     router,
     isOnline,
   ]);
-
-  // Detectar cuando se cierra sesión
-  useEffect(() => {
-    if (prevIsSignedInRef.current === true && isSignedIn === false) {
-      console.log('Sesión cerrada, limpiando estado...');
-
-      const syncService = getSyncInstance();
-      if (syncService) {
-        syncService.destroy();
-      }
-
-      // Limpiar completamente
-      setSyncInitialized(false);
-      setDbReady(false);
-      hasNavigatedRef.current = false;
-      prevUserIdRef.current = null;
-      isInitializingRef.current = false;
-      isSwitchingUserRef.current = false;
-    }
-    prevIsSignedInRef.current = isSignedIn;
-  }, [isSignedIn]);
-
-  // Cambio de usuario
-  useEffect(() => {
-    if (user?.id && prevUserIdRef.current && prevUserIdRef.current !== user.id) {
-      console.log('Usuario cambió de', prevUserIdRef.current, 'a', user.id);
-
-      isSwitchingUserRef.current = true;
-
-      (async () => {
-        try {
-          const syncService = getSyncInstance();
-          if (syncService) {
-            console.log('Destruyendo sync del usuario anterior...');
-            syncService.destroy();
-          }
-
-          console.log('Cerrando base de datos anterior...');
-          await closeDatabase();
-
-          setSyncInitialized(false);
-          setDbReady(false);
-          hasNavigatedRef.current = false;
-          isInitializingRef.current = false;
-
-          await new Promise((resolve) => setTimeout(resolve, 500));
-
-          console.log('Limpieza completa, listo para nuevo usuario');
-        } catch (error) {
-          console.error('Error durante cambio de usuario:', error);
-        } finally {
-          isSwitchingUserRef.current = false;
-        }
-      })();
-    }
-    prevUserIdRef.current = user?.id || null;
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (user?.id) {
-      console.log('Estableciendo currentUserId:', user.id);
-      setCurrentUserId(user.id);
-    }
-  }, [user?.id]);
-
-  // Inicialización de DB y Sync al iniciar sesión
-  useEffect(() => {
-    if (
-      userLoaded &&
-      user?.id &&
-      !syncInitialized &&
-      isSignedIn &&
-      !isInitializingRef.current &&
-      !isSwitchingUserRef.current
-    ) {
-      isInitializingRef.current = true;
-
-      (async () => {
-        console.log('Inicializando para usuario:', user.id);
-
-        setDbReady(false);
-
-        try {
-          // Inicializar base de datos
-          await initDb(user.id);
-          console.log('Base de datos del usuario lista');
-
-          // Actualizar user_id en datos existentes
-          await updateUserIdForExistingData().catch((error) => {
-            console.error('Error actualizando user_id:', error);
-          });
-
-          // Configurar función para obtener token
-          const getSupabaseToken = async () => {
-            try {
-              console.log('Solicitando token de Clerk');
-              const token = await getToken({ template: 'supabase' });
-              console.log('Token obtenido:', token ? 'Sí' : 'No');
-              return token;
-            } catch (error) {
-              console.error('Error obteniendo token:', error);
-              return null;
-            }
-          };
-
-          // Inicializar servicio de sincronización
-          initSync(user.id, getSupabaseToken);
-
-          console.log('Marcando como listo para navegación...');
-          setSyncInitialized(true);
-          setDbReady(true);
-
-          await new Promise((resolve) => setTimeout(resolve, 300));
-
-          setTimeout(() => {
-            const syncService = getSyncInstance();
-            if (syncService) {
-              console.log('Iniciando sincronización en background...');
-              syncService.performFullSync().catch((error: unknown) => {
-                console.error('Error en sincronización completa:', error);
-              });
-            }
-          }, 1000);
-
-          console.log('Inicialización completa');
-        } catch (error) {
-          console.error('Error en inicialización:', error);
-          setDbReady(true);
-          setSyncInitialized(true);
-          isInitializingRef.current = false;
-        }
-      })();
-    }
-  }, [user?.id, userLoaded, syncInitialized, getToken, isSignedIn]);
-
-  // Navegacion automatica
-  useEffect(() => {
-    if (!authLoaded || !userLoaded) {
-      console.log('⏳ Esperando auth/user loaded...');
-      return;
-    }
-
-    const inAuthGroup = segments[0] === 'login';
-
-    console.log('Estado de navegación:', {
-      isSignedIn,
-      userId: user?.id,
-      inAuthGroup,
-      dbReady,
-      syncInitialized,
-      hasNavigated: hasNavigatedRef.current,
-      isSwitching: isSwitchingUserRef.current,
-      segments: segments.join('/'),
-    });
-
-    if (
-      isSignedIn &&
-      user?.id &&
-      dbReady &&
-      syncInitialized &&
-      !hasNavigatedRef.current &&
-      !isSwitchingUserRef.current
-    ) {
-      console.log('Condiciones cumplidas, navegando a /tabs/home...');
-      hasNavigatedRef.current = true;
-
-      // Navegar después de un pequeño delay
-      setTimeout(() => {
-        console.log('Ejecutando navegación a /tabs/home');
-        router.replace('/tabs/home');
-      }, 200);
-    } else if (!isSignedIn && !inAuthGroup) {
-      console.log('No autenticado, navegando a /login...');
-      hasNavigatedRef.current = false;
-      router.replace('/login');
-    }
-  }, [isSignedIn, user?.id, segments, authLoaded, userLoaded, dbReady, syncInitialized, router]);
 
   return <></>;
 }
@@ -379,7 +333,6 @@ export default function RootLayout() {
       try {
         await initDb();
         setDbReady(true);
-        console.log('Database initialized');
       } catch (e) {
         console.error('Error initDb:', e);
       }
