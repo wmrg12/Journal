@@ -23,6 +23,7 @@ type DraggableTextProps = {
   onFontSizeChange?: (id: string, fontSize: number) => void;
   canvasWidth: number;
   canvasHeight: number;
+  zIndex?: number;
 };
 
 const DraggableTextBase = ({
@@ -41,6 +42,7 @@ const DraggableTextBase = ({
   onFontSizeChange,
   canvasWidth,
   canvasHeight,
+  zIndex = 5,
 }: DraggableTextProps) => {
   const pan = useMemo(() => getPanFor(text), [getPanFor, text]);
   const [isDragging, setIsDragging] = useState(false);
@@ -348,7 +350,7 @@ const DraggableTextBase = ({
         {
           transform: [{ translateX: pan.x }, { translateY: pan.y }, { rotate: `${rotation}deg` }],
           opacity: isDragging ? 0.7 : 1,
-          zIndex: isSelected ? 1000 : 1,
+          zIndex: isSelected ? zIndex + 10000 : zIndex,
         },
       ]}
     >
