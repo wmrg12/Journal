@@ -26,7 +26,8 @@ type DraggableAudioProps = {
   onDuplicate: (id: string) => void;
   locked: boolean;
   isSelected: boolean;
-  isDownloading?: boolean; // 🔥 NUEVA PROP
+  isDownloading?: boolean; 
+  zIndex?: number;
 };
 
 export const DraggableAudio: React.FC<DraggableAudioProps> = ({
@@ -39,7 +40,9 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
   onDuplicate,
   locked,
   isSelected,
-  isDownloading = false, // 🔥 VALOR POR DEFECTO
+  isDownloading = false, 
+  zIndex = 6,
+
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -54,7 +57,7 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
   // ... (todo el código de reproducción se mantiene igual)
 
   const togglePlayback = async () => {
-    if (isLoading || isDownloading) return; // 🔥 No reproducir si está descargando
+    if (isLoading || isDownloading) return; 
 
     try {
       setIsLoading(true);
@@ -195,9 +198,9 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => !locked && !isDownloading, // 🔥
+      onStartShouldSetPanResponder: () => !locked && !isDownloading, //
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        if (!locked && !isDownloading) { // 🔥
+        if (!locked && !isDownloading) { // 
           const moved = Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
           if (moved) isDraggingRef.current = true;
           return moved;
@@ -205,7 +208,7 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
         return false;
       },
       onPanResponderGrant: () => {
-        if (!locked && !isDownloading) { // 🔥
+        if (!locked && !isDownloading) { // 
           dragStartTimeRef.current = Date.now();
           isDraggingRef.current = false;
           onSelect(audio.id);
@@ -221,7 +224,7 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
         useNativeDriver: false,
       }),
       onPanResponderRelease: () => {
-        if (!locked && !isDownloading) { // 🔥
+        if (!locked && !isDownloading) { // 
           const dragDuration = Date.now() - dragStartTimeRef.current;
 
           if (!isDraggingRef.current && dragDuration < 200) {
@@ -240,11 +243,11 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
     }),
   ).current;
 
-  const animatedStyle = { transform: pan.getTranslateTransform() };
+  const animatedStyle = { transform: pan.getTranslateTransform(), zIndex: isSelected ? zIndex + 10000 : zIndex, };
 
   return (
     <Animated.View style={[S.audioContainer, animatedStyle]} {...panResponder.panHandlers}>
-      {/* 🔥 MOSTRAR PLACEHOLDER SI ESTÁ DESCARGANDO */}
+      {/*  MOSTRAR PLACEHOLDER SI ESTÁ DESCARGANDO */}
       {isDownloading ? (
         <View
           style={[
@@ -277,7 +280,7 @@ export const DraggableAudio: React.FC<DraggableAudioProps> = ({
         </TouchableOpacity>
       )}
 
-      {/* 🔥 OCULTAR CONTROLES SI ESTÁ DESCARGANDO */}
+      {/*  OCULTAR CONTROLES SI ESTÁ DESCARGANDO */}
       {isSelected && !locked && !isDownloading && (
         <View style={S.audioControls}>
           <TouchableOpacity
